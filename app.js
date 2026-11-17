@@ -36,6 +36,7 @@ const ICONS = {
   sliders: '<path d="M4 7h9M19 7h1M4 17h3M13 17h7"/><circle cx="16" cy="7" r="2.5"/><circle cx="10" cy="17" r="2.5"/>',
   list: '<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01" stroke-width="3"/>',
   tiers: '<rect x="3" y="4" width="18" height="4.5" rx="1.5"/><rect x="3" y="10" width="18" height="4.5" rx="1.5"/><rect x="3" y="16" width="18" height="4.5" rx="1.5"/>',
+  chart: '<path d="M4 20h16"/><rect x="5.5" y="11" width="3.5" height="6.5" rx="1"/><rect x="10.5" y="6" width="3.5" height="11.5" rx="1"/><rect x="15.5" y="13" width="3.5" height="4.5" rx="1"/>',
   trophy: '<path d="M8 4h8v5a4 4 0 0 1-8 0V4Z"/><path d="M8 6H5.5a2.5 2.5 0 0 0 2.6 3.4M16 6h2.5a2.5 2.5 0 0 1-2.6 3.4M12 13v4M8.5 20h7M9.5 17h5"/>',
   compass: '<circle cx="12" cy="12" r="9"/><path d="m15.6 8.4-2.1 5.1-5.1 2.1 2.1-5.1 5.1-2.1Z"/>',
   layers: '<path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/>',
@@ -815,6 +816,102 @@ function renderStats(all) {
   ].filter(Boolean);
   $('#stats').innerHTML = bits.join('<i>·</i>');
 }
+/* ---------- Статистика ---------- */
+const fmt1 = (n) => (Math.round(n * 10) / 10).toFixed(1).replace(/\.0$/, '');
+function barsHTML(items, { max, avgOf } = {}) {
+  const top = max || Math.max(1, ...items.map((x) => x.n));
+  return `<div class="sb">${items.map((x) => `
+    <div class="sb-row" title="${esc(x.tip || `${x.label}: ${x.n}`)}">
+      <span class="sb-lbl">${x.html || esc(x.label)}</span>
+      <span class="sb-track"><span class="sb-bar" style="width:${x.n ? Math.max(2, (x.n / top) * 100) : 0}%"></span></span>
+      <span class="sb-val">${x.n}</span>
+      ${avgOf ? `<span class="sb-avg">${x.avg != null ? `<span class="star">★</span>${fmt1(x.avg)}` : ''}</span>` : ''}
+    </div>`).join('')}</div>`;
+}
+function statsHTML(list) {
+  const rated = list.filter((r) => r.score != null);
+  const both = rated.filter((r) => r.world);
+  const myAvg = rated.length ? avg(rated.map((r) => r.score)) : null;
+  const worldAvgAll = both.length ? avg(both.map((r) => r.world)) : null;
+  const diff = both.length ? avg(both.map((r) => r.score - r.world)) : null;
+  const eps = Object.values(db.items).filter((it) => it.status === 'completed').reduce((s, it) => s + (it.anime.episodes || 0), 0);
+  const tile = (v, l, sub = '') => `<div class="st-tile"><b>${v}</b><span>${l}</span>${sub ? `<small>${sub}</small>` : ''}</div>`;
+  const tiles = [
+    tile(list.length, mode === 'title' ? plural(list.length, ['аниме в топе', 'аниме в топе', 'аниме в топе']) : plural(list.length, ['сезон или фильм', 'сезона и фильма', 'сезонов и фильмов'])),
+    myAvg != null ? tile(fmt1(myAvg), 'моя средняя', worldAvgAll != null ? `в мире у тех же — ${fmt1(worldAvgAll)}` : '') : '',
+    diff != null ? tile((diff > 0 ? '+' : '') + fmt1(diff), diff >= 0.05 ? 'ты мягче мира' : diff <= -0.05 ? 'ты строже мира' : 'как у всего мира', 'в среднем на столько баллов') : '',
+    eps ? tile(eps, plural(eps, ['эпизод', 'эпизода', 'эпизодов']), '≈ ' + Math.round((eps * 23) / 60) + ' ч просмотра') : '',
+  ].filter(Boolean).join('');
+
+  const sec = (title, body, note = '') => `<section class="st-sec"><div class="st-head"><h3>${title}</h3>${note ? `<span>${note}</span>` : ''}</div>${body}</section>`;
+  const out = [`<div class="st-tiles">${tiles}</div>`];
+
+  if (rated.length) {
+    const dist = Array.from({ length: 10 }, (_, i) => 10 - i).map((n) => {
+      const c = rated.filter((r) => Math.round(r.score) === n).length;
+      return { n: c, label: `${n}`, html: `<b>${n}</b> ${LABEL[n]}`, tip: `${n} — ${LABEL[n]}: ${c}` };
+    });
+    out.push(sec('Мои оценки', barsHTML(dist), rated.length < list.length ? `без оценки — ${list.length - rated.length}` : ''));
+  }
+
+  const gmap = new Map();
+  list.forEach((r) => (r.anime.genres || []).forEach((g) => {
+    const x = gmap.get(g.id) || { label: g.russian, n: 0, s: [] };
+    x.n++; if (r.score != null) x.s.push(r.score); gmap.set(g.id, x);
+  }));
+  const genres = [...gmap.values()].map((x) => ({ ...x, avg: x.s.length ? avg(x.s) : null }));
+  if (genres.length) {
+    const fav = genres.filter((g) => g.s.length >= 2).sort((a, b) => b.avg - a.avg || b.n - a.n)[0];
+    const top = [...genres].sort((a, b) => b.n - a.n || (b.avg || 0) - (a.avg || 0)).slice(0, 10);
+    const lead = fav ? `<p class="st-lead">Любимый жанр — <b>${esc(fav.label)}</b>: средняя <b>${fmt1(fav.avg)}</b> по ${fav.s.length} ${plural(fav.s.length, ['аниме', 'аниме', 'аниме'])}.</p>` : '';
+    out.push(sec('Жанры', lead + barsHTML(top.map((g) => ({ ...g, tip: `${g.label}: ${g.n}${g.avg != null ? `, моя средняя ${fmt1(g.avg)}` : ''}` })), { avgOf: true }), 'сколько и моя средняя'));
+  }
+
+  const dmap = new Map();
+  list.forEach((r) => {
+    const y = r.anime.year; if (!y) return;
+    const d = Math.floor(y / 10) * 10;
+    const x = dmap.get(d) || { label: `${d}-е`, n: 0, s: [] };
+    x.n++; if (r.score != null) x.s.push(r.score); dmap.set(d, x);
+  });
+  if (dmap.size) {
+    const dec = [...dmap.entries()].sort((a, b) => b[0] - a[0]).map(([, x]) => ({ ...x, avg: x.s.length ? avg(x.s) : null, tip: `${x.label}: ${x.n}` }));
+    out.push(sec('По годам выхода', barsHTML(dec, { avgOf: true }), 'по десятилетиям'));
+  }
+
+  if (both.length >= 2) {
+    mineRows = [];
+    const pickHTML = (r) => {
+      const i = mineRows.push(r) - 1, d = r.score - r.world;
+      return `<button class="st-pick" data-i="${i}">
+        <img loading="lazy" src="${esc(r.anime.poster)}" alt="">
+        <span class="st-pick-name">${esc(r.anime.russian || r.anime.name)}</span>
+        <span class="st-pick-nums">моя <b>${r.approx ? '≈' : ''}${fmtMy(r.score)}</b> · мир <b>${fmtWorld(r.world)}</b></span>
+        <span class="st-pick-d ${d > 0 ? 'up' : 'down'}">${d > 0 ? '+' : '−'}${fmt1(Math.abs(d))}</span>
+      </button>`;
+    };
+    const byD = [...both].sort((a, b) => (b.score - b.world) - (a.score - a.world));
+    const ups = byD.filter((r) => r.score - r.world > 0.3).slice(0, 3);
+    const downs = byD.reverse().filter((r) => r.score - r.world < -0.3).slice(0, 3);
+    if (ups.length || downs.length) {
+      out.push(sec('Ты и мир', `<div class="st-cols">
+        ${ups.length ? `<div><h4>Ты оценил выше мира</h4>${ups.map(pickHTML).join('')}</div>` : ''}
+        ${downs.length ? `<div><h4>Ты оценил ниже мира</h4>${downs.map(pickHTML).join('')}</div>` : ''}
+      </div>`, 'где твоё мнение сильнее всего расходится'));
+    }
+  }
+
+  const small = [];
+  const smap = Object.entries(WATCH).map(([k, v]) => ({ label: v, n: list.filter((r) => r.status === k).length })).filter((x) => x.n);
+  if (smap.length) small.push(sec('Статусы', barsHTML(smap)));
+  const kmap = new Map();
+  list.forEach((r) => { const k = r.type === 'title' && (r.parts || 0) > 1 ? 'Серия из частей' : KIND[r.anime.kind] || r.anime.kind || 'Другое'; kmap.set(k, (kmap.get(k) || 0) + 1); });
+  if (kmap.size) small.push(sec('Типы', barsHTML([...kmap.entries()].sort((a, b) => b[1] - a[1]).map(([label, n]) => ({ label, n })))));
+  if (small.length) out.push(`<div class="st-cols">${small.join('')}</div>`);
+
+  return `<div class="stats-view">${out.join('')}</div>`;
+}
+
 function renderMine() {
   $$('#layoutSeg button').forEach((b) => { const on = b.dataset.layout === layout; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
   const all = buildRows();
@@ -823,6 +920,7 @@ function renderMine() {
   $('#mineEmpty').hidden = !empty;
   for (const s of ['.tools', '.pills', '#mineActions']) $(s, $('#view-mine')).hidden = empty;
   $('#tierHint').hidden = empty || layout !== 'tiers';
+  $('#shareBtn').hidden = layout === 'stats';
   if (empty) { mineRows = []; mineList.innerHTML = ''; return; }
 
   const q = $('#mineSearch').value.trim().toLocaleLowerCase('ru');
@@ -841,6 +939,7 @@ function renderMine() {
     mineList.innerHTML = `<div class="empty-state small"><div class="empty-art">${icon('search')}</div><h2>Ничего не нашлось</h2><p>В топе нет аниме, подходящих под поиск и фильтры.</p><button class="btn" data-act="reset">Сбросить поиск и фильтры</button></div>`;
     return;
   }
+  if (layout === 'stats') { mineRows = []; mineList.innerHTML = statsHTML(list); return; }
   if (layout === 'tiers') {
     // тир-лист: в каждом тире свои места 1, 2, 3…
     mineRows = [];
@@ -881,7 +980,7 @@ mineList.addEventListener('click', (e) => {
   }
   const ed = e.target.closest('[data-edit]');
   if (ed) { editTier(ed, ed.dataset.edit); return; }
-  const el = e.target.closest('.row, .t-item'); if (!el) return;
+  const el = e.target.closest('.row, .t-item, .st-pick'); if (!el) return;
   const r = mineRows[+el.dataset.i];
   if (r) openCard(fromSnap(r.anime), r.type === 'title' ? 'franchise' : 'season');
 });
