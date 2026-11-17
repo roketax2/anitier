@@ -210,7 +210,7 @@ document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="
 <linearGradient id="fg-obsidian" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#26262f"/><stop offset=".5" stop-color="#0c0c11"/><stop offset="1" stop-color="#2c2c36"/></linearGradient>
 <linearGradient id="fg-nebula" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1a0f3d"/><stop offset=".4" stop-color="#5b3fd6"/><stop offset=".62" stop-color="#c04bd8"/><stop offset="1" stop-color="#0f2a5c"/></linearGradient>
 <linearGradient id="fg-silver" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8d96b8"/><stop offset=".45" stop-color="#f4f6ff"/><stop offset="1" stop-color="#6b7396"/></linearGradient>
-<clipPath id="fc-phase" clipPathUnits="userSpaceOnUse"><circle cx="60" cy="14.800" r="2.700"/></clipPath></defs></svg>`);
+<clipPath id="fc-phase" clipPathUnits="userSpaceOnUse"><circle cx="60" cy="14.800" r="2.700"/></clipPath><clipPath id="fc-gl1" clipPathUnits="userSpaceOnUse"><rect x="0" y="24" width="120" height="7"/></clipPath><clipPath id="fc-gl2" clipPathUnits="userSpaceOnUse"><rect x="0" y="52" width="120" height="4"/></clipPath><clipPath id="fc-gl3" clipPathUnits="userSpaceOnUse"><rect x="0" y="71" width="120" height="6"/></clipPath><clipPath id="fc-gl4" clipPathUnits="userSpaceOnUse"><rect x="0" y="95" width="120" height="5"/></clipPath></defs></svg>`);
 
 Object.assign(FRAME_ART, {
   // цепь: тонкая ювелирная цепочка из 40 звеньев и застёжка снизу
@@ -233,10 +233,20 @@ Object.assign(FRAME_ART, {
     + [[12, 1], [63, 2], [118, 3], [171, 4], [224, 5], [278, 6], [322, 7]].map(([a, s]) => `<path class="fa-ember" style="animation-delay:${-s * 0.4}s" d="${fCrack(a, 41.4, 48.8, s)}" fill="none" stroke="#ff8a1f" stroke-width="1.600" stroke-linecap="round" stroke-linejoin="round"/><path d="${fCrack(a, 41.4, 48.8, s)}" fill="none" stroke="#ffe0a3" stroke-width=".55" stroke-linecap="round" stroke-linejoin="round"/>`).join('')
     + [[50, 104, 0], [72, 106, 0.9], [92, 96, 1.7]].map(([x, y, d]) => fDot(x, y, 1.3, '#ffb03a', 'fa-rise', d)).join(''),
   // глитч: кольцо с разъехавшимися цветовыми каналами, видоискатель по углам и «битые» сегменты
-  glitch: () => `<g class="fa-ga">${fRing(45, 2.4, '#ff2bd1')}</g><g class="fa-gb" style="mix-blend-mode:screen">${fRing(45, 2.4, '#2bf0ff')}</g>` + fRing(45, 1.1, '#fff')
-    + ['M14 26V14H26', 'M94 14H106V26', 'M106 94V106H94', 'M26 106H14V94'].map((d) => `<path d="${d}" fill="none" stroke="#2bf0ff" stroke-width="2" stroke-linecap="square" transform="translate(-.8 .6)"/><path d="${d}" fill="none" stroke="#ff2bd1" stroke-width="2" stroke-linecap="square" transform="translate(.8 -.6)"/><path d="${d}" fill="none" stroke="#fff" stroke-width="1.200" stroke-linecap="square"/>`).join('')
-    + [[20, 'fa-ga', '#2bf0ff'], [140, 'fa-gb', '#ff2bd1'], [250, 'fa-ga', '#fff36b']].map(([a, cls, c]) => `<path class="${cls}" d="${fArc(49.5, a, a + 26)}" fill="none" stroke="${c}" stroke-width="2.200"/>`).join('')
-    + '<path d="M44 113H60M64 113H70M50 7H58" stroke="#fff" stroke-width="1" opacity=".55"/>',
+  // глитч: кольцо «ломается» — каналы цвета разъезжаются, полосы кадра сдвигаются рывками, вспыхивает шум
+  glitch: () => {
+    const ring = (c, w) => fRing(45, w, c);
+    // полосы-срезы кольца: каждая сдвигается вбок в свой момент (fa-gs1…4)
+    const bands = [[24, 7, 1], [52, 4, 2], [71, 6, 3], [95, 5, 4]];
+    const rnd = fRand(7);
+    const noise = Array.from({ length: 14 }, (_, i) => { const [x, y] = fXY(47 + rnd() * 8, rnd() * 360), w = 2 + rnd() * 7, h = 0.8 + rnd() * 1.8; return `<rect class="fa-gn" style="animation-delay:${-(rnd() * 2.6).toFixed(2)}s;animation-duration:${(1.6 + rnd() * 1.6).toFixed(2)}s" x="${(x - w / 2).toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="${['#2bf0ff', '#ff2bd1', '#fff', '#fff36b', '#5fff7a'][i % 5]}"/>`; }).join('');
+    return `<g class="fa-gflick">`
+      + `<g class="fa-ga" style="mix-blend-mode:screen">${ring('#ff2bd1', 3)}</g><g class="fa-gb" style="mix-blend-mode:screen">${ring('#2bf0ff', 3)}</g><g class="fa-gc" style="mix-blend-mode:screen">${ring('#fff36b', 1.6)}</g>` + ring('#fff', 1.2)
+      + bands.map(([y, h, k]) => `<g clip-path="url(#fc-gl${k})"><g class="fa-gs${k}">${ring('#fff', 3.4)}${fRing(45, 3.4, k % 2 ? '#2bf0ff' : '#ff2bd1', 'opacity=".75" transform="translate(2 0)"')}</g></g>`).join('')
+      + `<g opacity=".5">${Array.from({ length: 18 }, (_, i) => `<path d="M10 ${10 + i * 5.8}H110" stroke="#000" stroke-width=".9" mask="url(#fm-out)"/>`).join('')}</g>`
+      + ['M13 27V13H27', 'M93 13H107V27', 'M107 93V107H93', 'M27 107H13V93'].map((d, i) => `<g class="${['fa-ga', 'fa-gb', 'fa-gc', 'fa-ga'][i]}"><path d="${d}" fill="none" stroke="#2bf0ff" stroke-width="2" stroke-linecap="square" transform="translate(-1.2 .8)"/><path d="${d}" fill="none" stroke="#ff2bd1" stroke-width="2" stroke-linecap="square" transform="translate(1.2 -.8)"/><path d="${d}" fill="none" stroke="#fff" stroke-width="1.200" stroke-linecap="square"/></g>`).join('')
+      + noise + '</g>';
+  },
   // сияние: три переливающиеся ленты-волны вокруг кольца
   aurora: () => fRing(44, 2, '#0b3036') + `<g class="fa-spin slow"><g class="fa-hue">${[[48, 3, 6, 0, '#3ee6b0', 2.8], [47.5, 2.6, 5, 1.6, '#4dd2ff', 2], [49, 2.2, 7, 3.1, '#ff7ab8', 1.3]].map(([r, amp, n, ph, c, w]) => `<path d="${fWave(r, amp, n, ph)}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linejoin="round" opacity=".9" class="fa-glow" style="--g:${c}"/>`).join('')}</g></g>`
     + fRing(44, 0.8, '#bff2ff', 'opacity=".7"') + fSpark(103, 16, 0.5, '#fff', 0.2) + fSpark(16, 104, 0.45, '#fff', 1.1),

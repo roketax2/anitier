@@ -1000,3 +1000,20 @@ body.viewing .ach { cursor: pointer; }
 @media (max-width: 720px) { .cmp-ring { width: 74px; height: 74px; } .cmp-ring b { font-size: 19px; } .cmp-head h3 { font-size: 17px; } }
 
 .fa-ember { animation: fr-twinkle 2.4s ease-in-out infinite; filter: drop-shadow(0 0 1.6px #ff8a1f); }
+
+/* глитч: каналы цвета, срезы и шум дёргаются вразнобой */
+@keyframes fa-gx-a { 0%, 100% { transform: translate(0, 0); } 6% { transform: translate(-3px, 1px); } 8% { transform: translate(3px, -1px); } 10% { transform: translate(0, 0); } 47% { transform: translate(2px, 2px); } 49% { transform: translate(-2px, 0); } 51% { transform: translate(0, 0); } 78% { transform: translate(-4px, 0); } 79% { transform: translate(0, 0); } }
+@keyframes fa-gx-b { 0%, 100% { transform: translate(0, 0); } 6% { transform: translate(3px, -1px); } 8% { transform: translate(-3px, 1px); } 10% { transform: translate(0, 0); } 47% { transform: translate(-2px, -2px); } 49% { transform: translate(2px, 0); } 51% { transform: translate(0, 0); } 78% { transform: translate(4px, 0); } 79% { transform: translate(0, 0); } }
+@keyframes fa-gx-c { 0%, 100% { transform: translate(0, 0); } 30% { transform: translate(1px, -3px); } 32% { transform: translate(0, 0); } 64% { transform: translate(-3px, 1px); } 66% { transform: translate(0, 0); } }
+@keyframes fa-gslice { 0%, 100% { transform: translateX(0); } 11% { transform: translateX(7px); } 13% { transform: translateX(-5px); } 15% { transform: translateX(0); } 61% { transform: translateX(-8px); } 63% { transform: translateX(0); } }
+@keyframes fa-gnoise { 0%, 100% { opacity: 0; } 12% { opacity: 1; } 16% { opacity: 0; } 54% { opacity: .8; } 57% { opacity: 0; } }
+@keyframes fa-gblink { 0%, 100% { opacity: 1; } 45% { opacity: 1; } 46% { opacity: .35; } 47% { opacity: 1; } 82% { opacity: 1; } 83% { opacity: .6; } 84% { opacity: 1; } }
+.fa-ga { animation: fa-gx-a 1.9s steps(1) infinite; }
+.fa-gb { animation: fa-gx-b 1.9s steps(1) infinite; }
+.fa-gc { animation: fa-gx-c 2.6s steps(1) infinite; }
+.fa-gs1 { animation: fa-gslice 1.7s steps(1) infinite; }
+.fa-gs2 { animation: fa-gslice 2.3s steps(1) infinite reverse; }
+.fa-gs3 { animation: fa-gslice 1.3s steps(1) infinite -.4s; }
+.fa-gs4 { animation: fa-gslice 2.9s steps(1) infinite reverse -1.1s; }
+.fa-gn { animation: fa-gnoise 2s steps(1) infinite; opacity: 0; }
+.fa-gflick { animation: fa-gblink 3.1s steps(1) infinite; }
