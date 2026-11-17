@@ -89,6 +89,9 @@ const ICONS = {
   download: '<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 20h14"/>',
   upload: '<path d="M12 16V5M7.5 9.5 12 5l4.5 4.5M5 20h14"/>',
   phone: '<rect x="7" y="3" width="10" height="18" rx="2.5"/><path d="M11 18h2"/>',
+  user: '<circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>',
+  copy: '<rect x="8.5" y="8.5" width="11.5" height="11.5" rx="2.5"/><path d="M15.5 8.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7.5a2 2 0 0 0 2 2h2.5"/>',
+  link: '<path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/>',
   globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
   ext: '<path d="M14 5h5v5M19 5l-8 8M11 6H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-4"/>',
   wifi: '<path d="M3 3l18 18M8.5 16.5a5 5 0 0 1 7 0M5 13a10 10 0 0 1 4-2.4M19 13a10 10 0 0 0-5-2.7M2 9.5A15 15 0 0 1 6.5 7M22 9.5A15 15 0 0 0 11 6"/><path d="M12 20h.01" stroke-width="3"/>',
@@ -103,13 +106,15 @@ let db = load();
 function load() {
   try {
     const d = JSON.parse(localStorage.getItem(STORE_KEY));
-    if (d && d.items) { d.franchises ||= {}; return d; }
+    if (d && d.items) { d.franchises ||= {}; d.deleted ||= {}; return d; }
   } catch {}
-  return { version: 1, items: {}, franchises: {} };
+  return { version: 1, items: {}, franchises: {}, deleted: {} };
 }
 function save() {
+  if (window.VIEWING) return; // открыт чужой топ по ссылке — свои оценки не трогаем
   try { localStorage.setItem(STORE_KEY, JSON.stringify(db)); } catch { toast(tr('Не удалось сохранить — память браузера недоступна')); }
   updateCount();
+  if (typeof onDbSaved === 'function') onDbSaved(); // синхронизация с аккаунтом (account.js)
 }
 function updateCount() {
   const n = buildRows().length;
@@ -129,6 +134,10 @@ function fromSnap(s) {
     id: s.id, name: s.name, russian: s.russian, english: s.english, score: s.score, kind: s.kind, status: s.status, episodes: s.episodes,
     airedOn: { year: s.year }, poster: { mainUrl: s.poster }, genres: s.genres, url: s.url, franchise: s.franchise,
   };
+}
+// удалённая запись: помним когда, чтобы синхронизация не вернула её с другого устройства
+function markDeleted(store, key) {
+  (db.deleted ||= {})[(store === db.franchises ? 'f:' : 'i:') + key] = Date.now();
 }
 // ключ серии: франшиза Shikimori, а если её нет — само аниме
 const fKey = (a) => a.franchise || 'id' + a.id;
@@ -700,6 +709,8 @@ function setTierName(t, name, d) {
   const v = { name: name || def.name, d };
   if (v.name === def.name && v.d === def.d) delete tierNames[t]; else tierNames[t] = v;
   setPref('tierNames', JSON.stringify(tierNames));
+  setPref('tierNamesAt', String(Date.now()));
+  if (typeof onDbSaved === 'function') onDbSaved();
   renderMine();
 }
 // окошко переименования тира
@@ -760,6 +771,7 @@ const rowGroup = (r) => (r.status === 'not_watched' ? 'nw' : rowTier(r));
 const groupRows = (g) => buildRows().filter((x) => rowGroup(x) === g).sort(withinTier);
 // записать поле прямо в запись строки топа (для серии без своей оценки — создаём запись серии)
 function writeRow(r, patch) {
+  patch = { ...patch, updated: Date.now() };
   if (r.type === 'season') { Object.assign(db.items[r.anime.id], patch); return; }
   db.franchises[r.key] ||= { score: null, status: r.status || 'completed', note: '', added: Date.now(), anime: { ...r.anime, score: r.world } };
   Object.assign(db.franchises[r.key], patch);
@@ -1016,7 +1028,7 @@ mineList.addEventListener('click', (e) => {
     setPref('tierFold', JSON.stringify(tierFold)); applyFold(); return;
   }
   const ed = e.target.closest('[data-edit]');
-  if (ed) { editTier(ed, ed.dataset.edit); return; }
+  if (ed) { if (!window.VIEWING) editTier(ed, ed.dataset.edit); return; }
   const el = e.target.closest('.row, .t-item, .st-pick'); if (!el) return;
   const r = mineRows[+el.dataset.i];
   if (r) openCard(fromSnap(r.anime), r.type === 'title' ? 'franchise' : 'season');
@@ -1050,7 +1062,7 @@ function bindDrag(box, src, ok) {
   box.addEventListener('contextmenu', (e) => { if (e.target.closest('.t-item')) e.preventDefault(); });
   box.addEventListener('dragstart', (e) => e.preventDefault());
 }
-bindDrag(mineList, 'mine', () => layout === 'tiers');
+bindDrag(mineList, 'mine', () => layout === 'tiers' && !window.VIEWING);
 window.addEventListener('pointermove', (e) => {
   if (!drag || drag.touch) return;
   if (!drag.started) {
@@ -1492,7 +1504,9 @@ function renderCard() {
     </div></div>`;
   }
   let rate;
-  if (!title && !st.loading && notOut(st.anime) && !rec) {
+  if (window.VIEWING) {
+    rate = rec?.score ? `<section class="sec"><div class="sec-head"><h3>${tr('Оценка {l}', { l: esc(window.VIEWING.login) })}</h3><div class="verdict">${verdictHTML(rec.score)}</div></div></section>` : '';
+  } else if (!title && !st.loading && notOut(st.anime) && !rec) {
     rate = `<section class="sec"><div class="sec-head"><h3>${tr('Моя оценка')}</h3></div><div class="soon-box">${tr('Это аниме ещё не вышло — оценить можно будет после выхода.')}</div></section>`;
   } else if (waitTitle) {
     rate = `<section class="sec"><div class="sec-head"><h3>${tr('Моя оценка всей серии')}</h3></div><div class="skeleton" style="height:50px;border-radius:12px"></div></section>`;
@@ -1570,7 +1584,7 @@ function renderCard() {
   }));
   $('#note')?.addEventListener('change', saveNote);
   $('#remove')?.addEventListener('click', () => {
-    const { store, key } = curStore(); delete store[key]; save(); afterChange(); renderCard(); toast(tr('Убрано из топа'));
+    const { store, key } = curStore(); delete store[key]; markDeleted(store, key); save(); afterChange(); renderCard(); toast(tr('Убрано из топа'));
   });
 }
 function afterChange() {

@@ -1,0 +1,39 @@
+import { handleAccounts } from "./accounts";
+import { HttpError, SITE_ORIGINS, corsHeaders, json } from "./http";
+import { handleTop } from "./top";
+
+// API AniTier на anitier.stalzoneai.com (2026-11-17): аккаунты, топ на всех устройствах и
+// ссылка на свой топ. Сайт — roketax2.github.io/anitier.
+
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const path = new URL(request.url).pathname;
+    const origin = request.headers.get("Origin") ?? "";
+    const cors = corsHeaders(origin);
+    const withCors = (response: Response) => {
+      for (const [key, value] of Object.entries(cors)) response.headers.set(key, value);
+      return response;
+    };
+
+    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+    if (path === "/" || path === "/api") return json({ ok: true, site: "https://roketax2.github.io/anitier/" });
+
+    try {
+      // Пользуются только со своего сайта: чужая страница не должна дёргать API от имени человека.
+      if (!SITE_ORIGINS.has(origin)) return json({ error: "Запрос не с сайта" }, 403);
+      if (path.startsWith("/api/auth/")) {
+        const response = await handleAccounts(request, env, path);
+        if (response) return withCors(response);
+      }
+      if (path.startsWith("/api/top") || path.startsWith("/api/shared/")) {
+        const response = await handleTop(request, env, path);
+        if (response) return withCors(response);
+      }
+    } catch (e) {
+      if (e instanceof HttpError) return withCors(json({ error: e.message }, e.status));
+      console.error(e);
+      return withCors(json({ error: "Ошибка сервера" }, 500));
+    }
+    return withCors(json({ error: "Не найдено" }, 404));
+  },
+} satisfies ExportedHandler<Env>;

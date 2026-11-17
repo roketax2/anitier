@@ -1,0 +1,15 @@
+{
+  "name": "anitier-api",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Сервер AniTier: аккаунты, топ на всех устройствах, ссылка на топ (Cloudflare Worker + D1)",
+  "scripts": {
+    "dev": "wrangler dev --port 8788",
+    "deploy": "wrangler deploy",
+    "typecheck": "wrangler types && tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "wrangler": "^4.149.0"
+  }
+}

@@ -1,0 +1,23 @@
+// Сервер AniTier (2026-11-17): аккаунты (логин и пароль, почта с кодом из письма, Google),
+// синхронизация топа между устройствами и ссылка на свой топ. Сайт — на GitHub Pages.
+// Деплой: `npx wrangler deploy` в этой папке. Схема базы: migrations/,
+// применять `npx wrangler d1 migrations apply anitier --remote`.
+// Секреты (`npx wrangler secret put ИМЯ`): EMAIL_PEPPER — случайная строка для отпечатков почты,
+// RESEND_API_KEY — ключ Resend для писем, GOOGLE_CLIENT_ID — Client ID кнопки Google.
+{
+  "name": "anitier-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [{ "pattern": "anitier.stalzoneai.com", "custom_domain": true }],
+  "vars": { "EMAIL_FROM": "AniTier <no-reply@stalzoneai.com>" },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "anitier",
+      "database_id": "eea29390-b2e0-44ba-85ff-150fea109552",
+      "migrations_dir": "migrations"
+    }
+  ]
+}
