@@ -946,3 +946,34 @@ body.viewing #trayBtn, body.viewing .nav-btn[data-view="catalog"], body.viewing 
 .pv-sizes .a-avatar { width: 52px; height: 52px; }
 .pv-sizes .acct-letter { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: var(--accent-soft); color: var(--accent); }
 body.viewing .ach { cursor: pointer; }
+
+/* ---------- Рисованные рамки (frames.js) ---------- */
+.ava-wrap.fa { padding: 0; animation: none; box-shadow: none; }
+.ava-wrap.fa::before, .ava-wrap.fa::after { display: none; }
+.ava-wrap.fa > :first-child { box-shadow: none; }
+.fr-art { position: absolute; left: -25%; top: -25%; width: 150%; height: 150%; z-index: 2; pointer-events: none; overflow: visible; }
+.fa-spin, .fa-step, .fa-flap { transform-box: view-box; transform-origin: 60px 60px; }
+.ava-wrap.xs.fa { width: 22px; height: 22px; }
+.ava-wrap.xs.fa .ring-dot { width: 100%; height: 100%; background: var(--elev3); }
+.a-frames button { padding-top: 16px; }
+.a-ava-edit { padding: 14px 0 6px 14px; }
+@keyframes fa-flick { from { transform: scale(1.06, .78); } to { transform: scale(.92, 1.16); } }
+@keyframes fa-flap { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(7deg); } }
+@keyframes fa-fall { 0% { transform: translate(0, 0) rotate(0); opacity: 0; } 15% { opacity: 1; } 100% { transform: translate(-14px, 30px) rotate(200deg); opacity: 0; } }
+@keyframes fa-rise { 0% { transform: translateY(0); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(-16px); opacity: 0; } }
+.fa-spin { animation: fr-spin 16s linear infinite; }
+.fa-spin.rev { animation-direction: reverse; animation-duration: 11s; }
+.fa-spin.slow { animation-duration: 40s; }
+.fa-step { animation: fr-spin 9.6s steps(16) infinite; }
+.fa-tw { animation: fr-twinkle 1.9s ease-in-out infinite; }
+.fa-hue { animation: fr-hue 8s linear infinite; }
+.fa-flicker { animation: fr-flicker 2.3s linear infinite; }
+.fa-glow { filter: drop-shadow(0 0 2.5px var(--g, #fff)); }
+.fa-beat { transform-box: fill-box; transform-origin: 50% 60%; animation: fr-beat 1.5s ease-in-out infinite; }
+.fa-flick { transform-box: fill-box; transform-origin: 50% 100%; animation: fa-flick .8s ease-in-out infinite alternate; }
+.fa-flap { transform-origin: 26px 62px; animation: fa-flap 2.6s ease-in-out infinite; }
+.fa-fall { transform-box: fill-box; transform-origin: center; animation: fa-fall 3s ease-in infinite; }
+.fa-rise { transform-box: fill-box; transform-origin: center; animation: fa-rise 2.2s ease-out infinite; }
+.fa-ga { animation: fr-glitch-a 2.2s steps(1) infinite; }
+.fa-gb { animation: fr-glitch-b 2.2s steps(1) infinite; }
+@media (prefers-reduced-motion: reduce) { .fr-art * { animation: none !important; } }

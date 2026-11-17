@@ -214,11 +214,14 @@ function achShelfHTML(ach, own, stats) {
   </div>`;
 }
 // маленький кружок-образец рамки
-const frameRing = (f) => `<span class="ava-wrap ${frameCls(f)} xs"><span class="ring-dot"></span></span>`;
+// у рамки есть свой рисунок (frames.js)?
+const frameHasArt = (f) => typeof FRAME_ART !== 'undefined' && !!FRAME_ART[f.id];
+const frameRing = (f) => (frameHasArt(f) ? `<span class="ava-wrap fa xs"><span class="ring-dot"></span>${frameArt(f.id)}</span>` : `<span class="ava-wrap ${frameCls(f)} xs"><span class="ring-dot"></span></span>`);
 // обернуть аватарку в рамку
 function framed(inner, frame, size = '') {
   const f = frameById(frame);
   if (!f.id) return inner;
+  if (frameHasArt(f)) return `<span class="ava-wrap fa fa-${f.id} ${size}">${inner}${frameArt(f.id)}</span>`;
   return `<span class="ava-wrap ${frameCls(f)} ${size}">${inner}${f.b ? `<i class="fr-badge">${glyphSvg(f.b)}</i>` : ''}</span>`;
 }
 checkAch(true); achReady = true;
