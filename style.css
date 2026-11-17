@@ -770,11 +770,7 @@ body.viewing #trayBtn, body.viewing .nav-btn[data-view="catalog"], body.viewing 
 .fr-retro { --fr: repeating-conic-gradient(#ffd75e 0 25deg, #ff6b8f 25deg 50deg, #62c2ff 50deg 75deg); }
 .fr-moon { --fr: linear-gradient(135deg, #1b1f4a, #6a5acd, #1b1f4a); }
 .fr-crown { --fr: linear-gradient(135deg, #ffd75e, #ff9f43, #ffd75e); }
-.fr-neon::before, .fr-fire::before, .fr-crown::before { animation: fr-spin 4s linear infinite; }
 .fr-neon { --fr: conic-gradient(#ff4d78, #ffd75e, #5fd99a, #62c2ff, #a597ff, #ff4d78); }
-.fr-neon::before { box-shadow: 0 0 10px rgba(255, 77, 120, .5); }
-.fr-crown::before, .fr-gold::before { animation-name: fr-spin, fr-glow; animation-duration: 6s, 2.4s; animation-iteration-count: infinite; animation-timing-function: linear, ease-in-out; }
-.fr-gold::before { animation: fr-glow 2.4s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .ava-wrap::before { animation: none !important; } }
 .acct-btn .ava-wrap { margin: 0; }
 .acct-btn .ava-wrap .acct-letter { width: 26px; height: 26px; font-size: 12px; }
@@ -814,3 +810,121 @@ body.viewing #trayBtn, body.viewing .nav-btn[data-view="catalog"], body.viewing 
 .ach-bar i { display: block; height: 100%; background: var(--star); border-radius: 3px; }
 .ach small.ach-n { font-variant-numeric: tabular-nums; margin-top: 2px; }
 .ach-frame { position: absolute; top: 10px; right: 10px; }
+
+/* ---------- Свои значки достижений ---------- */
+.ach-svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.ach { grid-template-columns: 44px 1fr; }
+.ach-i { width: 44px; height: 44px; background: none; filter: none; border-radius: 0; transition: transform .2s; }
+.ach:not(.on) .ach-svg { filter: grayscale(1) brightness(.72); }
+.ach.on .ach-svg { filter: drop-shadow(0 2px 6px rgba(255, 201, 74, .28)); }
+.ach.on:hover .ach-i { transform: scale(1.12) rotate(-6deg); }
+.st-ach summary span { display: inline-flex; gap: 4px; letter-spacing: 0; }
+.st-ach summary span .ach-svg { width: 24px; height: 24px; }
+.a-ach span { width: 34px; height: 34px; background: none; border-radius: 0; }
+.vb-ach { display: inline-flex; align-items: center; gap: 4px; color: var(--star); font-weight: 700; vertical-align: -3px; }
+.vb-ach .ic { width: 16px; height: 16px; }
+.a-frames .lk { display: inline-block; width: 11px; height: 11px; margin-right: 3px; vertical-align: -1px; }
+.a-frames .lk svg { width: 100%; height: 100%; display: block; }
+
+/* плашка «Достижение получено» */
+@keyframes ach-in { from { opacity: 0; transform: translate(-50%, -30px) scale(.9); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+@keyframes ach-icon { 0% { transform: scale(0) rotate(-40deg); } 60% { transform: scale(1.25) rotate(8deg); } 100% { transform: scale(1) rotate(0); } }
+@keyframes ach-sweep { from { transform: translateX(-120%) skewX(-20deg); } to { transform: translateX(320%) skewX(-20deg); } }
+.ach-pop { position: fixed; left: 50%; top: 18px; transform: translateX(-50%); z-index: 1000; display: flex; align-items: center; gap: 12px; padding: 12px 20px 12px 12px; max-width: calc(100vw - 24px); border-radius: 18px; overflow: hidden;
+  background: linear-gradient(135deg, #2c2545, #1a1727); border: 1px solid rgba(255, 201, 74, .55); box-shadow: 0 14px 44px rgba(0, 0, 0, .55), 0 0 26px rgba(255, 201, 74, .25); animation: ach-in .5s cubic-bezier(.2, 1.4, .4, 1); transition: opacity .4s, transform .4s; }
+.ach-pop.out { opacity: 0; transform: translate(-50%, -24px); }
+.ach-pop::after { content: ''; position: absolute; inset: 0 auto 0 0; width: 34%; background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .22), transparent); animation: ach-sweep 1.3s .35s ease-out both; pointer-events: none; }
+.ach-pop > .ach-svg { width: 52px; height: 52px; flex: none; animation: ach-icon .7s .1s cubic-bezier(.2, 1.4, .4, 1) both; filter: drop-shadow(0 3px 10px rgba(255, 201, 74, .45)); }
+.ach-pop div { display: grid; gap: 1px; min-width: 0; }
+.ach-pop small { color: var(--star); font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.ach-pop b { font: 700 16px var(--display); }
+.ach-pop span { display: inline-flex; align-items: center; gap: 6px; color: var(--text2); font-size: 13px; }
+
+/* ---------- Рамки: новые и эффекты ---------- */
+.ava-wrap { --p: 3px; --glow: rgba(255, 77, 120, .7); --spark: #fff; }
+.ava-wrap.sm { --p: 2px; }
+.ava-wrap.lg { --p: 5px; }
+.ava-wrap.xs { --p: 4px; }
+.fr-badge { z-index: 3; color: var(--text); }
+.fr-badge svg { width: 12px; height: 12px; display: block; }
+.ava-wrap.lg .fr-badge svg { width: 17px; height: 17px; }
+/* слой эффекта: виден только на кольце рамки */
+.ava-wrap::after { content: ''; position: absolute; inset: 0; border-radius: 50%; z-index: 2; pointer-events: none; display: none;
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - var(--p) - .5px), #000 calc(100% - var(--p))); mask: radial-gradient(farthest-side, transparent calc(100% - var(--p) - .5px), #000 calc(100% - var(--p))); }
+
+.fr-sky { --fr: linear-gradient(135deg, #4dd2ff, #3f6cff); }
+.fr-sunset { --fr: linear-gradient(135deg, #ffb347, #ff4d78 55%, #8b5cf6); }
+.fr-sprout { --fr: linear-gradient(135deg, #2fbf71, #c8f08f); }
+.fr-bronze { --fr: linear-gradient(135deg, #8a5a2b, #e0a468 45%, #f7d7b0 55%, #9c6a35); }
+.fr-gold { --glow: rgba(255, 215, 94, .65); }
+.fr-neon { --glow: rgba(165, 151, 255, .8); }
+.fr-crown { --fr: conic-gradient(#ffd75e, #ff9f43, #fff2b8, #ffb347, #ffd75e); --glow: rgba(255, 201, 74, .75); --spark: #fff7d1; }
+.fr-crown .fr-badge, .fr-star .fr-badge { color: #ffd75e; }
+.fr-emerald { --fr: linear-gradient(135deg, #0f9d6b, #5ff0b0 45%, #d6ffe9 55%, #12a87a); --glow: rgba(95, 240, 176, .6); }
+.fr-fire { --glow: rgba(255, 110, 40, .75); }
+.fr-fire .fr-badge { color: #ff8a3a; }
+.fr-legend { --fr: conic-gradient(#ffd75e, #ff4d78, #8b5cf6, #4dd2ff, #5fd99a, #ffd75e); --glow: rgba(255, 215, 94, .8); --spark: #fff; }
+.fr-legend .fr-badge { color: #7fe9ff; }
+.fr-star { --fr: linear-gradient(135deg, #ffd75e, #fff2b8 50%, #ffb347); --glow: rgba(255, 215, 94, .6); --spark: #fff; }
+.fr-stier { --glow: rgba(255, 107, 143, .7); }
+.fr-ice { --glow: rgba(127, 233, 255, .6); }
+.fr-ice .fr-badge { color: #7fe9ff; }
+.fr-heart { --fr: linear-gradient(135deg, #ff2e63, #ff9ab3); --glow: rgba(255, 46, 99, .7); }
+.fr-heart .fr-badge { color: #ff5c8a; }
+.fr-shield { --fr: repeating-conic-gradient(#b9c8e6 0 30deg, #56698f 30deg 60deg); }
+.fr-shield .fr-badge { color: #b9c8e6; }
+.fr-lightning { --fr: conic-gradient(#fff36b, #4dd2ff, #ffffff, #3f6cff, #fff36b); --glow: rgba(110, 200, 255, .85); }
+.fr-lightning .fr-badge { color: #fff36b; }
+.fr-sakura { --spark: #fff; }
+.fr-sakura .fr-badge { color: #ffc2d6; }
+.fr-aurora { --fr: conic-gradient(#3ee6b0, #4dd2ff, #8b5cf6, #ff7ab8, #3ee6b0); --glow: rgba(62, 230, 176, .6); }
+.fr-retro .fr-badge { color: #ffd75e; }
+.fr-galaxy { --fr: conic-gradient(#150f33, #5b3fd6, #150f33, #c04bd8, #150f33); }
+.fr-chain { --frc: #ffd75e; }
+.fr-moon { --glow: rgba(140, 125, 255, .6); }
+.fr-moon .fr-badge { color: #d9d3ff; }
+.fr-ash { --fr: linear-gradient(135deg, #2a2a32, #8a8a96 50%, #2a2a32); }
+.fr-paper { --frc: #f3e6c8; }
+.fr-glitch { --fr: #ff2bd1; }
+
+@keyframes fr-pulse { 0%, 100% { box-shadow: 0 0 calc(var(--p) * 1.2) 0 var(--glow); } 50% { box-shadow: 0 0 calc(var(--p) * 4.5) calc(var(--p) * .8) var(--glow); } }
+@keyframes fr-beat { 0%, 100% { transform: scale(1); } 15% { transform: scale(1.09); } 30% { transform: scale(1); } 45% { transform: scale(1.06); } 60% { transform: scale(1); } }
+@keyframes fr-flicker { 0%, 100% { opacity: 1; } 41% { opacity: 1; } 43% { opacity: .25; } 46% { opacity: 1; } 71% { opacity: .5; } 73% { opacity: 1; } }
+@keyframes fr-hue { to { filter: hue-rotate(360deg); } }
+@keyframes fr-twinkle { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+@keyframes fr-glitch-a { 0%, 100% { transform: translate(0); } 8% { transform: translate(-2px, 1px); } 10% { transform: translate(2px, -1px); } 12% { transform: translate(0); } 58% { transform: translate(1px, 2px); } 61% { transform: translate(0); } }
+@keyframes fr-glitch-b { 0%, 100% { transform: translate(0); } 8% { transform: translate(2px, -1px); } 10% { transform: translate(-2px, 1px); } 12% { transform: translate(0); } 58% { transform: translate(-1px, -2px); } 61% { transform: translate(0); } }
+
+.fx-spin::before { animation: fr-spin 4s linear infinite; }
+.fx-slow::before { animation: fr-spin 11s linear infinite; }
+.fx-beat::before { animation: fr-beat 1.5s ease-in-out infinite; }
+.fx-spin.fx-flicker::before { animation: fr-spin 1.8s linear infinite, fr-flicker 2.3s linear infinite; }
+.fx-slow.fx-hue::before { animation: fr-spin 11s linear infinite, fr-hue 7s linear infinite; }
+.fx-glow { animation: fr-pulse 2.6s ease-in-out infinite; }
+.fx-dash::before, .fx-dots::before { background: none; border: var(--p) dashed var(--frc); box-sizing: border-box; }
+.fx-dots::before { border-style: dotted; animation-direction: reverse; }
+/* блик, бегущий по металлу */
+.fx-shine::after { display: block; background: conic-gradient(from 0deg, transparent 0 76%, rgba(255, 255, 255, .95) 88%, transparent 100%); animation: fr-spin 3.4s linear infinite; }
+/* искра на орбите */
+.fx-orbit::after { display: block; background: radial-gradient(circle at 50% calc(var(--p) / 2), var(--spark) 0 calc(var(--p) * .46), transparent calc(var(--p) * .85)); animation: fr-spin 3s linear infinite; }
+.fx-orbit3::after { display: block; background:
+    radial-gradient(circle at 50% calc(var(--p) / 2), var(--spark) 0 calc(var(--p) * .46), transparent calc(var(--p) * .85)),
+    radial-gradient(circle at calc(93.3% - var(--p) * .43) calc(75% - var(--p) * .25), var(--spark) 0 calc(var(--p) * .4), transparent calc(var(--p) * .8)),
+    radial-gradient(circle at calc(6.7% + var(--p) * .43) calc(75% - var(--p) * .25), var(--spark) 0 calc(var(--p) * .4), transparent calc(var(--p) * .8));
+  animation: fr-spin 2.6s linear infinite reverse; }
+/* мерцающие звёзды */
+.fx-stars::after { display: block; background:
+    radial-gradient(circle at 50% calc(var(--p) / 2), #fff 0 calc(var(--p) * .34), transparent calc(var(--p) * .7)),
+    radial-gradient(circle at calc(85.4% - var(--p) * .35) calc(85.4% - var(--p) * .35), #fff 0 calc(var(--p) * .28), transparent calc(var(--p) * .6)),
+    radial-gradient(circle at calc(var(--p) / 2) 50%, #d9d3ff 0 calc(var(--p) * .3), transparent calc(var(--p) * .64)),
+    radial-gradient(circle at calc(85.4% - var(--p) * .35) calc(14.6% + var(--p) * .35), #fff 0 calc(var(--p) * .22), transparent calc(var(--p) * .5));
+  animation: fr-spin 14s linear infinite, fr-twinkle 1.7s ease-in-out infinite; }
+/* угольки */
+.fx-ember::after { display: block; background:
+    radial-gradient(circle at 50% calc(var(--p) / 2), #ffe08a 0 calc(var(--p) * .42), transparent calc(var(--p) * .85)),
+    radial-gradient(circle at calc(100% - var(--p) / 2) 50%, #ff7a45 0 calc(var(--p) * .32), transparent calc(var(--p) * .7));
+  animation: fr-spin 2.8s linear infinite reverse; }
+/* глитч: два кольца расходятся рывками */
+.fx-glitch::before { animation: fr-glitch-a 2.2s steps(1) infinite; }
+.fx-glitch::after { display: block; -webkit-mask: none; mask: none; border: var(--p) solid #2bf0ff; box-sizing: border-box; mix-blend-mode: screen; z-index: 0; animation: fr-glitch-b 2.2s steps(1) infinite; }
+@media (prefers-reduced-motion: reduce) { .ava-wrap, .ava-wrap::before, .ava-wrap::after, .ach-pop, .ach-pop * { animation: none !important; } }

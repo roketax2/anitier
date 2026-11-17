@@ -2,56 +2,130 @@
 /* Достижения и рамки аватарки (2026-11-17).
    Достижения считаются по самому топу; полученное запоминается в db.ach { id: когда } и уже не
    пропадает, даже если оценку потом убрать (и синхронизируется с аккаунтом). Секретные
-   скрыты, пока не получишь. Рамки открываются достижениями, несколько — сразу. */
+   скрыты, пока не получишь. Каждое достижение открывает свою рамку; несколько рамок — сразу.
+   Значки — свои, рисуются здесь: жетон по форме группы + белый знак (GLYPH). */
 
-// g — группа: count (количество), taste (вкус), era (эпохи и типы), secret (секретные)
+/* ---------- знаки (поле 24×24, обводка) ---------- */
+const NUM = (t, size) => `<text x="12" y="${12 + size * 0.36}" text-anchor="middle" font-size="${size}" font-weight="800" fill="currentColor" stroke="none" font-family="Unbounded, Onest, sans-serif">${t}</text>`;
+const GLYPH = {
+  sprout: '<path d="M12 21v-9"/><path d="M12 13c0-4-3-6-7-6 0 4 3 6 7 6Z"/><path d="M12 10c0-3 2.500-5 6.500-5 0 3.500-2.500 5-6.500 5Z"/>',
+  n10: NUM('10', 11), n50: NUM('50', 11), n100: NUM('100', 8.4),
+  crown: '<path d="M4 17 3 7l5 4 4-6 4 6 5-4-1 10Z"/><path d="M4.500 20.500h15"/>',
+  tiers: '<rect x="4" y="4" width="16" height="4" rx="1.200"/><rect x="4" y="10" width="12" height="4" rx="1.200"/><rect x="4" y="16" width="8" height="4" rx="1.200"/>',
+  screen: '<rect x="3" y="4.500" width="18" height="13" rx="2.500"/><path d="m10.300 8.200 4.700 2.800-4.700 2.800Z" fill="currentColor"/><path d="M8 21h8"/>',
+  star: '<path d="m12 3 2.700 5.600 6.100.800-4.500 4.200 1.100 6.100L12 16.800l-5.400 2.900 1.100-6.100-4.500-4.200 6.100-.800Z"/>',
+  trophy: '<path d="M8 4h8v5a4 4 0 0 1-8 0V4Z"/><path d="M8 6H5.500a2.500 2.500 0 0 0 2.600 3.400M16 6h2.500a2.500 2.500 0 0 1-2.600 3.400M12 13v4M8.500 20h7M9.500 17h5"/>',
+  lens: '<circle cx="10.500" cy="10.500" r="6"/><path d="m15 15 5.500 5.500"/><path d="M8 10.500h5"/>',
+  heart: '<path d="M12 20s-7.500-4.600-7.500-10A4.300 4.300 0 0 1 12 7.400 4.300 4.300 0 0 1 19.500 10c0 5.400-7.500 10-7.500 10Z"/>',
+  shield: '<path d="M12 3 5 5.800v5.400c0 4.600 3 8 7 9.800 4-1.800 7-5.200 7-9.800V5.800Z"/><path d="m9 12 2.200 2.200 4-4.200"/>',
+  bolt: '<path d="M13.500 3 5 13.500h6L10 21l8.500-10.500h-6Z"/>',
+  rainbow: '<path d="M3 18a9 9 0 0 1 18 0"/><path d="M6.500 18a5.500 5.500 0 0 1 11 0"/><path d="M10 18a2 2 0 0 1 4 0"/>',
+  hourglass: '<path d="M6.500 3h11M6.500 21h11M7.500 3c0 5 4.500 6 4.500 9s-4.500 4-4.500 9M16.500 3c0 5-4.500 6-4.500 9s4.500 4 4.500 9"/>',
+  tape: '<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="8.500" cy="12" r="2"/><circle cx="15.500" cy="12" r="2"/><path d="M8.500 14h7"/>',
+  clap: '<path d="M4 10h16v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1Z"/><path d="m4 10-.700-3.200 15.600-3.300.700 3.300Z"/><path d="m8 5.900 2 3.600M12.600 4.900l2 3.600"/>',
+  layers: '<path d="m12 3 9 4.500-9 4.500-9-4.500Z"/><path d="m3 12 9 4.500 9-4.500"/><path d="m3 16.500 9 4.500 9-4.500"/>',
+  moon: '<path d="M19.500 14.500A8 8 0 0 1 9.500 4.500a8 8 0 1 0 10 10Z"/><path d="M17 3.500v3M15.500 5h3"/>',
+  trash: '<path d="M4 7h16M9.500 7V4.500h5V7M6.500 7l1 13h9l1-13M10 11v5.500M14 11v5.500"/>',
+  list: '<path d="M8.500 6h11.500M8.500 12h11.500M8.500 18h7"/><path d="M4.200 6h.010M4.200 12h.010M4.200 18h.010" stroke-width="3"/>',
+  pencil: '<path d="M4 20h4L19 9a2.800 2.800 0 0 0-4-4L4 16v4Z"/><path d="m13.500 6.500 4 4"/>',
+  gem: '<path d="M7 4h10l4 5-9 11L3 9Z"/><path d="M3 9h18M9.500 4 8 9l4 11 4-11-1.500-5"/>',
+  flame: '<path d="M12 21c3.600 0 6.500-2.600 6.500-6.200 0-2.800-1.700-4.600-2.600-6.800-.700 1.500-1.600 2.300-2.700 2.400.400-3-1-6-3.600-7.400.300 3.300-4.100 5.700-4.100 11.300 0 4 2.900 6.700 6.500 6.700Z"/>',
+  snow: '<path d="M12 3v18M4.200 7.500l15.600 9M19.800 7.500l-15.600 9"/><path d="M9.700 4.800 12 6.800l2.300-2M9.700 19.200l2.300-2 2.300 2"/>',
+  flower: [0, 72, 144, 216, 288].map((r) => `<ellipse cx="12" cy="6.800" rx="2.700" ry="4.100" fill="currentColor" stroke="none" transform="rotate(${r} 12 12)"/>`).join('') + '<circle cx="12" cy="12" r="1.600" fill="#ff7aa6" stroke="none"/>',
+  s: NUM('S', 15),
+  q: NUM('?', 15),
+  lock: '<rect x="5.500" y="10.500" width="13" height="9.500" rx="2"/><path d="M8.500 10.500V8a3.500 3.500 0 0 1 7 0v2.500"/>',
+};
+const glyphSvg = (name) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.400" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${GLYPH[name] || ''}</svg>`;
+
+/* ---------- жетоны: форма и цвета по группе ---------- */
+const ACH_SHAPE = {
+  count: '<path d="M24 3 42 13.500v21L24 45 6 34.500v-21Z"/>',
+  taste: '<path d="M24 3 42 9v15c0 11-8 18-18 21C14 42 6 35 6 24V9Z"/>',
+  era: '<circle cx="24" cy="24" r="21"/>',
+  secret: '<path d="M24 2.500 45.500 24 24 45.500 2.500 24Z"/>',
+};
+const ACH_COLORS = { count: ['#ffb347', '#ff4d78'], taste: ['#ff7ab8', '#8b5cf6'], era: ['#4dd2ff', '#5b5bf0'], secret: ['#3ee6b0', '#1f6f8b'], hidden: ['#4a4560', '#2c283a'] };
+document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>${
+  Object.entries(ACH_COLORS).map(([k, [a, b]]) => `<linearGradient id="ag-${k}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>`).join('')
+}</defs></svg>`);
+// значок достижения; hidden — секретное, ещё не полученное
+function achIcon(a, hidden) {
+  const shape = ACH_SHAPE[a.g], grad = hidden ? 'hidden' : a.g;
+  return `<svg class="ach-svg" viewBox="0 0 48 48" aria-hidden="true">
+    <g fill="url(#ag-${grad})" stroke="url(#ag-${grad})" stroke-width="3" stroke-linejoin="round">${shape}</g>
+    <g transform="translate(24 24) scale(.830) translate(-24 -24)" fill="none" stroke="#fff" stroke-opacity=".380" stroke-width="1.500" stroke-linejoin="round">${shape}</g>
+    <g transform="translate(${a.g === 'taste' ? '12.500 11.500' : '12.500 12.500'}) scale(.960)" fill="none" stroke="#fff" stroke-width="2.100" stroke-linecap="round" stroke-linejoin="round" style="color:#fff">${GLYPH[hidden ? 'q' : a.i]}</g>
+  </svg>`;
+}
+
+// g — группа: count (количество), taste (вкус), era (эпохи и типы), secret (секретные); i — знак из GLYPH
 const ACH = [
-  { id: 'first', g: 'count', i: '🌱', t: 'Первый шаг', d: 'Поставь первую оценку', ok: (s) => s.rated >= 1 },
-  { id: 'rated10', g: 'count', i: '🔟', t: 'Десятка', d: 'Оцени 10 аниме', ok: (s) => s.rated >= 10, p: (s) => [s.rated, 10] },
-  { id: 'rated50', g: 'count', i: '📚', t: 'Полсотни', d: 'Оцени 50 аниме', ok: (s) => s.rated >= 50, p: (s) => [s.rated, 50] },
-  { id: 'rated100', g: 'count', i: '💯', t: 'Сотня', d: 'Оцени 100 аниме', ok: (s) => s.rated >= 100, p: (s) => [s.rated, 100] },
-  { id: 'rated500', g: 'count', i: '👑', t: 'Анимешник со стажем', d: 'Оцени 500 аниме', ok: (s) => s.rated >= 500, p: (s) => [s.rated, 500] },
-  { id: 'tierfull', g: 'count', i: '🎨', t: 'Тир-мастер', d: 'Заполни все тиры от S до F', ok: (s) => s.tiersFilled >= 6, p: (s) => [s.tiersFilled, 6] },
-  { id: 'eps1000', g: 'count', i: '🍿', t: 'Тысяча серий', d: 'Посмотри 1000 эпизодов (по сезонам со статусом «Просмотрено»)', ok: (s) => s.eps >= 1000, p: (s) => [s.eps, 1000] },
+  { id: 'first', g: 'count', i: 'sprout', t: 'Первый шаг', d: 'Поставь первую оценку', ok: (s) => s.rated >= 1 },
+  { id: 'rated10', g: 'count', i: 'n10', t: 'Десятка', d: 'Оцени 10 аниме', ok: (s) => s.rated >= 10, p: (s) => [s.rated, 10] },
+  { id: 'rated50', g: 'count', i: 'n50', t: 'Полсотни', d: 'Оцени 50 аниме', ok: (s) => s.rated >= 50, p: (s) => [s.rated, 50] },
+  { id: 'rated100', g: 'count', i: 'n100', t: 'Сотня', d: 'Оцени 100 аниме', ok: (s) => s.rated >= 100, p: (s) => [s.rated, 100] },
+  { id: 'rated500', g: 'count', i: 'crown', t: 'Анимешник со стажем', d: 'Оцени 500 аниме', ok: (s) => s.rated >= 500, p: (s) => [s.rated, 500] },
+  { id: 'tierfull', g: 'count', i: 'tiers', t: 'Тир-мастер', d: 'Заполни все тиры от S до F', ok: (s) => s.tiersFilled >= 6, p: (s) => [s.tiersFilled, 6] },
+  { id: 'eps1000', g: 'count', i: 'screen', t: 'Тысяча серий', d: 'Посмотри 1000 эпизодов (по сезонам со статусом «Просмотрено»)', ok: (s) => s.eps >= 1000, p: (s) => [s.eps, 1000] },
+  { id: 'collector', g: 'count', i: 'gem', t: 'Коллекционер', d: 'Получи 15 других достижений', ok: (s) => s.achCount >= 15, p: (s) => [s.achCount, 15] },
 
-  { id: 'master1', g: 'taste', i: '⭐', t: 'Первый шедевр', d: 'Поставь кому-нибудь 10', ok: (s) => s.tens >= 1 },
-  { id: 'master10', g: 'taste', i: '🏆', t: 'Ценитель', d: 'Поставь 10 шедевров (оценка 10)', ok: (s) => s.tens >= 10, p: (s) => [s.tens, 10] },
-  { id: 'strict', g: 'taste', i: '🧐', t: 'Строгий критик', d: 'Оценивай в среднем на 0,5 ниже мира (от 10 оценок)', ok: (s) => s.both >= 10 && s.diff <= -0.5 },
-  { id: 'kind', g: 'taste', i: '🤗', t: 'Добрая душа', d: 'Оценивай в среднем на 0,7 выше мира (от 10 оценок)', ok: (s) => s.both >= 10 && s.diff >= 0.7 },
-  { id: 'defender', g: 'taste', i: '🛡️', t: 'Защитник', d: 'Поставь 9 или 10 тому, у чего в мире ниже 7', ok: (s) => s.defender },
-  { id: 'rebel', g: 'taste', i: '🔥', t: 'Против течения', d: 'Поставь 4 или ниже тому, у чего в мире 8,5 и выше', ok: (s) => s.rebel },
-  { id: 'genres10', g: 'taste', i: '🌈', t: 'Всеядный', d: 'Оцени аниме 10 разных жанров', ok: (s) => s.genres >= 10, p: (s) => [s.genres, 10] },
+  { id: 'master1', g: 'taste', i: 'star', t: 'Первый шедевр', d: 'Поставь кому-нибудь 10', ok: (s) => s.tens >= 1 },
+  { id: 'master10', g: 'taste', i: 'trophy', t: 'Ценитель', d: 'Поставь 10 шедевров (оценка 10)', ok: (s) => s.tens >= 10, p: (s) => [s.tens, 10] },
+  { id: 'strict', g: 'taste', i: 'lens', t: 'Строгий критик', d: 'Оценивай в среднем на 0,5 ниже мира (от 10 оценок)', ok: (s) => s.both >= 10 && s.diff <= -0.5 },
+  { id: 'kind', g: 'taste', i: 'heart', t: 'Добрая душа', d: 'Оценивай в среднем на 0,7 выше мира (от 10 оценок)', ok: (s) => s.both >= 10 && s.diff >= 0.7 },
+  { id: 'defender', g: 'taste', i: 'shield', t: 'Защитник', d: 'Поставь 9 или 10 тому, у чего в мире ниже 7', ok: (s) => s.defender },
+  { id: 'rebel', g: 'taste', i: 'bolt', t: 'Против течения', d: 'Поставь 4 или ниже тому, у чего в мире 8,5 и выше', ok: (s) => s.rebel },
+  { id: 'genres10', g: 'taste', i: 'rainbow', t: 'Всеядный', d: 'Оцени аниме 10 разных жанров', ok: (s) => s.genres >= 10, p: (s) => [s.genres, 10] },
 
-  { id: 'decades5', g: 'era', i: '⏳', t: 'Путешественник во времени', d: 'Оцени аниме из 5 разных десятилетий', ok: (s) => s.decades >= 5, p: (s) => [s.decades, 5] },
-  { id: 'oldschool', g: 'era', i: '📼', t: 'Старая школа', d: 'Оцени аниме, вышедшее до 1990 года', ok: (s) => s.old },
-  { id: 'movies10', g: 'era', i: '🎬', t: 'Киноман', d: 'Оцени 10 аниме-фильмов', ok: (s) => s.movies >= 10, p: (s) => [s.movies, 10] },
-  { id: 'fan', g: 'era', i: '🧩', t: 'Фанат серии', d: 'Оцени 5 частей одной серии', ok: (s) => s.bestSeries >= 5, p: (s) => [s.bestSeries, 5] },
+  { id: 'decades5', g: 'era', i: 'hourglass', t: 'Путешественник во времени', d: 'Оцени аниме из 5 разных десятилетий', ok: (s) => s.decades >= 5, p: (s) => [s.decades, 5] },
+  { id: 'oldschool', g: 'era', i: 'tape', t: 'Старая школа', d: 'Оцени аниме, вышедшее до 1990 года', ok: (s) => s.old },
+  { id: 'movies10', g: 'era', i: 'clap', t: 'Киноман', d: 'Оцени 10 аниме-фильмов', ok: (s) => s.movies >= 10, p: (s) => [s.movies, 10] },
+  { id: 'fan', g: 'era', i: 'layers', t: 'Фанат серии', d: 'Оцени 5 частей одной серии', ok: (s) => s.bestSeries >= 5, p: (s) => [s.bestSeries, 5] },
 
-  { id: 'night', g: 'secret', i: '🦉', t: 'Ночная сова', d: 'Оценивай аниме глубокой ночью (с 2 до 5 часов)', ok: (s) => s.night },
-  { id: 'dropper', g: 'secret', i: '🗑️', t: 'Не моё', d: 'Брось 10 аниме', ok: (s) => s.dropped >= 10 },
-  { id: 'planner', g: 'secret', i: '📝', t: 'Когда-нибудь посмотрю', d: '30 аниме в «В планах»', ok: (s) => s.planned >= 30 },
-  { id: 'renamer', g: 'secret', i: '✏️', t: 'Свои правила', d: 'Переименуй тир', ok: (s) => s.renamed },
+  { id: 'night', g: 'secret', i: 'moon', t: 'Ночная сова', d: 'Оценивай аниме глубокой ночью (с 2 до 5 часов)', ok: (s) => s.night },
+  { id: 'dropper', g: 'secret', i: 'trash', t: 'Не моё', d: 'Брось 10 аниме', ok: (s) => s.dropped >= 10 },
+  { id: 'planner', g: 'secret', i: 'list', t: 'Когда-нибудь посмотрю', d: '30 аниме в «В планах»', ok: (s) => s.planned >= 30 },
+  { id: 'renamer', g: 'secret', i: 'pencil', t: 'Свои правила', d: 'Переименуй тир', ok: (s) => s.renamed },
 ];
 const ACH_GROUPS = [['count', 'За количество'], ['taste', 'За вкус'], ['era', 'Эпохи и типы'], ['secret', 'Секретные']];
 
-// Рамки: need — какое достижение открывает (нет — доступна сразу); b — значок в углу
+// Рамки: need — какое достижение открывает (нет — доступна сразу); b — знак в углу;
+// fx — эффекты (классы fx-* в style.css): spin, slow, glow, orbit, orbit3, beat, flicker, hue, dash, dots, glitch, stars, ember
 const FRAMES = [
   { id: '', t: 'Без рамки' },
   { id: 'pink', t: 'Розовая' },
   { id: 'violet', t: 'Аметист' },
   { id: 'mint', t: 'Мята' },
-  { id: 'gold', t: 'Золото', need: 'rated50' },
-  { id: 'stier', t: 'S-тир', need: 'master10', b: 'S' },
-  { id: 'sakura', t: 'Сакура', need: 'genres10', b: '🌸' },
-  { id: 'ice', t: 'Лёд', need: 'strict', b: '❄️' },
-  { id: 'fire', t: 'Пламя', need: 'eps1000', b: '🔥' },
-  { id: 'retro', t: 'Ретро', need: 'oldschool', b: '📼' },
-  { id: 'neon', t: 'Неон', need: 'rated100' },
-  { id: 'moon', t: 'Луна', need: 'night', b: '🌙' },
-  { id: 'crown', t: 'Корона', need: 'rated500', b: '👑' },
+  { id: 'sky', t: 'Небо' },
+  { id: 'sunset', t: 'Закат' },
+  { id: 'sprout', t: 'Росток', need: 'first' },
+  { id: 'bronze', t: 'Бронза', need: 'rated10', fx: 'shine' },
+  { id: 'gold', t: 'Золото', need: 'rated50', fx: 'shine glow' },
+  { id: 'neon', t: 'Неон', need: 'rated100', fx: 'spin glow' },
+  { id: 'crown', t: 'Корона', need: 'rated500', b: 'crown', fx: 'spin glow orbit' },
+  { id: 'emerald', t: 'Изумруд', need: 'tierfull', fx: 'shine glow' },
+  { id: 'fire', t: 'Пламя', need: 'eps1000', b: 'flame', fx: 'spin glow ember' },
+  { id: 'legend', t: 'Легенда', need: 'collector', b: 'gem', fx: 'spin glow orbit3' },
+  { id: 'star', t: 'Звёздная', need: 'master1', b: 'star', fx: 'glow orbit' },
+  { id: 'stier', t: 'S-тир', need: 'master10', b: 's', fx: 'glow' },
+  { id: 'ice', t: 'Лёд', need: 'strict', b: 'snow', fx: 'shine glow' },
+  { id: 'heart', t: 'Сердце', need: 'kind', b: 'heart', fx: 'beat glow' },
+  { id: 'shield', t: 'Страж', need: 'defender', b: 'shield', fx: 'slow' },
+  { id: 'lightning', t: 'Молния', need: 'rebel', b: 'bolt', fx: 'spin flicker glow' },
+  { id: 'sakura', t: 'Сакура', need: 'genres10', b: 'flower', fx: 'orbit' },
+  { id: 'aurora', t: 'Сияние', need: 'decades5', fx: 'slow hue glow' },
+  { id: 'retro', t: 'Ретро', need: 'oldschool', b: 'tape', fx: 'slow' },
+  { id: 'galaxy', t: 'Галактика', need: 'movies10', fx: 'slow stars' },
+  { id: 'chain', t: 'Цепь', need: 'fan', fx: 'dash slow' },
+  { id: 'moon', t: 'Луна', need: 'night', b: 'moon', fx: 'stars glow' },
+  { id: 'ash', t: 'Пепел', need: 'dropper', fx: 'ember' },
+  { id: 'paper', t: 'Свиток', need: 'planner', fx: 'dots slow' },
+  { id: 'glitch', t: 'Глитч', need: 'renamer', fx: 'glitch' },
 ];
 const frameById = (id) => FRAMES.find((f) => f.id === (id || '')) || FRAMES[0];
 const frameOpen = (f, ach) => !f.need || !!(ach || db.ach || {})[f.need];
+const frameCls = (f) => `fr-${f.id || 'none'}${f.fx ? ' ' + f.fx.split(' ').map((x) => 'fx-' + x).join(' ') : ''}`;
 
 /* ---------- подсчёт по топу ---------- */
 function achStats(d = db) {
@@ -81,6 +155,7 @@ function achStats(d = db) {
     eps: Object.values(d.items || {}).filter((r) => r.status === 'completed').reduce((s, r) => s + (r.anime?.episodes || 0), 0),
     dropped: recs.filter((r) => r.status === 'dropped').length,
     planned: recs.filter((r) => r.status === 'planned').length,
+    achCount: Object.keys(d.ach || {}).filter((k) => k !== 'collector' && ACH.some((a) => a.id === k)).length,
     renamed: d === db && Object.keys(tierNames || {}).length > 0,
     night: d === db && (() => { const h = new Date().getHours(); return h >= 2 && h < 5 && rated.length > 0; })(),
   };
@@ -90,19 +165,30 @@ function achStats(d = db) {
 let achReady = false;
 function checkAch(quiet) {
   if (window.VIEWING) return;
-  const s = achStats();
   const got = (db.ach ||= {});
-  const fresh = ACH.filter((a) => !got[a.id] && a.ok(s));
+  const fresh = [];
+  for (let pass = 0; pass < 2; pass++) { // второй проход — «Коллекционер» считает уже полученные
+    const s = achStats();
+    const add = ACH.filter((a) => !got[a.id] && a.ok(s));
+    if (!add.length) break;
+    const now = Date.now();
+    add.forEach((a) => (got[a.id] = now));
+    fresh.push(...add);
+  }
   if (!fresh.length) return;
-  const now = Date.now();
-  fresh.forEach((a) => (got[a.id] = now));
   try { localStorage.setItem(STORE_KEY, JSON.stringify(db)); } catch {}
   if (typeof onDbSaved === 'function') onDbSaved(); else setPref('syncDirty', '1'); // аккаунт ещё не загрузился — дошлём
-  if (!quiet && achReady) fresh.slice(0, 3).forEach((a, k) => setTimeout(() => achToast(a), k * 2600));
+  if (!quiet && achReady) fresh.slice(0, 3).forEach((a, k) => setTimeout(() => achPop(a), k * 3000));
 }
-function achToast(a) {
+// всплывающая плашка «Достижение получено» (поверх открытого окна, если оно есть)
+function achPop(a) {
   const frame = FRAMES.find((f) => f.need === a.id);
-  toast(`${a.i} ${tr('Достижение')}: ${tr(a.t)}${frame ? ` · ${tr('новая рамка «{f}»', { f: tr(frame.t) })}` : ''}`);
+  const el = document.createElement('div');
+  el.className = 'ach-pop';
+  el.innerHTML = `${achIcon(a)}<div><small>${tr('Достижение получено')}</small><b>${esc(tr(a.t))}</b>${frame ? `<span>${frameRing(frame)}${tr('новая рамка «{f}»', { f: tr(frame.t) })}</span>` : ''}</div>`;
+  (document.querySelector('dialog[open]') || document.body).appendChild(el);
+  setTimeout(() => el.classList.add('out'), 3600);
+  setTimeout(() => el.remove(), 4100);
 }
 
 /* ---------- показ ---------- */
@@ -118,21 +204,21 @@ function achShelfHTML(ach, own, stats) {
       const frame = FRAMES.find((f) => f.need === a.id);
       const tip = hidden ? tr('Секретное достижение') : `${tr(a.d)}${has ? ` · ${tr('получено')} ${new Date(ach[a.id]).toLocaleDateString(LOCALE)}` : ''}${frame ? ` · ${tr('рамка «{f}»', { f: tr(frame.t) })}` : ''}`;
       return `<div class="ach ${has ? 'on' : ''}" title="${esc(tip)}">
-        <span class="ach-i">${hidden ? '❔' : a.i}</span>
+        <span class="ach-i">${achIcon(a, hidden)}</span>
         <span class="ach-t">${hidden ? '???' : esc(tr(a.t))}</span>
         <small>${hidden ? esc(tr('Секретное')) : esc(tr(a.d))}</small>
         ${pr ? `<span class="ach-bar"><i style="width:${Math.min(100, (pr[0] / pr[1]) * 100)}%"></i></span><small class="ach-n">${Math.min(pr[0], pr[1])} / ${pr[1]}</small>` : ''}
-        ${frame && !hidden ? `<span class="ach-frame" title="${esc(tr('рамка «{f}»', { f: tr(frame.t) }))}">${frameRing(frame.id)}</span>` : ''}
+        ${frame && !hidden ? `<span class="ach-frame" title="${esc(tr('рамка «{f}»', { f: tr(frame.t) }))}">${frameRing(frame)}</span>` : ''}
       </div>`;
     }).join('')}</div></div>`).join('')}
   </div>`;
 }
 // маленький кружок-образец рамки
-const frameRing = (id) => `<span class="ava-wrap fr-${id || 'none'} xs"><span class="ring-dot"></span></span>`;
+const frameRing = (f) => `<span class="ava-wrap ${frameCls(f)} xs"><span class="ring-dot"></span></span>`;
 // обернуть аватарку в рамку
 function framed(inner, frame, size = '') {
   const f = frameById(frame);
   if (!f.id) return inner;
-  return `<span class="ava-wrap fr-${f.id} ${size}">${inner}${f.b ? `<i class="fr-badge">${f.b}</i>` : ''}</span>`;
+  return `<span class="ava-wrap ${frameCls(f)} ${size}">${inner}${f.b ? `<i class="fr-badge">${glyphSvg(f.b)}</i>` : ''}</span>`;
 }
 checkAch(true); achReady = true;

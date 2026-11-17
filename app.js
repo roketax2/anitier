@@ -901,7 +901,7 @@ function statsHTML(list) {
   const out = [`<div class="st-tiles">${tiles}</div>`];
   if (typeof achShelfHTML === 'function') {
     const ach = db.ach || {}, n = ACH.filter((x) => ach[x.id]).length;
-    out.push(`<details class="st-sec st-ach" ${prefAchOpen() ? 'open' : ''}><summary class="st-head"><h3>${tr('Достижения')} · ${n} ${tr('из')} ${ACH.length}</h3><span>${ACH.filter((x) => ach[x.id]).slice(-8).map((x) => x.i).join(' ')}</span></summary>${achShelfHTML(ach, !window.VIEWING, window.VIEWING ? null : achStats())}</details>`);
+    out.push(`<details class="st-sec st-ach" ${prefAchOpen() ? 'open' : ''}><summary class="st-head"><h3>${tr('Достижения')} · ${n} ${tr('из')} ${ACH.length}</h3><span>${ACH.filter((x) => ach[x.id]).slice(-8).map((x) => achIcon(x)).join('')}</span></summary>${achShelfHTML(ach, !window.VIEWING, window.VIEWING ? null : achStats())}</details>`);
   }
 
   if (rated.length) {

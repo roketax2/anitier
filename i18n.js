@@ -209,6 +209,9 @@ const EN = {
   'Профиль сохранён': 'Profile saved', 'Ник, аватарка и рамка': 'Nickname, avatar and frame',
   'Пока нет — оцени первое аниме': 'None yet — rate your first anime', 'Все достижения — в «Статистике»': 'All achievements are in “Stats”',
   'Некорректная рамка': 'Invalid frame',
+  'Достижение получено': 'Achievement unlocked', 'Коллекционер': 'Collector', 'Получи 15 других достижений': 'Earn 15 other achievements',
+  'Небо': 'Sky', 'Закат': 'Sunset', 'Росток': 'Sprout', 'Бронза': 'Bronze', 'Изумруд': 'Emerald', 'Легенда': 'Legend', 'Звёздная': 'Starlight',
+  'Сердце': 'Heart', 'Страж': 'Guardian', 'Молния': 'Lightning', 'Сияние': 'Aurora', 'Галактика': 'Galaxy', 'Цепь': 'Chain', 'Пепел': 'Ash', 'Свиток': 'Scroll', 'Глитч': 'Glitch',
   // сообщения сервера
   'Google не ответил — попробуйте ещё раз': 'Google didn’t respond — try again', 'Google не подтвердил вход — попробуйте ещё раз': 'Google didn’t confirm the sign-in — try again',
   'Google — единственный способ войти. Сначала задайте пароль или привяжите почту.': 'Google is your only way to sign in. Set a password or link an email first.',

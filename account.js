@@ -302,7 +302,7 @@ function renderAcct() {
             : `<p class="a-hint">${tr('В твоём топе пока нет постеров — добавь аниме.')}</p>`) : ''}
           <div class="a-frames-h"><span>${tr('Рамка')}</span><small>${tr('Новые рамки открываются достижениями')}</small></div>
           <div class="a-frames">${FRAMES.map((f) => { const open = frameOpen(f); const need = f.need && ACH.find((x) => x.id === f.need);
-            return `<button type="button" class="${(d.frame || '') === f.id ? 'on' : ''} ${open ? '' : 'locked'}" data-frame="${f.id}" ${open ? '' : 'aria-disabled="true"'} title="${esc(open ? tr(f.t) : tr('Откроется за «{a}»: {d}', { a: tr(need.t), d: need.g === 'secret' ? tr('секретное достижение') : tr(need.d) }))}">${framed(avatarInner({ ...u, nick: d.nick || u.nick, avatar: d.avatar }, 'a-avatar'), f.id, '')}<small>${open ? esc(tr(f.t)) : '🔒 ' + esc(tr(f.t))}</small></button>`; }).join('')}</div>
+            return `<button type="button" class="${(d.frame || '') === f.id ? 'on' : ''} ${open ? '' : 'locked'}" data-frame="${f.id}" ${open ? '' : 'aria-disabled="true"'} title="${esc(open ? tr(f.t) : tr('Откроется за «{a}»: {d}', { a: tr(need.t), d: need.g === 'secret' ? tr('секретное достижение') : tr(need.d) }))}">${framed(avatarInner({ ...u, nick: d.nick || u.nick, avatar: d.avatar }, 'a-avatar'), f.id, '')}<small>${open ? '' : `<span class="lk">${glyphSvg('lock')}</span>`}${esc(tr(f.t))}</small></button>`; }).join('')}</div>
           <label class="a-field"><span>${tr('Ник')}</span><input name="nick" maxlength="40" value="${esc(d.nick)}" placeholder="${esc(u.login)}"></label>
           <small class="a-hint">${tr('2–24 знака, можно по-русски и с эмодзи. Ник видят по ссылке на топ. Входить всё так же по логину {l}.', { l: u.login })}</small>
           ${msgHTML()}<button class="btn primary wide">${tr('Сохранить')}</button>
@@ -412,7 +412,7 @@ acctDlg.addEventListener('click', async (e) => {
 function achStripHTML() {
   const ach = db.ach || {}, got = ACH.filter((x) => ach[x.id]);
   return `<section class="a-sec"><h3>${tr('Достижения')} · ${got.length} ${tr('из')} ${ACH.length}</h3>
-    <div class="a-ach">${got.length ? got.map((x) => `<span title="${esc(tr(x.t))}">${x.i}</span>`).join('') : `<small class="a-hint">${tr('Пока нет — оцени первое аниме')}</small>`}</div>
+    <div class="a-ach">${got.length ? got.map((x) => `<span title="${esc(tr(x.t))}">${achIcon(x)}</span>`).join('') : `<small class="a-hint">${tr('Пока нет — оцени первое аниме')}</small>`}</div>
     <button class="link" data-act2="toStats">${tr('Все достижения — в «Статистике»')}</button></section>`;
 }
 // постеры аниме из своего топа — для аватарки
@@ -522,7 +522,7 @@ async function openShared(id) {
     window.VIEWING = { login: who, updatedAt: r.updatedAt };
     db = { version: 1, items: r.data.items || {}, franchises: r.data.franchises || {}, deleted: {}, ach: r.data.ach || {} };
     tierNames = r.data.settings?.tierNames || {};
-    $('#viewBanner').innerHTML = `<span class="vb-who">${avatarHTML(r, 'a-avatar small', 'sm')}<span>${tr('Топ пользователя')} <b>${esc(who)}</b> · 🏆 ${Object.keys(r.data.ach || {}).filter((k) => ACH.some((x) => x.id === k)).length}${r.updatedAt ? ` · ${tr('обновлён')} ${new Date(r.updatedAt).toLocaleDateString(LOCALE)}` : ''}</span></span><button class="btn" id="viewExit">${tr('К своему топу')}</button>`;
+    $('#viewBanner').innerHTML = `<span class="vb-who">${avatarHTML(r, 'a-avatar small', 'sm')}<span>${tr('Топ пользователя')} <b>${esc(who)}</b> · <span class="vb-ach">${icon('trophy')}${Object.keys(r.data.ach || {}).filter((k) => ACH.some((x) => x.id === k)).length}</span>${r.updatedAt ? ` · ${tr('обновлён')} ${new Date(r.updatedAt).toLocaleDateString(LOCALE)}` : ''}</span></span><button class="btn" id="viewExit">${tr('К своему топу')}</button>`;
     $('#view-mine h1').textContent = tr('Топ {l}', { l: who });
   } catch (e) {
     $('#viewBanner').innerHTML = `<span>${esc(e.status === 404 ? tr('Ссылка не работает — топ закрыли или ссылку сменили') : e.message)}</span><button class="btn" id="viewExit">${tr('К своему топу')}</button>`;
