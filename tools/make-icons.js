@@ -1,53 +1,45 @@
-// Рисует icon-192.png и icon-512.png (градиент + звезда) без сторонних библиотек.
+// Делает PNG-иконки из icon.svg через Edge/Chrome без окна (сторонних библиотек не нужно).
+//   node tools/make-icons.js            — icon-192.png, icon-512.png, icon-maskable-512.png
+//   node tools/make-icons.js preview    — ещё и лист-превью в tools/_preview.png (в git не идёт)
 const fs = require('fs');
-const zlib = require('zlib');
+const os = require('os');
 const path = require('path');
+const { execFileSync } = require('child_process');
 
-const STAR = [[256, 92], [302, 196], [415, 207], [330, 283], [355, 394], [256, 336], [157, 394], [182, 283], [97, 207], [210, 196]];
-function inPoly(x, y, pts) {
-  let c = false;
-  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
-    const [xi, yi] = pts[i], [xj, yj] = pts[j];
-    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) c = !c;
-  }
-  return c;
+const ROOT = path.join(__dirname, '..');
+const BROWSERS = [
+  'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
+  'C:/Program Files/Microsoft/Edge/Application/msedge.exe',
+  'C:/Program Files/Google/Chrome/Application/chrome.exe',
+];
+const exe = BROWSERS.find(p => fs.existsSync(p));
+if (!exe) { console.error('Не найден Edge или Chrome'); process.exit(1); }
+
+const svg = fs.readFileSync(path.join(ROOT, 'icon.svg'), 'utf8');
+// Для PNG фон на весь квадрат: углы скругляет сама система.
+const square = svg.replace('rx="112"', 'rx="0"');
+// «Маскируемая» иконка: рисунок меньше, чтобы его не обрезал круг на Android.
+const maskable = square.replace('<g id="art"', '<g transform="translate(256 256) scale(0.82) translate(-256 -256)"><g id="art"').replace('</svg>', '</g></svg>');
+
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'animetop-icons-'));
+function shot(html, w, h, out) {
+  const page = path.join(tmp, 'page.html');
+  fs.writeFileSync(page, `<!doctype html><meta charset="utf-8"><style>html,body{margin:0;overflow:hidden;background:#0e0d14}svg{display:block}</style>${html}`);
+  execFileSync(exe, ['--headless=new', '--disable-gpu', '--hide-scrollbars', '--force-device-scale-factor=1',
+    `--user-data-dir=${path.join(tmp, 'profile')}`, `--window-size=${w},${h}`, `--screenshot=${out}`,
+    'file:///' + page.replace(/\\/g, '/')], { stdio: 'ignore' });
 }
-function crc32(buf) {
-  let c, crc = 0xffffffff;
-  for (let n = 0; n < buf.length; n++) {
-    c = (crc ^ buf[n]) & 0xff;
-    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-    crc = (crc >>> 8) ^ c;
-  }
-  return (crc ^ 0xffffffff) >>> 0;
+const sized = (code, px) => code.replace('<svg ', `<svg width="${px}" height="${px}" `);
+
+shot(sized(square, 192), 192, 192, path.join(ROOT, 'icon-192.png'));
+shot(sized(square, 512), 512, 512, path.join(ROOT, 'icon-512.png'));
+shot(sized(maskable, 512), 512, 512, path.join(ROOT, 'icon-maskable-512.png'));
+
+if (process.argv[2] === 'preview') {
+  const cell = (code, px, extra = '') => `<div style="display:inline-block;margin:16px;vertical-align:bottom;${extra}">${sized(code, px)}</div>`;
+  const round = 'border-radius:50%;overflow:hidden;';
+  shot(`<div style="background:#22202c;padding:8px">${cell(svg, 320)}${cell(svg, 96)}${cell(svg, 48)}${cell(svg, 30)}${cell(svg, 16)}${cell(maskable, 160, round)}</div>`,
+    900, 380, path.join(__dirname, '_preview.png'));
 }
-function chunk(type, data) {
-  const len = Buffer.alloc(4); len.writeUInt32BE(data.length);
-  const td = Buffer.concat([Buffer.from(type), data]);
-  const crc = Buffer.alloc(4); crc.writeUInt32BE(crc32(td));
-  return Buffer.concat([len, td, crc]);
-}
-function make(size, file) {
-  const S = 4; // сглаживание 4×4
-  const raw = Buffer.alloc(size * (size * 4 + 1));
-  for (let y = 0; y < size; y++) {
-    raw[y * (size * 4 + 1)] = 0;
-    for (let x = 0; x < size; x++) {
-      let r = 0, g = 0, b = 0;
-      for (let sy = 0; sy < S; sy++) for (let sx = 0; sx < S; sx++) {
-        const u = ((x + (sx + 0.5) / S) / size) * 512, v = ((y + (sy + 0.5) / S) / size) * 512;
-        if (inPoly(u, v, STAR)) { r += 255; g += 255; b += 255; }
-        else { const t = (u + v) / 1024; r += 255 + (139 - 255) * t; g += 92 + (123 - 92) * t; b += 138 + (255 - 138) * t; }
-      }
-      const o = y * (size * 4 + 1) + 1 + x * 4;
-      raw[o] = r / S / S; raw[o + 1] = g / S / S; raw[o + 2] = b / S / S; raw[o + 3] = 255;
-    }
-  }
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(size, 0); ihdr.writeUInt32BE(size, 4); ihdr[8] = 8; ihdr[9] = 6;
-  const png = Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
-  fs.writeFileSync(path.join(__dirname, '..', file), png);
-}
-make(192, 'icon-192.png');
-make(512, 'icon-512.png');
+fs.rmSync(tmp, { recursive: true, force: true });
 console.log('ok');

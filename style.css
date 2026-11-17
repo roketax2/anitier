@@ -52,7 +52,7 @@ h1, h2, h3, h4, p { margin: 0; }
   display: flex; align-items: center; gap: 12px;
 }
 .brand { display: flex; align-items: center; gap: 10px; font: 500 15px var(--display); letter-spacing: -.01em; white-space: nowrap; }
-.brand img { border-radius: 8px; }
+.brand img { display: block; }
 .nav { display: flex; gap: 4px; margin-left: 22px; }
 .nav-btn {
   display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px;
@@ -457,7 +457,7 @@ textarea::placeholder { color: var(--muted); }
   body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
   .bar-in { height: 54px; padding: 0 8px 0 14px; }
   .brand { font-size: 14px; }
-  .brand img { width: 26px; height: 26px; }
+  .brand img { width: 41px; height: 28px; }
   /* навигация уезжает вниз, под большой палец */
   .nav {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; margin: 0; gap: 0;

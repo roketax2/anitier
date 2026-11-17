@@ -1,5 +1,5 @@
 'use strict';
-/* Мой аниме-топ — данные об аниме берутся из открытого API Shikimori,
+/* AniTier — данные об аниме берутся из открытого API Shikimori,
    оценки хранятся на устройстве (localStorage). Структура записей готова
    к будущей синхронизации с аккаунтом.
    Два режима счёта: «Аниме целиком» (вся серия/франшиза = одна строка)
@@ -1570,7 +1570,7 @@ async function makeShareImage(onProgress) {
   }
   // подвал
   ctx.fillStyle = '#5d5870'; ctx.font = F(500, 22);
-  ctx.fillText('roketax2.github.io/anime-top', P, H - 40);
+  ctx.fillText('AniTier · roketax2.github.io/anime-top', P, H - 40);
   ctx.textAlign = 'right'; ctx.fillText('данные: Shikimori', SHARE_W - P, H - 40); ctx.textAlign = 'left';
   return new Promise((res) => cv.toBlob(res, 'image/png'));
 }
@@ -1585,7 +1585,7 @@ $('#shareBtn').addEventListener('click', async () => {
   try {
     const blob = await makeShareImage((d, n) => { const p = $('#shareProg'); if (p) p.textContent = `Загружаю постеры… ${d} из ${n}`; });
     if (!blob) throw 0;
-    shareFile = new File([blob], `anime-top-${new Date().toISOString().slice(0, 10)}.png`, { type: 'image/png' });
+    shareFile = new File([blob], `anitier-${new Date().toISOString().slice(0, 10)}.png`, { type: 'image/png' });
     shareUrl = URL.createObjectURL(blob);
     $('#shareImg').innerHTML = `<img src="${shareUrl}" alt="Картинка моего топа">`;
     $('#shareSave').disabled = false;
@@ -1602,7 +1602,7 @@ $('#shareSave').addEventListener('click', () => {
 });
 $('#shareSend').addEventListener('click', async () => {
   if (!shareFile) return;
-  try { await navigator.share({ files: [shareFile], title: 'Мой аниме-топ' }); } catch {}
+  try { await navigator.share({ files: [shareFile], title: 'AniTier' }); } catch {}
 });
 
 /* ---------- Окна и кнопка «назад» ---------- */
@@ -1636,7 +1636,7 @@ $('#menuBtn').addEventListener('click', (e) => {
         const blob = new Blob([JSON.stringify(db, null, 1)], { type: 'application/json' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = `anime-top-${new Date().toISOString().slice(0, 10)}.json`;
+        a.download = `anitier-${new Date().toISOString().slice(0, 10)}.json`;
         a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
         toast('Копия сохранена в файл');
       }

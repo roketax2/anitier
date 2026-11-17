@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="30 100 454 310">
+  <style>
+    .alt{animation:shift 12s ease-in-out infinite}
+    @keyframes shift{0%,36%{opacity:0}48%,86%{opacity:1}98%,100%{opacity:0}}
+    .tw{transform-box:fill-box;transform-origin:center;animation:tw 2.4s ease-in-out infinite}
+    .tw2{animation-delay:-1.2s}
+    @keyframes tw{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
+    .glint{animation:glint 4s ease-in-out infinite}
+    @keyframes glint{0%,52%{transform:translateX(-200px)}86%,100%{transform:translateX(200px)}}
+    .sp{opacity:0;transform-box:fill-box;transform-origin:center;animation:sp 4s ease-in-out infinite}
+    .sp2{animation-delay:-2s}
+    @keyframes sp{0%,58%,100%{opacity:0;transform:scale(.2) rotate(0deg)}76%{opacity:1;transform:scale(1) rotate(45deg)}92%{opacity:0;transform:scale(.3) rotate(90deg)}}
+    @media (prefers-reduced-motion:reduce){*{animation:none!important}}
+  </style>
+  <defs>
+    <radialGradient id="glowA" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#ff4d78" stop-opacity="0.5"/><stop offset="1" stop-color="#ff4d78" stop-opacity="0"/></radialGradient>
+    <linearGradient id="discA" x1="0" y1="0" x2="0" y2="1"><stop offset="0.1" stop-color="#b81f78"/><stop offset="0.55" stop-color="#ff5f86"/><stop offset="1" stop-color="#ff9aa6"/></linearGradient>
+    <radialGradient id="glowB" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#3f8cff" stop-opacity="0.55"/><stop offset="1" stop-color="#3f8cff" stop-opacity="0"/></radialGradient>
+    <linearGradient id="discB" x1="0" y1="0" x2="0" y2="1"><stop offset="0.1" stop-color="#2f86dc"/><stop offset="0.55" stop-color="#5cc4f2"/><stop offset="1" stop-color="#a6ecff"/></linearGradient>
+    <linearGradient id="white" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9a90c2"/><stop offset="0.45" stop-color="#e4dff2"/><stop offset="1" stop-color="#f7f5fc"/></linearGradient>
+    <clipPath id="eye"><path d="M92 304C140 240 210 202 290 200C350 200 410 226 434 268C432 320 380 372 290 380C200 384 130 352 92 304Z"/></clipPath>
+    <clipPath id="irisClip"><circle cx="272" cy="282" r="97"/></clipPath>
+  </defs>
+
+  <g transform="translate(256 256) scale(1.02) translate(-277 -262)">
+    <circle cx="272" cy="282" r="128" fill="url(#glowA)"/>
+    <circle class="alt" cx="272" cy="282" r="128" fill="url(#glowB)"/>
+    <path fill="none" stroke="#f4f1fb" stroke-width="5" stroke-linecap="round" opacity="0.45" d="M150 170C220 124 330 118 418 160"/>
+    <path fill="url(#white)" d="M92 304C140 240 210 202 290 200C350 200 410 226 434 268C432 320 380 372 290 380C200 384 130 352 92 304Z"/>
+    <g clip-path="url(#eye)">
+      <circle cx="272" cy="282" r="104" fill="#2a0c3a"/>
+      <circle cx="272" cy="282" r="97" fill="#6a3df0"/>
+      <circle cx="272" cy="282" r="83" fill="url(#discA)"/>
+      <g clip-path="url(#irisClip)">
+        <path fill="#2a0c3a" opacity="0.5" d="M160 170H390V246Q330 222 272 222Q214 222 160 248Z"/>
+        <g fill="#b79cff" opacity="0.92">
+          <rect x="300" y="204" width="19" height="36" rx="3" transform="rotate(16 309 222)"/>
+          <rect x="326" y="212" width="17" height="42" rx="3" transform="rotate(16 334 233)"/>
+          <rect x="349" y="232" width="11" height="26" rx="3" transform="rotate(16 354 245)"/>
+        </g>
+        <ellipse cx="272" cy="350" rx="48" ry="18" fill="#ffb07a" opacity="0.8"/>
+        <g fill="none">
+          <path d="M225.6 298.4L208.2 303.1" stroke="#ffe6ec" stroke-width="5" stroke-linecap="round"/><path d="M224.0 286.0L206.0 286.0" stroke="#ffe6ec" stroke-width="5" stroke-linecap="round"/><path d="M225.6 273.6L208.2 268.9" stroke="#ffe6ec" stroke-width="5" stroke-linecap="round"/>
+          <path d="M318.4 273.6L335.8 268.9" stroke="#ffe6ec" stroke-width="5" stroke-linecap="round"/><path d="M320.0 286.0L338.0 286.0" stroke="#ffe6ec" stroke-width="5" stroke-linecap="round"/><path d="M318.4 298.4L335.8 303.1" stroke="#ffe6ec" stroke-width="5" stroke-linecap="round"/>
+          <path d="M299.2 337.2L306.7 351.3" stroke="#ffd75e" stroke-width="5" stroke-linecap="round"/><path d="M284.1 342.7L287.4 358.4" stroke="#ffd75e" stroke-width="5" stroke-linecap="round"/><path d="M259.9 342.7L256.6 358.4" stroke="#ffd75e" stroke-width="5" stroke-linecap="round"/><path d="M244.8 337.2L237.3 351.3" stroke="#ffd75e" stroke-width="5" stroke-linecap="round"/>
+        </g>
+      </g>
+      <circle cx="272" cy="286" r="30" fill="#ffb9c9" stroke="#4a148c" stroke-width="7"/>
+      <circle cx="272" cy="286" r="12" fill="#5a1fb0"/>
+      <g class="alt">
+      <circle cx="272" cy="282" r="104" fill="#172666"/>
+      <circle cx="272" cy="282" r="97" fill="#3d63dc"/>
+      <circle cx="272" cy="282" r="83" fill="url(#discB)"/>
+      <g clip-path="url(#irisClip)">
+        <path fill="#121c52" opacity="0.5" d="M160 170H390V246Q330 222 272 222Q214 222 160 248Z"/>
+        <g fill="#ff8fc0" opacity="0.92">
+          <rect x="300" y="204" width="19" height="36" rx="3" transform="rotate(16 309 222)"/>
+          <rect x="326" y="212" width="17" height="42" rx="3" transform="rotate(16 334 233)"/>
+          <rect x="349" y="232" width="11" height="26" rx="3" transform="rotate(16 354 245)"/>
+        </g>
+        <ellipse cx="272" cy="350" rx="48" ry="18" fill="#ffb3c7" opacity="0.8"/>
+        <g fill="none">
+          <path d="M225.6 298.4L208.2 303.1" stroke="#eafcff" stroke-width="5" stroke-linecap="round"/><path d="M224.0 286.0L206.0 286.0" stroke="#eafcff" stroke-width="5" stroke-linecap="round"/><path d="M225.6 273.6L208.2 268.9" stroke="#eafcff" stroke-width="5" stroke-linecap="round"/>
+          <path d="M318.4 273.6L335.8 268.9" stroke="#eafcff" stroke-width="5" stroke-linecap="round"/><path d="M320.0 286.0L338.0 286.0" stroke="#eafcff" stroke-width="5" stroke-linecap="round"/><path d="M318.4 298.4L335.8 303.1" stroke="#eafcff" stroke-width="5" stroke-linecap="round"/>
+          <path d="M299.2 337.2L306.7 351.3" stroke="#fff08a" stroke-width="5" stroke-linecap="round"/><path d="M284.1 342.7L287.4 358.4" stroke="#fff08a" stroke-width="5" stroke-linecap="round"/><path d="M259.9 342.7L256.6 358.4" stroke="#fff08a" stroke-width="5" stroke-linecap="round"/><path d="M244.8 337.2L237.3 351.3" stroke="#fff08a" stroke-width="5" stroke-linecap="round"/>
+        </g>
+      </g>
+      <circle cx="272" cy="286" r="30" fill="#bdeeff" stroke="#27399c" stroke-width="7"/>
+      <circle cx="272" cy="286" r="12" fill="#3355c4"/>
+      </g>
+      <g clip-path="url(#irisClip)"><g class="glint" fill="#fff">
+        <path opacity="0.5" d="M262 160L296 160L270 410L236 410Z"/>
+        <path opacity="0.3" d="M310 160L320 160L294 410L284 410Z"/>
+      </g></g>
+      <circle class="tw" cx="214" cy="228" r="17" fill="#fff"/>
+      <circle class="tw tw2" cx="258" cy="216" r="7" fill="#fff"/>
+      <circle cx="236" cy="252" r="4" fill="#fff"/>
+      <ellipse cx="346" cy="340" rx="21" ry="13" fill="#fff" transform="rotate(-22 346 340)"/>
+    </g>
+    <path fill="#f4f1fb" d="M70 300C120 220 200 168 290 164L340 166L360 140L364 171C396 180 418 194 438 212L482 208L452 234L486 254L450 260L468 294L434 268C410 226 350 200 290 200C210 202 140 240 92 304Z"/>
+    <path fill="none" stroke="#aaa0d0" stroke-width="4" stroke-linecap="round" d="M163 231L173 217M189 215L199 201M215 204L225 190M241 197L251 183M267 192L277 178M293 190L303 176M319 191L329 177M387 213L397 199M407 229L417 215"/>
+    <path fill="none" stroke="#f4f1fb" stroke-width="7" stroke-linecap="round" d="M190 380Q272 397 356 382"/>
+    <path class="sp" fill="#fff" d="M424 128Q424 158 454 158Q424 158 424 188Q424 158 394 158Q424 158 424 128Z"/>
+    <path class="sp sp2" fill="#fff" d="M124 334Q124 356 146 356Q124 356 124 378Q124 356 102 356Q124 356 124 334Z"/>
+  </g>
+</svg>
