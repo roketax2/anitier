@@ -222,6 +222,8 @@ const EN = {
   'Сходитесь': 'You agree', 'Расходитесь': 'You differ', 'Советует {w}': 'Recommended by {w}',
   'Чёрная дыра': 'Black hole', 'Сверхновая': 'Supernova', 'Взрыв': 'Explosion', 'Бездна': 'Abyss', 'Поставь кому-нибудь 1': 'Give something a 1',
   'Поставь 25 шедевров (оценка 10)': 'Give twenty-five 10s', 'Оцени 20 аниме за одни сутки': 'Rate 20 anime within one day',
+  'Стихии жанров': 'Genre elements', 'Солнце': 'Sun', 'Ветер': 'Wind', 'Земля': 'Earth', 'Вода': 'Water', 'Энергия': 'Energy',
+  'Оцени 10 комедий': 'Rate 10 comedies', 'Оцени 10 приключений': 'Rate 10 adventure anime', 'Оцени 10 драм': 'Rate 10 dramas', 'Оцени 10 романтических аниме': 'Rate 10 romance anime', 'Оцени 10 экшенов': 'Rate 10 action anime',
   // сообщения сервера
   'Google не ответил — попробуйте ещё раз': 'Google didn’t respond — try again', 'Google не подтвердил вход — попробуйте ещё раз': 'Google didn’t confirm the sign-in — try again',
   'Google — единственный способ войти. Сначала задайте пароль или привяжите почту.': 'Google is your only way to sign in. Set a password or link an email first.',

@@ -30,6 +30,11 @@ const GLYPH = {
   pencil: '<path d="M4 20h4L19 9a2.800 2.800 0 0 0-4-4L4 16v4Z"/><path d="m13.500 6.500 4 4"/>',
   hole: '<circle cx="12" cy="12" r="3.200" fill="currentColor"/><path d="M12 4.500a7.500 7.500 0 0 1 7.500 7.500M19.500 12A7.500 7.500 0 0 1 12 19.500M12 19.500A7.500 7.500 0 0 1 4.500 12M4.500 12A7.500 7.500 0 0 1 12 4.500" stroke-dasharray="3 2.400"/>',
   nova: '<path d="M12 2.500v4M12 17.500v4M2.500 12h4M17.500 12h4M5.300 5.300l2.800 2.800M15.900 15.900l2.800 2.800M5.300 18.700l2.800-2.800M15.900 8.100l2.800-2.800"/><circle cx="12" cy="12" r="2.600" fill="currentColor"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.500v2.500M12 19v2.500M2.500 12H5M19 12h2.500M5.300 5.300l1.800 1.800M16.900 16.900l1.800 1.800M5.300 18.700l1.800-1.800M16.900 7.100l1.800-1.800"/>',
+  wind: '<path d="M3 8.500h10.500a3 3 0 1 0-3-3"/><path d="M3 12.500h15a3 3 0 1 1-3 3"/><path d="M3 16.500h7"/>',
+  mountain: '<path d="M2.500 20 9.500 7l4 6.500 2.500-3.500 5.500 10Z"/><path d="m7.600 10.500 1.900 1.500 1.700-1.400"/>',
+  drop: '<path d="M12 3c3.600 4.600 6 8 6 11a6 6 0 0 1-12 0c0-3 2.400-6.400 6-11Z"/><path d="M9.200 14.500a2.800 2.800 0 0 0 2.300 2.700"/>',
+  atom: '<circle cx="12" cy="12" r="1.800" fill="currentColor"/><ellipse cx="12" cy="12" rx="9.500" ry="3.800"/><ellipse cx="12" cy="12" rx="9.500" ry="3.800" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="9.500" ry="3.800" transform="rotate(120 12 12)"/>',
   boom: '<path d="M12 2.800 13.900 8.300 19.500 6.300 16.200 11.100 21.200 13.900 15.400 14.700 16.300 20.500 12 16.700 7.700 20.500 8.600 14.700 2.800 13.900 7.800 11.100 4.500 6.300 10.100 8.300Z"/>',
   gem: '<path d="M7 4h10l4 5-9 11L3 9Z"/><path d="M3 9h18M9.500 4 8 9l4 11 4-11-1.500-5"/>',
   flame: '<path d="M12 21c3.600 0 6.500-2.600 6.500-6.200 0-2.800-1.700-4.600-2.600-6.800-.700 1.500-1.600 2.300-2.700 2.400.400-3-1-6-3.600-7.400.300 3.300-4.100 5.700-4.100 11.300 0 4 2.900 6.700 6.500 6.700Z"/>',
@@ -47,8 +52,9 @@ const ACH_SHAPE = {
   taste: '<path d="M24 3 42 9v15c0 11-8 18-18 21C14 42 6 35 6 24V9Z"/>',
   era: '<circle cx="24" cy="24" r="21"/>',
   secret: '<path d="M24 2.500 45.500 24 24 45.500 2.500 24Z"/>',
+  elem: '<rect x="4" y="4" width="40" height="40" rx="12"/>',
 };
-const ACH_COLORS = { count: ['#ffb347', '#ff4d78'], taste: ['#ff7ab8', '#8b5cf6'], era: ['#4dd2ff', '#5b5bf0'], secret: ['#3ee6b0', '#1f6f8b'], hidden: ['#4a4560', '#2c283a'] };
+const ACH_COLORS = { count: ['#ffb347', '#ff4d78'], taste: ['#ff7ab8', '#8b5cf6'], era: ['#4dd2ff', '#5b5bf0'], secret: ['#3ee6b0', '#1f6f8b'], elem: ['#ffd75e', '#e8572a'], hidden: ['#4a4560', '#2c283a'] };
 document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>${
   Object.entries(ACH_COLORS).map(([k, [a, b]]) => `<linearGradient id="ag-${k}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>`).join('')
 }</defs></svg>`);
@@ -92,9 +98,14 @@ const ACH = [
   { id: 'renamer', g: 'secret', i: 'pencil', t: 'Свои правила', d: 'Переименуй тир', ok: (s) => s.renamed },
   { id: 'void', g: 'secret', i: 'hole', t: 'Бездна', d: 'Поставь кому-нибудь 1', ok: (s) => s.ones >= 1 },
   { id: 'supernova', g: 'taste', i: 'nova', t: 'Сверхновая', d: 'Поставь 25 шедевров (оценка 10)', ok: (s) => s.tens >= 25, p: (s) => [s.tens, 25] },
+  { id: 'el_sun', g: 'elem', i: 'sun', t: 'Солнце', d: 'Оцени 10 комедий', ok: (s) => s.gc.comedy >= 10, p: (s) => [s.gc.comedy, 10] },
+  { id: 'el_wind', g: 'elem', i: 'wind', t: 'Ветер', d: 'Оцени 10 приключений', ok: (s) => s.gc.adventure >= 10, p: (s) => [s.gc.adventure, 10] },
+  { id: 'el_earth', g: 'elem', i: 'mountain', t: 'Земля', d: 'Оцени 10 драм', ok: (s) => s.gc.drama >= 10, p: (s) => [s.gc.drama, 10] },
+  { id: 'el_water', g: 'elem', i: 'drop', t: 'Вода', d: 'Оцени 10 романтических аниме', ok: (s) => s.gc.romance >= 10, p: (s) => [s.gc.romance, 10] },
+  { id: 'el_energy', g: 'elem', i: 'atom', t: 'Энергия', d: 'Оцени 10 экшенов', ok: (s) => s.gc.action >= 10, p: (s) => [s.gc.action, 10] },
   { id: 'burst', g: 'count', i: 'boom', t: 'Взрыв', d: 'Оцени 20 аниме за одни сутки', ok: (s) => s.today >= 20, p: (s) => [s.today, 20] },
 ];
-const ACH_GROUPS = [['count', 'За количество'], ['taste', 'За вкус'], ['era', 'Эпохи и типы'], ['secret', 'Секретные']];
+const ACH_GROUPS = [['count', 'За количество'], ['taste', 'За вкус'], ['era', 'Эпохи и типы'], ['elem', 'Стихии жанров'], ['secret', 'Секретные']];
 
 // Рамки: need — какое достижение открывает (нет — доступна сразу); b — знак в углу;
 // fx — эффекты (классы fx-* в style.css): spin, slow, glow, orbit, orbit3, beat, flicker, hue, dash, dots, glitch, stars, ember
@@ -132,6 +143,11 @@ const FRAMES = [
   { id: 'blackhole', t: 'Чёрная дыра', need: 'void' },
   { id: 'supernova', t: 'Сверхновая', need: 'supernova' },
   { id: 'explosion', t: 'Взрыв', need: 'burst' },
+  { id: 'sun', t: 'Солнце', need: 'el_sun' },
+  { id: 'wind', t: 'Ветер', need: 'el_wind' },
+  { id: 'earth', t: 'Земля', need: 'el_earth' },
+  { id: 'water', t: 'Вода', need: 'el_water' },
+  { id: 'energy', t: 'Энергия', need: 'el_energy' },
 ];
 const frameById = (id) => FRAMES.find((f) => f.id === (id || '')) || FRAMES[0];
 const frameOpen = (f, ach) => !f.need || !!(ach || db.ach || {})[f.need];
@@ -169,6 +185,9 @@ function achStats(d = db) {
     renamed: d === db && Object.keys(tierNames || {}).length > 0,
     ones: rated.filter((r) => r.score === 1).length,
     today: rated.filter((r) => Date.now() - (r.added || 0) < 864e5).length,
+    // сколько оценённых в жанре (по английскому или русскому названию жанра)
+    gc: Object.fromEntries(Object.entries({ comedy: ['comedy', 'комедия'], adventure: ['adventure', 'приключения'], drama: ['drama', 'драма'], romance: ['romance', 'романтика'], action: ['action', 'экшен'] })
+      .map(([k, names]) => [k, rated.filter((r) => (r.anime?.genres || []).some((g) => names.includes(String(g.name || '').toLowerCase()) || names.includes(String(g.russian || '').toLowerCase()))).length])),
     night: d === db && (() => { const h = new Date().getHours(); return h >= 2 && h < 5 && rated.length > 0; })(),
   };
 }

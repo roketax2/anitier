@@ -428,6 +428,63 @@ Object.assign(FRAME_ART, {
   },
 });
 
+/* ---------- Стихии (2026-11-17): Солнце, Ветер, Земля, Вода, Энергия ---------- */
+// сужающийся «мазок» вдоль дуги — для ветра и воды
+const fSwoosh = (r, a0, a1, w, fill, extra = '') => {
+  const n = 24, outer = [], inner = [];
+  for (let i = 0; i <= n; i++) { const t = i / n, a = a0 + (a1 - a0) * t, h = w * Math.sin(Math.PI * t) ** 0.8; outer.push(fP(r + h / 2, a)); inner.unshift(fP(r - h / 2, a)); }
+  return `<path d="M${outer.join('L')}L${inner.join('L')}Z" fill="${fill}" ${extra}/>`;
+};
+document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<linearGradient id="fg-sun" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff3b0"/><stop offset=".45" stop-color="#ffc21f"/><stop offset="1" stop-color="#ff7a00"/></linearGradient>
+<radialGradient id="fg-corona" cx="60" cy="60" r="60" gradientUnits="userSpaceOnUse"><stop offset=".68" stop-color="#ffe27a" stop-opacity=".85"/><stop offset=".85" stop-color="#ff9a1f" stop-opacity=".3"/><stop offset="1" stop-color="#ff6a00" stop-opacity="0"/></radialGradient>
+<linearGradient id="fg-water" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#bff4ff"/><stop offset=".5" stop-color="#2aa8ff"/><stop offset="1" stop-color="#0b4fb3"/></linearGradient>
+<linearGradient id="fg-rock" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a08670"/><stop offset=".5" stop-color="#6b5444"/><stop offset="1" stop-color="#3e2f25"/></linearGradient>
+<linearGradient id="fg-plasma" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7cf7ff"/><stop offset=".5" stop-color="#a85cff"/><stop offset="1" stop-color="#ff4dd8"/></linearGradient></defs></svg>`);
+
+Object.assign(FRAME_ART, {
+  // солнце: золотое кольцо, сияющая корона и лучи — прямые и волнистые попеременно
+  sun: () => {
+    const rays = Array.from({ length: 24 }, (_, i) => fAt(i * 15, i % 2
+      ? '<path d="M60 14C58.600 11.500 61.400 9.500 60 7 58.600 4.800 61 3.400 60 1.500" fill="none" stroke="#ffb020" stroke-width="1.300" stroke-linecap="round"/>'
+      : '<path d="M58.400 14.500L60 2.500L61.600 14.500Z" fill="url(#fg-sun)" stroke="#c46a00" stroke-width=".4" stroke-linejoin="round"/>')).join('');
+    return `<circle cx="60" cy="60" r="60" fill="url(#fg-corona)" mask="url(#fm-out)"/><g class="fa-spin slow">${rays}</g>`
+      + fBevel('sun', 44, 6) + fRep(12, () => '<circle cx="60" cy="16" r=".9" fill="#fff8d6"/>', 15) + fRing(41.4, 0.8, '#c46a00', 'opacity=".8"');
+  },
+  // ветер: прозрачные потоки воздуха разной длины закручиваются вокруг, с частицами пыли
+  wind: () => {
+    const flows = [[51, -60, 70, 4.2, 'rgba(220,250,255,.9)'], [47.5, 100, 230, 3.4, 'rgba(160,235,245,.85)'], [54, 160, 300, 2.6, 'rgba(255,255,255,.7)'], [49.5, 250, 340, 3, 'rgba(190,245,255,.8)'], [55, 20, 120, 2.2, 'rgba(255,255,255,.6)']];
+    const rnd = fRand(9);
+    return fRing(43.5, 1.4, '#cdeff5', 'opacity=".8"') + fRing(41.6, 0.7, '#5fb8c9', 'opacity=".7"')
+      + `<g class="fa-spin">${flows.map(([r, a0, a1, w, c]) => fSwoosh(r, a0, a1, w, c)).join('')}</g>`
+      + `<g class="fa-spin rev">${Array.from({ length: 14 }, () => { const [x, y] = fXY(46 + rnd() * 11, rnd() * 360); return fDot(x.toFixed(1), y.toFixed(1), (0.3 + rnd() * 0.5).toFixed(2), '#e6fbff'); }).join('')}</g>`;
+  },
+  // земля: кольцо из каменных глыб с мхом, между ними янтарь
+  earth: () => {
+    const rnd = fRand(31);
+    const rocks = Array.from({ length: 12 }, (_, k) => { const a0 = k * 30 + 2, a1 = k * 30 + 28, r0 = 41.5, r1 = 50 + rnd() * 4;
+      const pts = [fP(r0, a0), fP(r1 - rnd() * 3, a0 + 3), fP(r1, (a0 + a1) / 2), fP(r1 - rnd() * 3, a1 - 3), fP(r0, a1)];
+      return `<polygon points="${pts.join(' ')}" fill="url(#fg-rock)" stroke="#2a1f18" stroke-width=".8" stroke-linejoin="round"/><path d="M${fP(r1 - 1.2, a0 + 5)}L${fP(r1 - 0.6, (a0 + a1) / 2)}" stroke="#d6c2a8" stroke-width=".9" stroke-linecap="round" opacity=".6"/>`
+        + (k % 3 === 0 ? `<path d="M${fP(r1 - 0.8, a0 + 6)}Q${fP(r1 + 1.6, (a0 + a1) / 2)} ${fP(r1 - 0.8, a1 - 6)}" fill="none" stroke="#5fa83a" stroke-width="1.600" stroke-linecap="round"/>` : ''); }).join('');
+    const amber = fRep(12, () => '<circle cx="60" cy="15.200" r="1.500" fill="#ffb347" stroke="#7a3d00" stroke-width=".5"/><circle cx="59.500" cy="14.700" r=".5" fill="#fff4cc"/>', 0);
+    return rocks + amber;
+  },
+  // вода: волнистое кольцо, блики и поднимающиеся пузырьки
+  water: () => {
+    const wave = (r, amp, n, ph, c, w, op) => `<path d="${fWave(r, amp, n, ph)}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linejoin="round" opacity="${op}"/>`;
+    return fRing(46, 8, 'url(#fg-water)', 'opacity=".9"') + `<g class="fa-spin slow">${wave(49.5, 1.4, 14, 0, '#e6fbff', 1.200, 0.9) + wave(46.5, 1.2, 12, 1.4, '#9fe0ff', 1, 0.8) + wave(43.5, 1, 16, 2.6, '#ffffff', 0.7, 0.6)}</g>`
+      + fRing(50.2, 0.8, '#0b4fb3', 'opacity=".6"') + fRing(41.8, 0.8, '#0b4fb3', 'opacity=".6"') + `<path d="${fArc(46, 200, 270)}" fill="none" stroke="#fff" stroke-width="1.600" stroke-linecap="round" opacity=".7"/>`
+      + [[30, 0, 1.6], [96, 0.8, 1.2], [150, 1.5, 1.8], [220, 0.4, 1.3], [300, 1.1, 1.5]].map(([a, d, r]) => { const [x, y] = fXY(53, a - 90); return `<circle class="fa-rise" style="animation-delay:${d}s" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" fill="none" stroke="#bff4ff" stroke-width=".6"/>`; }).join('');
+  },
+  // энергия: плазменное кольцо, вращающиеся дуги-сегменты в разные стороны и орбитальные сгустки
+  energy: () => {
+    const seg = (r, n, len, w, c, cls) => `<g class="${cls}">${fRep(n, () => `<path d="${fArc(r, -90 - len / 2, -90 + len / 2)}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/>`)}</g>`;
+    return fRing(44.5, 3, 'url(#fg-plasma)', 'class="fa-glow" style="--g:#a85cff"') + fRing(44.5, 1, '#fff', 'opacity=".8"')
+      + seg(49, 6, 34, 1.6, '#7cf7ff', 'fa-spin') + seg(52.5, 4, 22, 1, '#ff4dd8', 'fa-spin rev') + seg(41.8, 8, 18, 0.8, '#e6d2ff', 'fa-spin rev')
+      + `<g class="fa-spin">${fRep(3, () => '<circle cx="60" cy="5.500" r="2.100" fill="#fff" class="fa-glow" style="--g:#7cf7ff"/><circle cx="60" cy="5.500" r="3.400" fill="#7cf7ff" opacity=".35"/>')}</g>`;
+  },
+});
+
 // общие градиенты и маска «вне аватарки» — один раз на страницу
 document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>${
   Object.entries({
