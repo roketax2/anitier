@@ -115,6 +115,7 @@ const FRAMES = [
   { id: 'lightning', t: 'Молния', need: 'rebel', b: 'bolt', fx: 'spin flicker glow' },
   { id: 'sakura', t: 'Сакура', need: 'genres10', b: 'flower', fx: 'orbit' },
   { id: 'aurora', t: 'Сияние', need: 'decades5', fx: 'slow hue glow' },
+  { id: 'compass', t: 'Компас', need: 'decades5' },
   { id: 'retro', t: 'Ретро', need: 'oldschool', b: 'tape', fx: 'slow' },
   { id: 'galaxy', t: 'Галактика', need: 'movies10', fx: 'slow stars' },
   { id: 'chain', t: 'Цепь', need: 'fan', fx: 'dash slow' },

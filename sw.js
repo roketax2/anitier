@@ -1,5 +1,5 @@
 // Офлайн-кэш: оболочка сайта и постеры. Данные API — всегда из сети.
-const CACHE = 'animetop-v31';
+const CACHE = 'animetop-v32';
 const SHELL = ['./', 'index.html', 'style.css', 'i18n.js', 'app.js', 'achievements.js', 'frames.js', 'account.js', 'compare.js', 'manifest.webmanifest', 'icon.svg', 'logo.svg', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png'];
 
 self.addEventListener('install', (e) => {

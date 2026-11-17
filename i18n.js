@@ -210,7 +210,7 @@ const EN = {
   'Пока нет — оцени первое аниме': 'None yet — rate your first anime', 'Все достижения — в «Статистике»': 'All achievements are in “Stats”',
   'Некорректная рамка': 'Invalid frame',
   'Достижение получено': 'Achievement unlocked', 'Коллекционер': 'Collector', 'Получи 15 других достижений': 'Earn 15 other achievements',
-  'Небо': 'Sky', 'Закат': 'Sunset', 'Росток': 'Sprout', 'Бронза': 'Bronze', 'Изумруд': 'Emerald', 'Легенда': 'Legend', 'Звёздная': 'Starlight',
+  'Небо': 'Sky', 'Компас': 'Compass', 'Закат': 'Sunset', 'Росток': 'Sprout', 'Бронза': 'Bronze', 'Изумруд': 'Emerald', 'Легенда': 'Legend', 'Звёздная': 'Starlight',
   'Сердце': 'Heart', 'Страж': 'Guardian', 'Молния': 'Lightning', 'Сияние': 'Aurora', 'Галактика': 'Galaxy', 'Цепь': 'Chain', 'Пепел': 'Ash', 'Свиток': 'Scroll', 'Глитч': 'Glitch',
   'Витрина: все рамки и достижения открыты — только посмотреть, ничего не сохраняется': 'Showcase: every frame and achievement unlocked — just for viewing, nothing is saved',
   'Рамки и достижения': 'Frames and achievements', 'рамок': 'frames', 'достижений': 'achievements', 'Рамки': 'Frames', 'нажми на рамку — покажу крупно': 'tap a frame to see it large',

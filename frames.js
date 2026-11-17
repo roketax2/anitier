@@ -158,9 +158,17 @@ const fCrystal = (r, len, w, deg, light, dark, edge) => fAt(deg, `<path d="M60 $
 
 Object.assign(FRAME_ART, {
   // росток: тонкое золотое кольцо, три «листа»-хризолита сверху и изумруд снизу
-  sprout: () => fRing(44, 2.2, 'url(#fg-gold)') + fRing(47.3, 0.7, '#c9a24a', 'opacity=".8"') + fRep(12, () => '<circle cx="60" cy="16" r=".9" fill="#fff6c8"/>', 15)
-    + [[0, 11, 3.3], [-25, 8.5, 2.8], [25, 8.5, 2.8], [-47, 6, 2.2], [47, 6, 2.2]].map(([a, l, w]) => fCrystal(46.5, l, w, a, '#c8f5a6', '#2fbf71', '#147a45')).join('')
-    + fAt(180, fBezel(45.5, 2.5, '#2fcf96')),
+  // росток: тонкое золотое кольцо, вокруг вьётся лоза с маленькими листьями и бутонами
+  sprout: () => {
+    const leaves = Array.from({ length: 22 }, (_, i) => {
+      const a = i * (360 / 22) + 4, r = 48 + 2.2 * Math.sin(((9 * a) * Math.PI) / 180), [x, y] = fXY(r, a);
+      const side = i % 2 ? 1 : -1, len = 5.2 + (i % 3) * 0.9;
+      return fLeaf(x, y, a + 90 + side * 55, len, 2, i % 3 ? 'url(#fg-green)' : '#b6f09a', '#0f6b3c', false);
+    }).join('');
+    const buds = [30, 150, 260].map((a) => { const [x, y] = fXY(51.5, a); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.500" fill="#fff0f5" stroke="#e86a98" stroke-width=".5"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r=".6" fill="#ffd75e"/>`; }).join('');
+    return fRing(43.6, 1.6, 'url(#fg-gold)') + fRing(41.6, 0.6, '#c9a24a', 'opacity=".8"')
+      + `<path d="${fWave(48, 2.2, 9, 0)}" fill="none" stroke="#0f6b3c" stroke-width="1.900"/><path d="${fWave(48, 2.2, 9, 0)}" fill="none" stroke="#3fcf85" stroke-width="1"/>` + leaves + buds;
+  },
   // бронза: широкое кольцо с двумя рядами гравировки и заклёпками
   bronze: () => fRing(50.3, 1.2, 'url(#fg-bronze)') + fBevel('bronze', 44, 7.4) + fTicks(48, 41.3, 43.2, '#3d2610', 0.6, 0, 0.55) + fTicks(48, 44.8, 46.7, '#3d2610', 0.6, 3.75, 0.55)
     + fRep(4, () => '<circle cx="60" cy="16" r="2.600" fill="url(#fg-bronze)" stroke="#3d2610" stroke-width=".8"/><circle cx="59.300" cy="15.300" r=".8" fill="#fff" opacity=".8"/>', 45),
@@ -175,9 +183,55 @@ Object.assign(FRAME_ART, {
   legend: () => `<g class="fa-spin slow"><polygon points="${Array.from({ length: 16 }, (_, i) => fP(i % 2 ? 49 : 57, i * 22.5)).join(' ')}" fill="none" stroke="#6b4a0c" stroke-width="2.400" stroke-linejoin="round"/><polygon points="${Array.from({ length: 16 }, (_, i) => fP(i % 2 ? 49 : 57, i * 22.5)).join(' ')}" fill="none" stroke="url(#fg-gold)" stroke-width="1.400" stroke-linejoin="round"/>${fRep(8, () => fDiamond(60, 6.2, 1.9, '#eaf6ff', '#6b4a0c'))}</g>`
     + fBevel('rainbow', 44, 6.2) + fRep(4, () => fBezel(44, 2.3, '#7fe9ff')) + fRep(4, () => fDiamond(60, 16, 1.7, '#fffbe6', '#6b4a0c'), 45) + fSpark(96, 22, 0.5, '#fff', 0.4) + fSpark(24, 98, 0.45, '#fff', 1.2),
   // звёздная: тонкое двойное кольцо и лучи компаса
-  star: () => fRep(16, (k) => { const len = k % 4 === 0 ? 10.5 : k % 2 === 0 ? 7 : 4, w = k % 4 === 0 ? 1.9 : 1.3; return `<path d="M${60 - w} 12.600L60 ${12.6 - len}L${60 + w} 12.600Z" fill="url(#fg-gold)" stroke="#7a5310" stroke-width=".5" stroke-linejoin="round"/>`; })
-    + fRing(43.8, 2.4, 'url(#fg-gold)') + fRing(47.2, 0.8, '#c9a24a') + fRing(42, 0.6, '#fff6c8', 'opacity=".8"')
-    + fRep(4, () => `<g class="fa-tw">${fDiamond(60, 1.8, 1.7, '#fff', '#7a5310')}</g>`) + fRep(8, () => '<circle cx="60" cy="16.200" r=".9" fill="#fff6c8"/>', 22.5),
+  // компас: роза ветров из 16 лучей (двухцветные грани), шкала градусов и красная метка севера
+  compass: () => fRep(16, (k) => { const len = k % 4 === 0 ? 10.5 : k % 2 === 0 ? 7 : 4, w = k % 4 === 0 ? 1.9 : 1.3; return `<path d="M60 12.600L${60 - w} 12.600L60 ${12.6 - len}Z" fill="#fff2b8" stroke="#7a5310" stroke-width=".45" stroke-linejoin="round"/><path d="M60 12.600L${60 + w} 12.600L60 ${12.6 - len}Z" fill="#c9952a" stroke="#7a5310" stroke-width=".45" stroke-linejoin="round"/>`; }, 0).replace('fill="#fff2b8"', 'fill="#ff5a6e"').replace('fill="#c9952a"', 'fill="#b3123f"')
+    + fRing(44.6, 3.4, 'url(#fg-gold)') + fRing(46.6, 0.6, '#6b4a0c', 'opacity=".7"') + fRing(42.6, 0.6, '#6b4a0c', 'opacity=".7"')
+    + fTicks(72, 43.1, 44.5, '#5a3d0a', 0.45, 0, 0.75) + fTicks(8, 42.8, 46.2, '#5a3d0a', 0.8, 0, 0.9)
+    + `<text x="60" y="18.300" text-anchor="middle" font-size="3.400" font-weight="800" fill="#b3123f" font-family="Unbounded,Onest,sans-serif">N</text>`
+    + fRep(4, () => '<circle cx="60" cy="16.200" r=".9" fill="#fff6c8"/>', 45),
+  // звёздная: ночное эмалевое кольцо, по нему созвездие из золотых звёзд разной величины
+  star: () => {
+    const pts = [[-80, 7], [-48, 4.2], [-20, 5.6], [18, 3.6], [52, 6.4], [96, 4], [140, 5.4], [175, 3.4], [212, 6], [248, 4.4]];
+    const xy = pts.map(([a]) => fXY(46, a));
+    return fBevel('night', 46, 9) + fRing(51, 1.1, 'url(#fg-gold)') + fRing(41, 1.1, 'url(#fg-gold)')
+      + `<path d="M${xy.map(([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join('L')}" fill="none" stroke="#ffe38a" stroke-width=".45" stroke-dasharray="1 1.400" opacity=".75"/>`
+      + Array.from({ length: 26 }, (_, i) => { const r = fRand(i + 3); const [x, y] = fXY(43 + r() * 6, i * 13.8 + r() * 6); return fDot(x.toFixed(1), y.toFixed(1), (0.25 + r() * 0.35).toFixed(2), '#fff', i % 3 ? '' : 'fa-tw', (i % 5) * 0.3); }).join('')
+      + pts.map(([a, R], i) => { const [x, y] = fXY(46, a); return `<g class="${i % 3 === 0 ? 'fa-tw' : ''}" style="animation-delay:${i * 0.3}s">${fStar5(+x.toFixed(1), +y.toFixed(1), R, a + 90)}<circle cx="${(x - R * 0.15).toFixed(1)}" cy="${(y - R * 0.2).toFixed(1)}" r="${(R * 0.14).toFixed(2)}" fill="#fff"/></g>`; }).join('');
+  },
+  // корона: массивное кольцо, бархатный обод с жемчугом и королевская корона с зубцами-лилиями
+  crown: () => {
+    const lily = (deg, h) => fAt(deg, `<path d="M57.200 ${14 - h * 0.35}C55 ${13 - h * 0.6} 55.400 ${12 - h} 60 ${12.5 - h * 1.25}C64.600 ${12 - h} 65 ${13 - h * 0.6} 62.800 ${14 - h * 0.35}L61.500 14H58.500Z" fill="url(#fg-gold)" stroke="#5a3d0a" stroke-width=".7" stroke-linejoin="round"/><path d="M60 ${12.5 - h * 1.25}V${13 - h * 0.4}" stroke="#fff8d6" stroke-width=".5" opacity=".8"/><circle cx="60" cy="${12.3 - h * 1.25}" r="1.400" fill="#fff8e6" stroke="#5a3d0a" stroke-width=".5"/>`);
+    return fRing(51, 4.2, '#7a0f2b') + fRing(51, 4.2, 'url(#fg-heart)', 'opacity=".55"') + fRing(53.2, 0.7, 'url(#fg-gold)') + fRing(48.8, 0.7, 'url(#fg-gold)')
+      + fRep(30, () => '<circle cx="60" cy="9" r=".95" fill="#fff4e0" stroke="#a88a55" stroke-width=".3"/>', 6)
+      + fBevel('gold', 44, 6.6) + fRep(16, (k) => fBezel(44, 1.2, k % 2 ? '#3f6cff' : '#ff3d6e'), 11.25)
+      + [[0, 9], [-20, 7], [20, 7], [-39, 5.5], [39, 5.5]].map(([a, h]) => lily(a, h)).join('')
+      + fAt(180, fBezel(46.5, 2.6, '#ff3d6e'))
+      + `<g class="fa-tw">${fSpark(60, -1.5, 0.45, '#fff', 0)}</g>`;
+  },
+  // пламя: раскалённое кольцо, мягкий жар вокруг и десятки тонких языков огня в три слоя
+  fire: () => {
+    const tongue = (seed, scale, fill, speed) => { const rnd = fRand(seed); return Array.from({ length: 22 }, (_, i) => {
+      const a = i * (360 / 22) + rnd() * 8, up = Math.cos((((a + 90) % 360 > 180 ? (a + 90) % 360 - 360 : (a + 90) % 360) * Math.PI) / 360) ** 2;
+      const h = scale * (5 + rnd() * 4 + up * 7), lean = (rnd() * 2 - 1) * 2.4, w = 1.6 + rnd() * 1.4;
+      return fAt(a + 90, `<path class="fa-flick" style="animation-delay:${-(rnd() * 0.8).toFixed(2)}s;animation-duration:${(0.55 + rnd() * 0.5).toFixed(2)}s" d="M${60 - w} 13C${60 - w} ${13 - h * 0.45} ${60 + lean - w * 0.4} ${13 - h * 0.7} ${60 + lean} ${13 - h}C${60 + lean + w * 0.2} ${13 - h * 0.6} ${60 + w} ${13 - h * 0.4} ${60 + w} 13Z" fill="${fill}"/>`);
+    }).join(''); };
+    return fRing(47, 12, '#ff5a00', 'opacity=".12"') + tongue(3, 1.15, '#b3170a', 0) + tongue(5, 0.95, 'url(#fg-fire)', 0) + tongue(9, 0.55, '#ffe9a3', 0)
+      + fBevel('fire', 44, 5.6) + fRing(41.6, 0.8, '#fff3b0', 'opacity=".75"')
+      + [[30, 0], [80, 0.6], [128, 1.3], [200, 0.3], [250, 1], [320, 1.7]].map(([a, d]) => { const [x, y] = fXY(56, a - 90); return fDot(x.toFixed(1), y.toFixed(1), 1.1, '#ffd75e', 'fa-rise', d); }).join('');
+  },
+  // сакура: розовое золото с гравировкой и две цветущие ветви (сверху слева и снизу справа)
+  sakura: () => {
+    const bloom = (x, y, s, rot) => `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${rot}) scale(${s / 10})">${[0, 72, 144, 216, 288].map((r) => `<path transform="rotate(${r})" d="M0-1.200C-3.200-2.600-3.900-6.800-1.500-9.200L0-8L1.500-9.200C3.900-6.800 3.200-2.600 0-1.200Z" fill="url(#fg-petal)" stroke="#d9608c" stroke-width=".45" stroke-linejoin="round"/><path transform="rotate(${r})" d="M0-1.500V-5.200" stroke="#ff8fb3" stroke-width=".5" stroke-linecap="round"/>`).join('')}<circle r="1.300" fill="#ffd75e" stroke="#e8a21f" stroke-width=".3"/></g>`;
+    const branch = (a0, a1, r) => {
+      const twigs = [0.25, 0.55, 0.85].map((t) => { const a = a0 + (a1 - a0) * t; return `<path d="M${fP(r, a)}L${fP(r + 5.5, a + 4)}" stroke="#5a3428" stroke-width=".9" stroke-linecap="round"/>`; }).join('');
+      const flowers = [0.08, 0.3, 0.5, 0.72, 0.92].map((t, i) => { const a = a0 + (a1 - a0) * t, [x, y] = fXY(r + (i % 2 ? 4.5 : -0.5), a); return bloom(x, y, i % 2 ? 4.6 : 5.6, a * 2 + i * 17); }).join('');
+      const buds = [0.4, 0.82].map((t) => { const [x, y] = fXY(r + 6.5, a0 + (a1 - a0) * t + 4); return `<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="1.300" ry="1.900" fill="#ff9dbd" stroke="#d9608c" stroke-width=".4" transform="rotate(${a0 + (a1 - a0) * t + 94} ${x.toFixed(1)} ${y.toFixed(1)})"/>`; }).join('');
+      return `<path d="${fArc(r, a0, a1)}" fill="none" stroke="#5a3428" stroke-width="1.700" stroke-linecap="round"/>` + twigs + buds + flowers;
+    };
+    return fBevel('petal', 44, 4.4) + fRing(46.6, 0.6, '#c9708f', 'opacity=".7"') + fTicks(60, 42.6, 43.6, '#c9708f', 0.4, 0, 0.6)
+      + branch(195, 265, 49) + branch(15, 85, 49)
+      + [[96, 12, 0], [104, 30, 1.1], [20, 96, 2]].map(([x, y, d]) => `<g transform="translate(${x} ${y})"><path class="fa-fall" style="animation-delay:${d}s" d="M0-3C-2.200-1.300-1.700 2.200 0 3 1.700 2.200 2.200-1.300 0-3Z" fill="#ffc2d6" stroke="#d9608c" stroke-width=".35"/></g>`).join('');
+  },
   // S-тир: розовое золото, медальон с буквой S и бриллианты
   stier: () => fBevel('pink', 44, 6) + fRing(48.6, 0.8, '#ffb3c4', 'opacity=".9"') + [0, 16, -16].map((a) => fAt(a, fDiamond(60, 16, 1.5, '#fff', '#5e0820'))).join('')
     + fAt(158, fDiamond(60, 13, 2, '#fff', '#5e0820')) + fAt(202, fDiamond(60, 13, 2, '#fff', '#5e0820'))
@@ -213,6 +267,66 @@ document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="
 <clipPath id="fc-phase" clipPathUnits="userSpaceOnUse"><circle cx="60" cy="14.800" r="2.700"/></clipPath><clipPath id="fc-gl1" clipPathUnits="userSpaceOnUse"><rect x="0" y="24" width="120" height="7"/></clipPath><clipPath id="fc-gl2" clipPathUnits="userSpaceOnUse"><rect x="0" y="52" width="120" height="4"/></clipPath><clipPath id="fc-gl3" clipPathUnits="userSpaceOnUse"><rect x="0" y="71" width="120" height="6"/></clipPath><clipPath id="fc-gl4" clipPathUnits="userSpaceOnUse"><rect x="0" y="95" width="120" height="5"/></clipPath></defs></svg>`);
 
 Object.assign(FRAME_ART, {
+  // неон: настоящая неоновая вывеска — две стеклянные трубки с электродами, крепления и мигающий участок
+  neon: () => {
+    const tube = (r, a0, a1, c, w, cls = '') => `<path d="${fArc(r, a0, a1)}" fill="none" stroke="${c}" stroke-width="${w + 7}" stroke-linecap="round" opacity=".16" class="${cls}"/>` + fTube('path', `d="${fArc(r, a0, a1)}"`, c, w, cls);
+    const cap = (r, a) => { const [x, y] = fXY(r, a); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.900" fill="#5a5f73" stroke="#23252f" stroke-width=".6"/>`; };
+    const clip = (a) => fAt(a, '<rect x="58.300" y="6.800" width="3.400" height="11.200" rx="1.200" fill="#3a3e4c" stroke="#15161d" stroke-width=".6"/><path d="M59 8V17" stroke="#8b90a6" stroke-width=".6"/>');
+    const outer = [[-75, 30], [42, 150], [162, 268]], inner = [[-20, 160], [172, 328]];
+    return outer.map(([a0, a1], i) => tube(51, a0, a1, '#ff3df0', 2.6, i === 1 ? 'fa-flicker' : '')).join('') + inner.map(([a0, a1]) => tube(45.5, a0, a1, '#2bf0ff', 2)).join('')
+      + outer.flatMap(([a0, a1]) => [cap(51, a0 - 3), cap(51, a1 + 3)]).join('') + inner.flatMap(([a0, a1]) => [cap(45.5, a0 - 3.5), cap(45.5, a1 + 3.5)]).join('')
+      + [0, 90, 180, 270].map(clip).join('');
+  },
+  // легенда: вращающиеся золотые лучи, радужная эмаль, двойная оправа и восемь камней всех цветов
+  legend: () => `<g class="fa-spin slow">${fRep(32, (k) => { const l = k % 2 ? 5 : 9.5, w = k % 2 ? 0.9 : 1.5; return `<path d="M${60 - w} 9.600L60 ${9.6 - l}L${60 + w} 9.600Z" fill="url(#fg-gold)" stroke="#6b4a0c" stroke-width=".4" stroke-linejoin="round"/>`; })}</g>`
+    + fRing(50.6, 1.4, 'url(#fg-gold)') + fRing(51.6, 0.5, '#6b4a0c', 'opacity=".7"')
+    + fBevel('rainbow', 45, 7.4) + fRing(41.3, 1.2, 'url(#fg-gold)') + fRing(48.9, 0.9, 'url(#fg-gold)')
+    + ['#ff4d78', '#ffa257', '#ffd75e', '#5fd99a', '#4dd2ff', '#3f6cff', '#8b5cf6', '#ff7ab8'].map((c, k) => fAt(k * 45 + 22.5, fBezel(45, 2.2, c))).join('')
+    + `<g class="fa-glow" style="--g:#fff6c8">${fBezel(45, 3.3, '#eaf6ff')}</g>` + fAt(180, fBezel(45, 2.8, '#eaf6ff'))
+    + fSpark(98, 18, 0.6, '#fff', 0.2) + fSpark(20, 100, 0.5, '#fff', 1) + fSpark(104, 88, 0.4, '#fff6c8', 1.6),
+  // золото: массивное кольцо с витой гравировкой, филигрань из завитков, жемчуг и рубин в ореоле бриллиантов
+  gold: () => {
+    const scroll = '<path d="M60 9.800C56.300 9.800 54.300 7.600 55.600 5.900 56.800 4.400 58.800 5.400 58.200 6.700" fill="none" stroke="#6b4a0c" stroke-width="2.100" stroke-linecap="round"/><path d="M60 9.800C63.700 9.800 65.700 7.600 64.400 5.900 63.200 4.400 61.200 5.400 61.800 6.700" fill="none" stroke="#6b4a0c" stroke-width="2.100" stroke-linecap="round"/>'
+      + '<path d="M60 9.800C56.300 9.800 54.300 7.600 55.600 5.900 56.800 4.400 58.800 5.400 58.200 6.700" fill="none" stroke="url(#fg-gold)" stroke-width="1.200" stroke-linecap="round"/><path d="M60 9.800C63.700 9.800 65.700 7.600 64.400 5.900 63.200 4.400 61.200 5.400 61.800 6.700" fill="none" stroke="url(#fg-gold)" stroke-width="1.200" stroke-linecap="round"/><path d="M60 9.800V12.600" stroke="url(#fg-gold)" stroke-width="1.100"/>';
+    const pearl = '<circle cx="60" cy="9.400" r="1.500" fill="#fff4e0" stroke="#a88a55" stroke-width=".4"/><circle cx="59.500" cy="8.900" r=".55" fill="#fff"/>';
+    const halo = Array.from({ length: 10 }, (_, i) => { const a = (i * 36 * Math.PI) / 180; return fDiamond(+(60 + 5.2 * Math.sin(a)).toFixed(1), +(8.6 - 5.2 * Math.cos(a)).toFixed(1), 0.95, '#fffbe6', '#7a5310'); }).join('');
+    return fRep(12, () => scroll, 15) + fRep(12, () => pearl, 0).replace(/<g transform="rotate\(0\.0 60 60\)">.*?<\/g>/, '')
+      + fRing(48.2, 1, 'url(#fg-gold)') + fBevel('gold', 44, 6.6) + fRep(48, () => '<path d="M58.600 17.900L61.400 14.100" stroke="#6b4a0c" stroke-width=".55" opacity=".45"/>')
+      + `<circle cx="60" cy="8.600" r="7" fill="url(#fg-gold)" stroke="#6b4a0c" stroke-width=".8"/>` + halo + fGem(60, 8.6, 3, '#ff3d6e', '#6b0a22');
+  },
+  // лёд: толстое ледяное кольцо с трещинами внутри и морозные узоры-дендриты, растущие наружу
+  ice: () => {
+    const rnd = fRand(11);
+    const cracks = Array.from({ length: 9 }, () => { const a = rnd() * 360; return `<path d="M${fP(41.8, a)}L${fP(44.5, a + (rnd() * 2 - 1) * 4)}L${fP(46.8, a + (rnd() * 2 - 1) * 6)}" fill="none" stroke="#fff" stroke-width=".45" opacity=".75"/>`; }).join('');
+    const dendrite = (len) => { const top = 13 - len; let s = `<path d="M60 13V${top}" stroke-width="1"/>`; for (let i = 1; i <= 3; i++) { const y = 13 - (len * i) / 4, b = len * (0.32 - i * 0.06); s += `<path d="M60 ${y}L${(60 - b * 0.87).toFixed(2)} ${(y - b * 0.5).toFixed(2)}M60 ${y}L${(60 + b * 0.87).toFixed(2)} ${(y - b * 0.5).toFixed(2)}" stroke-width=".6"/>`; } return s; };
+    return `<g fill="none" stroke="#e6faff" stroke-linecap="round" class="fa-glow" style="--g:#7fd4ff">${fRep(12, (k) => dendrite(k % 2 ? 4.8 : 8.5))}</g>`
+      + fRing(45, 7.6, 'url(#fg-ice)') + fRing(45, 7.6, '#ffffff', 'opacity=".18"') + fRing(48.6, 0.8, '#1f66b8', 'opacity=".5"') + fRing(41.4, 0.8, '#1f66b8', 'opacity=".55"')
+      + `<path d="${fArc(45, 195, 285)}" fill="none" stroke="#fff" stroke-width="2.200" stroke-linecap="round" opacity=".8"/><path d="${fArc(46.8, 20, 60)}" fill="none" stroke="#fff" stroke-width=".9" stroke-linecap="round" opacity=".5"/>`
+      + cracks + fRep(6, () => '<polygon points="60,42.200 61.400,43 61.400,44.600 60,45.400 58.600,44.600 58.600,43" fill="#fff" opacity=".85" transform="translate(0 -28)"/>', 30)
+      + fSpark(100, 18, 0.55, '#fff', 0.4) + fSpark(18, 100, 0.45, '#fff', 1.2);
+  },
+  // страж: кольцо из восьми кованых пластин внахлёст с заклёпками, золотая кайма и четыре геральдических щита
+  shield: () => {
+    const plate = fAt(0, `<path d="${fArc(48.2, -21, 21)}L${fP(41.6, 21)}${fArc(41.6, 21, -21).replace('M', 'L')}Z" fill="url(#fg-steel)" stroke="#1c2336" stroke-width=".8" stroke-linejoin="round"/><path d="${fArc(47, -17, 17)}" fill="none" stroke="#fff" stroke-width=".8" opacity=".55"/><path d="${fArc(42.6, -17, 17)}" fill="none" stroke="#000" stroke-width=".8" opacity=".3"/>`)
+      + [-15, 15].map((d) => { const [x, y] = fXY(44.9, -90 + d); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1" fill="#eef3ff" stroke="#1c2336" stroke-width=".5"/>`; }).join('');
+    const crest = '<path d="M54 5.200H66V11.500C66 15.400 63.300 17.900 60 19 56.700 17.900 54 15.400 54 11.500Z" fill="#1f3f9e" stroke="#6b4a0c" stroke-width="1.400" stroke-linejoin="round"/><path d="M54 5.200H66V11.500C66 15.400 63.300 17.900 60 19 56.700 17.900 54 15.400 54 11.500Z" fill="none" stroke="url(#fg-gold)" stroke-width=".8" stroke-linejoin="round"/>'
+      + '<path d="M60 7.200V16.600M56.400 10.600H63.600" stroke="url(#fg-gold)" stroke-width="1.300" stroke-linecap="round"/><path d="M55.600 6.400H58.400" stroke="#fff" stroke-width=".7" stroke-linecap="round" opacity=".6"/>';
+    return fRing(49.3, 1.4, 'url(#fg-gold)') + fRing(40.9, 1.2, 'url(#fg-gold)') + fRep(8, () => plate, 22.5) + fRep(8, () => plate.replace('opacity=".55"', 'opacity=".35"'), 0)
+      + fRep(4, () => crest, 45);
+  },
+  // изумруд: камень ступенчатой огранки (три ряда граней), золотая оправа и крапаны по углам
+  emerald: () => {
+    const oct = (r, k, d = 0) => fP(r, k * 45 - 22.5 + d);
+    const shade = (k, row) => { const light = Math.cos(((k * 45 - 225) * Math.PI) / 180); const l = Math.round(26 + row * 6 + light * 16); return `hsl(158 72% ${l}%)`; };
+    const rows = [[44, 47.2], [47.2, 50.6], [50.6, 54.4]];
+    const facets = rows.map(([r1, r2], row) => [0, 1, 2, 3, 4, 5, 6, 7].map((k) => `<polygon points="${oct(r1, k)} ${oct(r1, k + 1)} ${oct(r2, k + 1)} ${oct(r2, k)}" fill="${shade(k, row)}" stroke="#043d2b" stroke-width=".45" stroke-linejoin="round"/>`).join('')).join('');
+    const edges = rows.map(([, r2]) => `<polygon points="${[0, 1, 2, 3, 4, 5, 6, 7].map((k) => oct(r2, k)).join(' ')}" fill="none" stroke="#c9ffe9" stroke-width=".35" opacity=".55"/>`).join('');
+    const prong = (deg) => fAt(deg, '<path d="M57.600 6.400Q60 3.600 62.400 6.400L61.400 11H58.600Z" fill="url(#fg-gold)" stroke="#6b4a0c" stroke-width=".6" stroke-linejoin="round"/><circle cx="59.300" cy="5.600" r=".6" fill="#fff" opacity=".9"/>');
+    return facets + edges + `<polygon points="${[0, 1, 2, 3, 4, 5, 6, 7].map((k) => oct(55.2, k)).join(' ')}" fill="none" stroke="url(#fg-gold)" stroke-width="1.600" stroke-linejoin="round"/>`
+      + fRing(42.6, 2.400, 'url(#fg-gold)') + fRing(41.3, 0.5, '#6b4a0c', 'opacity=".7"')
+      + `<path d="M${oct(52.5, 5, 6)}L${oct(52.5, 6, -6)}" stroke="#fff" stroke-width="1.300" stroke-linecap="round" opacity=".75"/>`
+      + [22.5, 112.5, 202.5, 292.5].map(prong).join('') + fSpark(26, 20, 0.6, '#fff', 0.3) + fSpark(96, 100, 0.45, '#fff', 1.2);
+  },
   // цепь: тонкая ювелирная цепочка из 40 звеньев и застёжка снизу
   chain: () => fRing(41.6, 0.9, 'url(#fg-gold)') + fRing(49.6, 0.6, '#c9a24a', 'opacity=".55"')
     + `<g class="fa-spin slow">${fRep(40, (k) => (k % 2
