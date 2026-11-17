@@ -145,8 +145,8 @@ function markDeleted(store, key) {
 const fKey = (a) => a.franchise || 'id' + a.id;
 
 /* ---------- API ---------- */
-const FIELDS = 'id name russian english score kind status episodes episodesAired airedOn{year date} url poster{mainUrl previewUrl} genres{id name russian kind} franchise';
-const LIGHT = 'id name russian english score kind status episodes airedOn{year date} url poster{mainUrl previewUrl} genres{id name russian kind} franchise';
+const FIELDS = 'id name russian english score kind status episodes episodesAired airedOn{year date} url poster{mainUrl main2xUrl previewUrl preview2xUrl} genres{id name russian kind} franchise';
+const LIGHT = 'id name russian english score kind status episodes airedOn{year date} url poster{mainUrl main2xUrl previewUrl preview2xUrl} genres{id name russian kind} franchise';
 // Shikimori: не больше 5 запросов в секунду и 90 в минуту
 const callTimes = [];
 let gate = Promise.resolve();
@@ -603,7 +603,7 @@ function renderCatalog() {
 }
 // состав серий для плиток: ключ серии → { first: первая вышедшая часть, count: сколько частей, score: средняя мировая }
 // запоминаем на неделю, чтобы при следующем заходе плитки сразу были верными
-const SERIES_KEY = 'animetop.series3';
+const SERIES_KEY = 'animetop.series4';
 const seriesInfo = new Map();
 try {
   const saved = JSON.parse(localStorage.getItem(SERIES_KEY) || '{}');
@@ -658,7 +658,7 @@ function tileHTML({ a, n, total, avg: seriesAvg, years }, i, my) {
   const world = total > 1 && seriesAvg ? seriesAvg : a.score;
   return `<button class="tile" data-i="${i}">
     <div class="poster">
-      <img loading="lazy" src="${esc(a.poster?.previewUrl || a.poster?.mainUrl || '')}" alt="">
+      <img loading="lazy" src="${esc(a.poster?.main2xUrl || a.poster?.mainUrl || a.poster?.previewUrl || '')}" alt="">
       ${world ? `<span class="b-world" title="${total > 1 ? tr('Средняя мировая оценка серии') : tr('Мировая оценка')}"><i>★</i>${fmtWorld(world)}</span>` : ''}
       ${my != null ? `<span class="b-my" title="${tr('Моя оценка')}">${fmtMy(my)}</span>` : ''}
       ${parts ? `<span class="b-parts">${parts}</span>` : ''}
@@ -1253,7 +1253,7 @@ function trayItemHTML({ a, total, avg: sAvg }, i) {
   const sub = series ? `${total} ${plural(total, PARTS)}` : [KIND[a.kind] || a.kind, a.airedOn?.year].filter(Boolean).join(' · ');
   return `<div class="t-item tray-item" data-k="${i}" title="${esc(tn(a))}">
     <div class="t-poster">
-      <img loading="lazy" draggable="false" src="${esc(a.poster?.previewUrl || a.poster?.mainUrl || '')}" alt="">
+      <img loading="lazy" draggable="false" src="${esc(a.poster?.preview2xUrl || a.poster?.mainUrl || a.poster?.previewUrl || '')}" alt="">
       ${world ? `<span class="t-world"><i>★</i>${fmtWorld(world)}</span>` : ''}
     </div>
     <div class="t-name">${esc(tn(a))}</div>
@@ -1456,7 +1456,7 @@ function renderCard() {
   const multi = members.length > 1;
   const desc = EN_ON ? '' : cleanDesc(full?.description);
   const years = members.map((m) => m.airedOn?.year).filter(Boolean);
-  const poster = a.poster?.mainUrl || a.poster?.previewUrl || '';
+  const poster = a.poster?.main2xUrl || a.poster?.mainUrl || a.poster?.previewUrl || '';
   const world = title ? worldAvg(members) : a.score;
   const eps = a.status === 'ongoing' && full?.episodesAired ? tr('{a} из {b} эп.', { a: full.episodesAired, b: a.episodes || '?' }) : a.episodes ? tr('{n} эп.', { n: a.episodes }) : '';
   const facts = (title
@@ -1538,7 +1538,7 @@ function renderCard() {
       <div class="parts">${members.map((m) => {
         const my = db.items[m.id]?.score;
         return `<button class="part ${notOut(m) ? 'soon' : ''} ${!title && String(m.id) === String(st.anime.id) ? 'cur' : ''}" data-id="${m.id}">
-          <img loading="lazy" src="${esc(m.poster?.previewUrl || m.poster?.mainUrl || '')}" alt="">
+          <img loading="lazy" src="${esc(m.poster?.preview2xUrl || m.poster?.previewUrl || m.poster?.mainUrl || '')}" alt="">
           <span><span class="part-name">${esc(tn(m))}</span><small>${[KIND[m.kind] || m.kind, m.airedOn?.year, notOut(m) ? tr('ещё не вышло') : ''].filter(Boolean).join(' · ')}</small></span>
           <span class="part-world">${m.score ? `<span class="star">★</span> ${fmtWorld(m.score)}` : ''}</span>
           <span class="part-my ${my ? '' : 'none'}" title="${my ? tr('Моя оценка') : tr('Не оценено')}">${my || '+'}</span>
@@ -1900,5 +1900,5 @@ loadGenres();
 view = pref('view', 'mine') === 'catalog' ? 'catalog' : 'mine';
 show(view);
 if (EN_ON) fillEnglishNames();
-try { localStorage.removeItem('animetop.series2'); localStorage.removeItem('animetop.genres'); } catch {} // старые кэши без английских названий
+try { localStorage.removeItem('animetop.series2'); localStorage.removeItem('animetop.series3'); localStorage.removeItem('animetop.genres'); } catch {} // старые кэши без английских названий
 if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
