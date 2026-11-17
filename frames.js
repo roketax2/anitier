@@ -196,6 +196,78 @@ Object.assign(FRAME_ART, {
     + fRep(24, () => '<circle cx="60" cy="16" r=".7" fill="#8f7443"/>') + fAt(180, fBezel(44, 2.5, '#c9163f')) + fDiamond(60, 16, 2, '#fffbe6', '#7a5310'),
 });
 
+/* ---------- Вторая волна аккуратных рамок (2026-11-17, просьба автора «обнови их и молнию») ----------
+   Цепь, Луна, Пепел, Глитч, Сияние, Ретро, Галактика, Молния: у каждой своя идея, без наклеек,
+   ничего ближе радиуса 41. */
+const fRand = (seed) => { let s = seed; return () => (s = (s * 16807) % 2147483647) / 2147483647; };
+// ломаная «разряд» вдоль дуги
+const fZig = (a0, a1, r, amp, seed, steps = 12) => { const rnd = fRand(seed); return 'M' + Array.from({ length: steps + 1 }, (_, i) => fP(i === 0 || i === steps ? r : r + (rnd() * 2 - 1) * amp, a0 + ((a1 - a0) * i) / steps)).join('L'); };
+// волна вокруг центра: радиус колеблется n раз за круг
+const fWave = (r, amp, n, ph) => 'M' + Array.from({ length: 121 }, (_, i) => { const a = i * 3; return fP(r + amp * Math.sin(((n * a) * Math.PI) / 180 + ph), a); }).join('L') + 'Z';
+// трещина поперёк кольца от r0 к r1
+const fCrack = (a, r0, r1, seed) => { const rnd = fRand(seed); return 'M' + Array.from({ length: 5 }, (_, i) => fP(r0 + ((r1 - r0) * i) / 4, a + (i ? (rnd() * 2 - 1) * 3.2 : 0))).join('L'); };
+document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<linearGradient id="fg-obsidian" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#26262f"/><stop offset=".5" stop-color="#0c0c11"/><stop offset="1" stop-color="#2c2c36"/></linearGradient>
+<linearGradient id="fg-nebula" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1a0f3d"/><stop offset=".4" stop-color="#5b3fd6"/><stop offset=".62" stop-color="#c04bd8"/><stop offset="1" stop-color="#0f2a5c"/></linearGradient>
+<linearGradient id="fg-silver" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8d96b8"/><stop offset=".45" stop-color="#f4f6ff"/><stop offset="1" stop-color="#6b7396"/></linearGradient>
+<clipPath id="fc-phase" clipPathUnits="userSpaceOnUse"><circle cx="60" cy="14.800" r="2.700"/></clipPath></defs></svg>`);
+
+Object.assign(FRAME_ART, {
+  // цепь: тонкая ювелирная цепочка из 40 звеньев и застёжка снизу
+  chain: () => fRing(41.6, 0.9, 'url(#fg-gold)') + fRing(49.6, 0.6, '#c9a24a', 'opacity=".55"')
+    + `<g class="fa-spin slow">${fRep(40, (k) => (k % 2
+      ? '<ellipse cx="60" cy="14.500" rx="1" ry="2.900" fill="none" stroke="#6b4a0c" stroke-width="1.800"/><ellipse cx="60" cy="14.500" rx="1" ry="2.900" fill="none" stroke="url(#fg-gold)" stroke-width="1"/>'
+      : '<ellipse cx="60" cy="14.500" rx="3.200" ry="2" fill="none" stroke="#6b4a0c" stroke-width="2"/><ellipse cx="60" cy="14.500" rx="3.200" ry="2" fill="none" stroke="url(#fg-gold)" stroke-width="1.200"/><path d="M57.900 13.300Q60 12.400 62.100 13.300" fill="none" stroke="#fff8d6" stroke-width=".5" opacity=".9"/>'))}</g>`
+    + fAt(180, '<circle cx="60" cy="9.200" r="2.600" fill="none" stroke="#6b4a0c" stroke-width="1.900"/><circle cx="60" cy="9.200" r="2.600" fill="none" stroke="url(#fg-gold)" stroke-width="1.100"/><rect x="57.600" y="11.200" width="4.800" height="6.600" rx="2.400" fill="url(#fg-gold)" stroke="#6b4a0c" stroke-width=".7"/>'),
+  // луна: эмалевое ночное кольцо с серебряной кромкой и восемью фазами луны
+  moon: () => fBevel('night', 45, 6.6) + fRing(49.6, 0.8, 'url(#fg-silver)') + fRing(41.5, 0.8, 'url(#fg-silver)')
+    + fRep(16, () => '<circle cx="60" cy="10.800" r=".45" fill="#e6e9ff" opacity=".8"/>', 11.25)
+    + fRep(8, (k) => {
+      const off = [null, 0.55, 1.1, 1.65, 0, -1.65, -1.1, -0.55][k], R = 2.7, lit = '#fff4cc';
+      const dark = off === null ? '' : `<circle cx="${(60 + off * R * (off === 0 ? 0 : 1) + (off === 0 ? 0 : 0)).toFixed(2)}" cy="14.800" r="${R}" fill="#1b1f4a" clip-path="url(#fc-phase)"/>`;
+      return `<circle cx="60" cy="14.800" r="${R + 0.6}" fill="#0f1230" stroke="url(#fg-silver)" stroke-width=".6"/><circle cx="60" cy="14.800" r="${R}" fill="${lit}"/>${dark}`;
+    }) + `<g class="fa-glow" style="--g:#fff4cc">${fAt(0, '<circle cx="60" cy="14.800" r="2.700" fill="#fff4cc"/>')}</g>`,
+  // пепел: обсидиановое кольцо, расколотое и склеенное раскалённым золотом (кинцуги)
+  ash: () => fRing(45, 8.2, 'url(#fg-obsidian)') + fRing(49.2, 0.9, '#000', 'opacity=".6"') + fRing(40.9, 0.9, '#000', 'opacity=".6"') + fRing(48.4, 0.6, '#fff', 'opacity=".22"')
+    + `<path d="${fArc(45, 200, 260)}" fill="none" stroke="#fff" stroke-width="1.400" stroke-linecap="round" opacity=".18"/>`
+    + [[12, 1], [63, 2], [118, 3], [171, 4], [224, 5], [278, 6], [322, 7]].map(([a, s]) => `<path class="fa-ember" style="animation-delay:${-s * 0.4}s" d="${fCrack(a, 41.4, 48.8, s)}" fill="none" stroke="#ff8a1f" stroke-width="1.600" stroke-linecap="round" stroke-linejoin="round"/><path d="${fCrack(a, 41.4, 48.8, s)}" fill="none" stroke="#ffe0a3" stroke-width=".55" stroke-linecap="round" stroke-linejoin="round"/>`).join('')
+    + [[50, 104, 0], [72, 106, 0.9], [92, 96, 1.7]].map(([x, y, d]) => fDot(x, y, 1.3, '#ffb03a', 'fa-rise', d)).join(''),
+  // глитч: кольцо с разъехавшимися цветовыми каналами, видоискатель по углам и «битые» сегменты
+  glitch: () => `<g class="fa-ga">${fRing(45, 2.4, '#ff2bd1')}</g><g class="fa-gb" style="mix-blend-mode:screen">${fRing(45, 2.4, '#2bf0ff')}</g>` + fRing(45, 1.1, '#fff')
+    + ['M14 26V14H26', 'M94 14H106V26', 'M106 94V106H94', 'M26 106H14V94'].map((d) => `<path d="${d}" fill="none" stroke="#2bf0ff" stroke-width="2" stroke-linecap="square" transform="translate(-.8 .6)"/><path d="${d}" fill="none" stroke="#ff2bd1" stroke-width="2" stroke-linecap="square" transform="translate(.8 -.6)"/><path d="${d}" fill="none" stroke="#fff" stroke-width="1.200" stroke-linecap="square"/>`).join('')
+    + [[20, 'fa-ga', '#2bf0ff'], [140, 'fa-gb', '#ff2bd1'], [250, 'fa-ga', '#fff36b']].map(([a, cls, c]) => `<path class="${cls}" d="${fArc(49.5, a, a + 26)}" fill="none" stroke="${c}" stroke-width="2.200"/>`).join('')
+    + '<path d="M44 113H60M64 113H70M50 7H58" stroke="#fff" stroke-width="1" opacity=".55"/>',
+  // сияние: три переливающиеся ленты-волны вокруг кольца
+  aurora: () => fRing(44, 2, '#0b3036') + `<g class="fa-spin slow"><g class="fa-hue">${[[48, 3, 6, 0, '#3ee6b0', 2.8], [47.5, 2.6, 5, 1.6, '#4dd2ff', 2], [49, 2.2, 7, 3.1, '#ff7ab8', 1.3]].map(([r, amp, n, ph, c, w]) => `<path d="${fWave(r, amp, n, ph)}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linejoin="round" opacity=".9" class="fa-glow" style="--g:${c}"/>`).join('')}</g></g>`
+    + fRing(44, 0.8, '#bff2ff', 'opacity=".7"') + fSpark(103, 16, 0.5, '#fff', 0.2) + fSpark(16, 104, 0.45, '#fff', 1.1),
+  // ретро: пиксельное 8-битное кольцо с объёмом и четырьмя «рубинами»
+  retro: () => {
+    let s = '';
+    for (let x = 0; x < 120; x += 3) for (let y = 0; y < 120; y += 3) {
+      const dx = x + 1.5 - 60, dy = y + 1.5 - 60, d = Math.hypot(dx, dy);
+      if (d < 42 || d > 50.5) continue;
+      const light = (-dx - dy) / (d * Math.SQRT2);
+      const c = d < 43.6 || d > 49 ? '#15121f' : light > 0.55 ? '#fff3b0' : light < -0.45 ? '#c98a12' : '#ffd75e';
+      s += `<rect x="${x}" y="${y}" width="3.050" height="3.050" fill="${c}"/>`;
+    }
+    const gem = (gx, gy) => `<g class="fa-tw"><rect x="${gx - 3}" y="${gy - 3}" width="6" height="6" fill="#ff3d6e"/><rect x="${gx - 3}" y="${gy - 3}" width="3" height="3" fill="#ff9ab3"/><rect x="${gx}" y="${gy}" width="3" height="3" fill="#a8103a"/></g>`;
+    return `<g shape-rendering="crispEdges">${s}${gem(60, 13.5)}${gem(106.5, 60)}${gem(60, 106.5)}${gem(13.5, 60)}</g>`;
+  },
+  // галактика: кольцо-туманность со звёздами и тонкая наклонная орбита со спутником
+  galaxy: () => {
+    const rnd = fRand(42);
+    const stars = Array.from({ length: 34 }, (_, i) => { const [x, y] = fXY(42.6 + rnd() * 5, rnd() * 360), r = 0.25 + rnd() * 0.55; return fDot(x.toFixed(1), y.toFixed(1), r.toFixed(2), i % 5 ? '#fff' : '#bfe6ff', i % 4 ? '' : 'fa-tw', (i % 7) * 0.3); }).join('');
+    return fRing(45, 6.6, 'url(#fg-nebula)') + stars + fRing(48.6, 0.7, '#c9b8ff', 'opacity=".75"') + fRing(41.6, 0.7, '#000', 'opacity=".5"')
+      + `<g transform="rotate(-20 60 60)"><ellipse cx="60" cy="60" rx="57" ry="13.500" fill="none" stroke="url(#fg-violet)" stroke-width="1.600" opacity=".95" mask="url(#fm-out)"/><path d="M3 60A57 13.500 0 0 0 117 60" fill="none" stroke="url(#fg-violet)" stroke-width="1.600" stroke-linecap="round"/><circle cx="114.500" cy="56" r="3.300" fill="#ffd9a8" stroke="#6a3df0" stroke-width=".6"/><circle cx="113.500" cy="55" r="1" fill="#fff" opacity=".85"/></g>`
+      + fSpark(100, 13, 0.55, '#fff', 0) + fSpark(16, 22, 0.45, '#d9d3ff', 0.8);
+  },
+  // молния: стальное кольцо, по которому бегут электрические разряды
+  lightning: () => fBevel('steel', 44, 5) + fRing(48.8, 0.7, '#4dd2ff', 'opacity=".55"')
+    + `<g class="fa-flicker">${[[-85, -5, 1], [15, 95, 2], [115, 190, 3], [210, 280, 4]].map(([a0, a1, sd]) => fTube('path', `d="${fZig(a0, a1, 49.5, 3, sd)}"`, '#5fe3ff', 1.5)).join('')}</g>`
+    + `<g class="fa-flicker" style="animation-delay:-1.100s">${[[-40, 40, 5], [150, 235, 6]].map(([a0, a1, sd]) => fTube('path', `d="${fZig(a0, a1, 52, 2.4, sd, 10)}"`, '#fff36b', 1.1)).join('')}</g>`
+    + fRep(4, () => fBezel(44, 1.9, '#bff2ff', 'steel', '#1c2336'), 45),
+});
+
 // общие градиенты и маска «вне аватарки» — один раз на страницу
 document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>${
   Object.entries({
