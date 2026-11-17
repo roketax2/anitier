@@ -20,15 +20,51 @@ const avg = (xs) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : nul
 const fmtMy = (n) => (n == null ? '—' : Number.isInteger(n) ? String(n) : n.toFixed(1));
 const fmtWorld = (n) => (n ? Number(n).toFixed(2) : '—');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const plural = (n, [one, few, many]) => { const a = Math.abs(n) % 100, b = a % 10; return a > 10 && a < 20 ? many : b === 1 ? one : b >= 2 && b <= 4 ? few : many; };
+// Язык: свой выбор (меню) или язык браузера. Тексты — русские, перевод из i18n.js (EN).
+const LANG = (() => {
+  try { const p = localStorage.getItem('animetop.lang'); if (p === 'ru' || p === 'en') return p; } catch {}
+  return (navigator.languages || [navigator.language || '']).some((l) => /^(ru|uk|be|kk)\b/i.test(l)) ? 'ru' : 'en';
+})();
+const EN_ON = LANG === 'en';
+const tr = (s, v) => {
+  const r = EN_ON && typeof EN !== 'undefined' && EN[s] != null ? EN[s] : s;
+  return v ? r.replace(/\{(\w+)\}/g, (_, k) => v[k] ?? '') : r;
+};
+const plural = (n, forms) => {
+  if (EN_ON) { const e = (typeof EN_PL !== 'undefined' && EN_PL[forms[0]]) || [forms[0], forms[2]]; return Math.abs(n) === 1 ? e[0] : e[1]; }
+  const [one, few, many] = forms; const a = Math.abs(n) % 100, b = a % 10;
+  return a > 10 && a < 20 ? many : b === 1 ? one : b >= 2 && b <= 4 ? few : many;
+};
+// название аниме и жанра на языке сайта
+const tn = (a) => (a ? (EN_ON ? a.english || a.name || a.russian : a.russian || a.name) || '' : '');
+const gname = (g) => (EN_ON ? g.name || genres.find((x) => x.id === g.id)?.name || g.russian : g.russian) || '';
+const LOCALE = EN_ON ? 'en' : 'ru';
+document.documentElement.lang = LANG;
+// неподвижные тексты страницы (index.html)
+(function translatePage() {
+  if (!EN_ON) return;
+  const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let n = w.nextNode(); n; n = w.nextNode()) {
+    const k = n.nodeValue.trim();
+    if (k && EN[k] != null) n.nodeValue = n.nodeValue.replace(k, EN[k]);
+  }
+  for (const el of document.querySelectorAll('[placeholder],[title],[aria-label],[alt]')) {
+    for (const at of ['placeholder', 'title', 'aria-label', 'alt']) {
+      const v = el.getAttribute(at);
+      if (v && EN[v] != null) el.setAttribute(at, EN[v]);
+    }
+  }
+  if (EN[document.title]) document.title = EN[document.title];
+})();
 const PARTS = ['часть', 'части', 'частей'];
 const pref = (k, d) => { try { return localStorage.getItem('animetop.' + k) || d; } catch { return d; } };
 const setPref = (k, v) => { try { localStorage.setItem('animetop.' + k, v); } catch {} };
 
-const KIND = { tv: 'Сериал', movie: 'Фильм', ova: 'OVA', ona: 'ONA', special: 'Спешл', tv_special: 'ТВ-спешл', music: 'Клип', pv: 'Промо', cm: 'Реклама' };
-const STATUS_A = { released: 'вышло', ongoing: 'ещё выходит', anons: 'анонс' };
-const WATCH = { completed: 'Просмотрено', watching: 'Смотрю', planned: 'В планах', on_hold: 'Отложено', dropped: 'Брошено', not_watched: 'Не смотрел' };
-const LABEL = { 10: 'Шедевр', 9: 'Великолепно', 8: 'Отлично', 7: 'Хорошо', 6: 'Неплохо', 5: 'Нормально', 4: 'Так себе', 3: 'Плохо', 2: 'Ужасно', 1: 'Хуже некуда' };
+const trAll = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, tr(v)]));
+const KIND = trAll({ tv: 'Сериал', movie: 'Фильм', ova: 'OVA', ona: 'ONA', special: 'Спешл', tv_special: 'ТВ-спешл', music: 'Клип', pv: 'Промо', cm: 'Реклама' });
+const STATUS_A = trAll({ released: 'вышло', ongoing: 'ещё выходит', anons: 'анонс' });
+const WATCH = trAll({ completed: 'Просмотрено', watching: 'Смотрю', planned: 'В планах', on_hold: 'Отложено', dropped: 'Брошено', not_watched: 'Не смотрел' });
+const LABEL = trAll({ 10: 'Шедевр', 9: 'Великолепно', 8: 'Отлично', 7: 'Хорошо', 6: 'Неплохо', 5: 'Нормально', 4: 'Так себе', 3: 'Плохо', 2: 'Ужасно', 1: 'Хуже некуда' });
 
 /* ---------- Иконки ---------- */
 const ICONS = {
@@ -53,6 +89,7 @@ const ICONS = {
   download: '<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 20h14"/>',
   upload: '<path d="M12 16V5M7.5 9.5 12 5l4.5 4.5M5 20h14"/>',
   phone: '<rect x="7" y="3" width="10" height="18" rx="2.5"/><path d="M11 18h2"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
   ext: '<path d="M14 5h5v5M19 5l-8 8M11 6H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-4"/>',
   wifi: '<path d="M3 3l18 18M8.5 16.5a5 5 0 0 1 7 0M5 13a10 10 0 0 1 4-2.4M19 13a10 10 0 0 0-5-2.7M2 9.5A15 15 0 0 1 6.5 7M22 9.5A15 15 0 0 0 11 6"/><path d="M12 20h.01" stroke-width="3"/>',
 };
@@ -71,7 +108,7 @@ function load() {
   return { version: 1, items: {}, franchises: {} };
 }
 function save() {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(db)); } catch { toast('Не удалось сохранить — память браузера недоступна'); }
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(db)); } catch { toast(tr('Не удалось сохранить — память браузера недоступна')); }
   updateCount();
 }
 function updateCount() {
@@ -80,16 +117,16 @@ function updateCount() {
 }
 function snapshot(a) {
   return {
-    id: String(a.id), name: a.name, russian: a.russian, score: a.score, kind: a.kind, status: a.status,
+    id: String(a.id), name: a.name, russian: a.russian, english: a.english || '', score: a.score, kind: a.kind, status: a.status,
     episodes: a.episodes, year: a.airedOn?.year ?? a.year ?? null,
     poster: a.poster?.mainUrl || a.poster?.previewUrl || (typeof a.poster === 'string' ? a.poster : ''),
-    genres: (a.genres || []).map((g) => ({ id: g.id, russian: g.russian })),
+    genres: (a.genres || []).map((g) => ({ id: g.id, name: g.name, russian: g.russian })),
     url: a.url, franchise: a.franchise || null,
   };
 }
 function fromSnap(s) {
   return {
-    id: s.id, name: s.name, russian: s.russian, score: s.score, kind: s.kind, status: s.status, episodes: s.episodes,
+    id: s.id, name: s.name, russian: s.russian, english: s.english, score: s.score, kind: s.kind, status: s.status, episodes: s.episodes,
     airedOn: { year: s.year }, poster: { mainUrl: s.poster }, genres: s.genres, url: s.url, franchise: s.franchise,
   };
 }
@@ -97,8 +134,8 @@ function fromSnap(s) {
 const fKey = (a) => a.franchise || 'id' + a.id;
 
 /* ---------- API ---------- */
-const FIELDS = 'id name russian score kind status episodes episodesAired airedOn{year date} url poster{mainUrl previewUrl} genres{id russian kind} franchise';
-const LIGHT = 'id name russian score kind status episodes airedOn{year date} url poster{mainUrl previewUrl} genres{id russian kind} franchise';
+const FIELDS = 'id name russian english score kind status episodes episodesAired airedOn{year date} url poster{mainUrl previewUrl} genres{id name russian kind} franchise';
+const LIGHT = 'id name russian english score kind status episodes airedOn{year date} url poster{mainUrl previewUrl} genres{id name russian kind} franchise';
 // Shikimori: не больше 5 запросов в секунду и 90 в минуту
 const callTimes = [];
 let gate = Promise.resolve();
@@ -129,47 +166,47 @@ const arg = (k, v) => (v === '' || v == null ? '' : `${k}: ${typeof v === 'numbe
 
 /* ---------- Состояние интерфейса ---------- */
 const MODES = [
-  { v: 'title', label: 'Аниме целиком', hint: 'Все сезоны и фильмы одного аниме — одна строка и одна оценка' },
-  { v: 'season', label: 'По сезонам', hint: 'Каждый сезон и фильм — отдельно, со своей оценкой' },
+  { v: 'title', label: tr('Аниме целиком'), hint: tr('Все сезоны и фильмы одного аниме — одна строка и одна оценка') },
+  { v: 'season', label: tr('По сезонам'), hint: tr('Каждый сезон и фильм — отдельно, со своей оценкой') },
 ];
 let mode = pref('mode', 'title');
 let layout = pref('layout', 'list');
 let view = 'mine';
 
 const CAT_ORDERS = [
-  { v: 'ranked', short: 'По оценке', label: 'По мировой оценке', hint: 'Сначала с самой высокой' },
-  { v: 'ranked_asc', short: 'Оценка: с низкой', label: 'По мировой оценке — с низкой', hint: 'Сначала с самой низкой' },
-  { v: 'popularity', short: 'Популярные', label: 'По популярности', hint: 'Что смотрят чаще всего' },
-  { v: 'aired_on', short: 'Сначала новые', label: 'Сначала новые', hint: 'По дате выхода' },
-  { v: 'aired_on_asc', short: 'Сначала старые', label: 'Сначала старые', hint: 'По дате выхода' },
-  { v: 'name', short: 'А → Я', label: 'По алфавиту: А → Я' },
-  { v: 'name_desc', short: 'Я → А', label: 'По алфавиту: Я → А' },
+  { v: 'ranked', short: tr('По оценке'), label: tr('По мировой оценке'), hint: tr('Сначала с самой высокой') },
+  { v: 'ranked_asc', short: tr('Оценка: с низкой'), label: tr('По мировой оценке — с низкой'), hint: tr('Сначала с самой низкой') },
+  { v: 'popularity', short: tr('Популярные'), label: tr('По популярности'), hint: tr('Что смотрят чаще всего') },
+  { v: 'aired_on', short: tr('Сначала новые'), label: tr('Сначала новые'), hint: tr('По дате выхода') },
+  { v: 'aired_on_asc', short: tr('Сначала старые'), label: tr('Сначала старые'), hint: tr('По дате выхода') },
+  { v: 'name', short: tr('А → Я'), label: tr('По алфавиту: А → Я') },
+  { v: 'name_desc', short: tr('Я → А'), label: tr('По алфавиту: Я → А') },
 ];
 // Shikimori умеет так сортировать только найденное по названию — без поиска эти варианты недоступны
 const SEARCH_ONLY = new Set(['ranked_asc', 'aired_on_asc', 'name_desc']);
 const MINE_SORTS = [
-  { v: 'my', label: 'По моей оценке' },
-  { v: 'world', label: 'По мировой оценке' },
-  { v: 'diff', label: 'Моя выше мировой', hint: 'Сначала то, что нравится мне больше, чем остальным' },
-  { v: 'added', label: 'Недавно добавленные' },
-  { v: 'year', label: 'По году выхода', hint: 'Сначала новые' },
-  { v: 'name', label: 'По названию' },
+  { v: 'my', label: tr('По моей оценке') },
+  { v: 'world', label: tr('По мировой оценке') },
+  { v: 'diff', label: tr('Моя выше мировой'), hint: tr('Сначала то, что нравится мне больше, чем остальным') },
+  { v: 'added', label: tr('Недавно добавленные') },
+  { v: 'year', label: tr('По году выхода'), hint: tr('Сначала новые') },
+  { v: 'name', label: tr('По названию') },
 ];
-const SCORE_OPTS = [['', 'Любая'], ['9', '9+'], ['8', '8+'], ['7', '7+'], ['6', '6+'], ['5', '5+']];
+const SCORE_OPTS = [['', tr('Любая')], ['9', '9+'], ['8', '8+'], ['7', '7+'], ['6', '6+'], ['5', '5+']];
 const CAT_DEF = { kind: '', status: 'released,ongoing', score: '', season: '' };
 const catF = { order: 'ranked', ...CAT_DEF, genres: new Set(), hideMine: false };
 const mineF = { sort: pref('sort', 'my'), status: '', min: '', wmin: '', genre: '' };
 const CAT_SECTIONS = [
-  { key: 'kind', title: 'Тип', opts: [['', 'Любой'], ['tv', 'Сериал'], ['movie', 'Фильм'], ['ova,ona', 'OVA / ONA'], ['special,tv_special', 'Спешл']] },
-  { key: 'status', title: 'Статус выхода', opts: [['released,ongoing', 'Всё вышедшее'], ['released', 'Вышло полностью'], ['ongoing', 'Ещё выходит']] },
-  { key: 'score', title: 'Мировая оценка', opts: SCORE_OPTS },
-  { key: 'season', title: 'Годы выхода', opts: [['', 'Любые'], [`${YEAR}`, `${YEAR}`], [`${YEAR - 1}`, `${YEAR - 1}`], [`2020_${YEAR}`, '2020-е'], ['2010_2019', '2010-е'], ['2000_2009', '2000-е'], ['1990_1999', '1990-е'], ['1900_1989', 'До 1990']] },
+  { key: 'kind', title: tr('Тип'), opts: [['', tr('Любой')], ['tv', tr('Сериал')], ['movie', tr('Фильм')], ['ova,ona', 'OVA / ONA'], ['special,tv_special', tr('Спешл')]] },
+  { key: 'status', title: tr('Статус выхода'), opts: [['released,ongoing', tr('Всё вышедшее')], ['released', tr('Вышло полностью')], ['ongoing', tr('Ещё выходит')]] },
+  { key: 'score', title: tr('Мировая оценка'), opts: SCORE_OPTS },
+  { key: 'season', title: tr('Годы выхода'), opts: [['', tr('Любые')], [`${YEAR}`, `${YEAR}`], [`${YEAR - 1}`, `${YEAR - 1}`], [`2020_${YEAR}`, tr('2020-е')], ['2010_2019', tr('2010-е')], ['2000_2009', tr('2000-е')], ['1990_1999', tr('1990-е')], ['1900_1989', tr('До 1990')]] },
 ];
 const mineSections = () => [
-  { key: 'status', title: 'Статус просмотра', opts: [['', 'Все'], ...Object.entries(WATCH)] },
-  { key: 'min', title: 'Моя оценка', opts: [['', 'Любая'], ['10', '10'], ...SCORE_OPTS.slice(1)] },
-  { key: 'wmin', title: 'Мировая оценка', opts: SCORE_OPTS },
-  { key: 'genre', title: 'Жанр', opts: [['', 'Все'], ...usedGenres()] },
+  { key: 'status', title: tr('Статус просмотра'), opts: [['', tr('Все')], ...Object.entries(WATCH)] },
+  { key: 'min', title: tr('Моя оценка'), opts: [['', tr('Любая')], ['10', '10'], ...SCORE_OPTS.slice(1)] },
+  { key: 'wmin', title: tr('Мировая оценка'), opts: SCORE_OPTS },
+  { key: 'genre', title: tr('Жанр'), opts: [['', tr('Все')], ...usedGenres()] },
 ];
 
 function setMode(m) {
@@ -239,39 +276,39 @@ window.addEventListener('resize', closePopUnlessTyping);
 /* ---------- Пилюли: режим, сортировка, включённые фильтры ---------- */
 function usedGenres() {
   const used = new Map();
-  [...Object.values(db.items), ...Object.values(db.franchises)].forEach((it) => (it.anime.genres || []).forEach((g) => used.set(g.id, g.russian)));
-  return [...used].sort((a, b) => a[1].localeCompare(b[1], 'ru'));
+  [...Object.values(db.items), ...Object.values(db.franchises)].forEach((it) => (it.anime.genres || []).forEach((g) => used.set(g.id, gname(g))));
+  return [...used].sort((a, b) => a[1].localeCompare(b[1], LOCALE));
 }
 function activeChips(v) {
   const out = [];
   if (v === 'catalog') {
     for (const s of CAT_SECTIONS) {
       if (catF[s.key] === CAT_DEF[s.key]) continue;
-      out.push({ key: s.key, label: (s.key === 'score' ? 'Мировая ' : '') + (s.opts.find((o) => o[0] === catF[s.key])?.[1] || '') });
+      out.push({ key: s.key, label: (s.key === 'score' ? tr('Мировая') + ' ' : '') + (s.opts.find((o) => o[0] === catF[s.key])?.[1] || '') });
     }
-    catF.genres.forEach((id) => out.push({ key: 'genre', v: id, label: genres.find((g) => g.id === id)?.russian || 'Жанр' }));
-    if (catF.hideMine) out.push({ key: 'hideMine', label: 'Без оценённых' });
+    catF.genres.forEach((id) => out.push({ key: 'genre', v: id, label: (genres.find((g) => g.id === id) ? gname(genres.find((g) => g.id === id)) : '') || tr('Жанр') }));
+    if (catF.hideMine) out.push({ key: 'hideMine', label: tr('Без оценённых') });
   } else {
     if (mineF.status) out.push({ key: 'status', label: WATCH[mineF.status] });
-    if (mineF.min) out.push({ key: 'min', label: `Моя ${mineF.min}${mineF.min === '10' ? '' : '+'}` });
-    if (mineF.wmin) out.push({ key: 'wmin', label: `Мировая ${mineF.wmin}+` });
-    if (mineF.genre) out.push({ key: 'genre', label: usedGenres().find((g) => g[0] === mineF.genre)?.[1] || 'Жанр' });
+    if (mineF.min) out.push({ key: 'min', label: `${tr('Моя')} ${mineF.min}${mineF.min === '10' ? '' : '+'}` });
+    if (mineF.wmin) out.push({ key: 'wmin', label: `${tr('Мировая')} ${mineF.wmin}+` });
+    if (mineF.genre) out.push({ key: 'genre', label: usedGenres().find((g) => g[0] === mineF.genre)?.[1] || tr('Жанр') });
   }
   return out;
 }
 function pillsHTML(v) {
   const m = MODES.find((x) => x.v === mode) || MODES[0];
-  let h = `<button class="pill" data-pop="mode" title="Как считать сезоны">${icon('layers')}<span>${m.label}</span>${icon('chev', 'chev')}</button>`;
+  let h = `<button class="pill" data-pop="mode" title="${tr('Как считать сезоны')}">${icon('layers')}<span>${m.label}</span>${icon('chev', 'chev')}</button>`;
   if (v === 'catalog') {
     const o = CAT_ORDERS.find((x) => x.v === catF.order) || CAT_ORDERS[0];
-    h += `<button class="pill" data-pop="order" title="Сортировка">${icon('sort')}<span>${o.short}</span>${icon('chev', 'chev')}</button>`;
+    h += `<button class="pill" data-pop="order" title="${tr('Сортировка')}">${icon('sort')}<span>${o.short}</span>${icon('chev', 'chev')}</button>`;
   } else if (layout === 'list') {
     const o = MINE_SORTS.find((x) => x.v === mineF.sort) || MINE_SORTS[0];
-    h += `<button class="pill" data-pop="sort" title="Сортировка">${icon('sort')}<span>${o.label}</span>${icon('chev', 'chev')}</button>`;
+    h += `<button class="pill" data-pop="sort" title="${tr('Сортировка')}">${icon('sort')}<span>${o.label}</span>${icon('chev', 'chev')}</button>`;
   }
   const chips = activeChips(v);
-  h += chips.map((c) => `<button class="pill chip" data-clear="${c.key}" ${c.v ? `data-v="${esc(c.v)}"` : ''} title="Убрать фильтр"><span>${esc(c.label)}</span>${icon('x')}</button>`).join('');
-  if (chips.length > 1) h += '<button class="pill ghost" data-clear="*">Сбросить всё</button>';
+  h += chips.map((c) => `<button class="pill chip" data-clear="${c.key}" ${c.v ? `data-v="${esc(c.v)}"` : ''} title="${tr('Убрать фильтр')}"><span>${esc(c.label)}</span>${icon('x')}</button>`).join('');
+  if (chips.length > 1) h += `<button class="pill ghost" data-clear="*">${tr('Сбросить всё')}</button>`;
   return h;
 }
 function renderPills() {
@@ -308,7 +345,7 @@ document.addEventListener('click', (e) => {
     return openPop(p, {
       items: CAT_ORDERS.map((o) => {
         const off = !searching && SEARCH_ONLY.has(o.v);
-        return { ...o, on: o.v === catF.order, disabled: off, hint: off ? 'Работает, когда ищешь по названию' : o.hint };
+        return { ...o, on: o.v === catF.order, disabled: off, hint: off ? tr('Работает, когда ищешь по названию') : o.hint };
       }),
       onPick: (it) => { catF.order = it.v; renderPills(); loadCatalog(true); },
     });
@@ -330,25 +367,25 @@ function openFilters(v) { fView = v; renderFilters(); openModal(fdlg); $('#fBody
 function renderFilters() {
   const isCat = fView === 'catalog';
   const st = isCat ? catF : mineF;
-  $('#fTitle').textContent = isCat ? 'Фильтры каталога' : 'Фильтры моего топа';
+  $('#fTitle').textContent = isCat ? tr('Фильтры каталога') : tr('Фильтры моего топа');
   const body = $('#fBody'); const keep = body.scrollTop;
   let h = (isCat ? CAT_SECTIONS : mineSections()).map((s) => `<section class="f-sec"><h4>${s.title}</h4><div class="chips">${
     s.opts.map(([val, label]) => `<button class="chip ${st[s.key] === val ? 'on' : ''}" data-f="${s.key}" data-v="${esc(val)}">${esc(label)}</button>`).join('')
   }</div></section>`).join('');
   if (isCat) {
-    const byKind = (k) => genres.filter((g) => g.kind === k).sort((a, b) => a.russian.localeCompare(b.russian, 'ru'));
-    const gchips = (list) => `<div class="chips">${list.map((g) => `<button class="chip ${catF.genres.has(g.id) ? 'on' : ''}" data-g="${g.id}">${esc(g.russian)}</button>`).join('')}</div>`;
+    const byKind = (k) => genres.filter((g) => g.kind === k).sort((a, b) => gname(a).localeCompare(gname(b), LOCALE));
+    const gchips = (list) => `<div class="chips">${list.map((g) => `<button class="chip ${catF.genres.has(g.id) ? 'on' : ''}" data-g="${g.id}">${esc(gname(g))}</button>`).join('')}</div>`;
     const main = byKind('genre'), demo = byKind('demographic'), themes = byKind('theme');
     const themesOn = themes.some((g) => catF.genres.has(g.id));
-    if (main.length) h += `<section class="f-sec"><h4>Жанры <span>— можно несколько</span></h4>${gchips(main)}</section>`;
-    if (demo.length) h += `<section class="f-sec"><h4>Аудитория</h4>${gchips(demo)}</section>`;
+    if (main.length) h += `<section class="f-sec"><h4>${tr('Жанры')} <span>${tr('— можно несколько')}</span></h4>${gchips(main)}</section>`;
+    if (demo.length) h += `<section class="f-sec"><h4>${tr('Аудитория')}</h4>${gchips(demo)}</section>`;
     if (themes.length) {
-      h += `<section class="f-sec"><h4>Темы</h4>${showThemes || themesOn ? gchips(themes) : ''}
-        ${themesOn ? '' : `<button class="link ${showThemes ? 'f-more' : ''}" data-more="1">${showThemes ? 'Свернуть темы' : `Показать темы (${themes.length})`}</button>`}</section>`;
+      h += `<section class="f-sec"><h4>${tr('Темы')}</h4>${showThemes || themesOn ? gchips(themes) : ''}
+        ${themesOn ? '' : `<button class="link ${showThemes ? 'f-more' : ''}" data-more="1">${showThemes ? tr('Свернуть темы') : tr('Показать темы ({n})', { n: themes.length })}</button>`}</section>`;
     }
-    if (!genres.length) h += '<section class="f-sec"><h4>Жанры</h4><p class="sec-note">Жанры загружаются…</p></section>';
+    if (!genres.length) h += `<section class="f-sec"><h4>${tr('Жанры')}</h4><p class="sec-note">${tr('Жанры загружаются…')}</p></section>`;
     h += `<section class="f-sec"><button class="switch-row" role="switch" aria-checked="${catF.hideMine}" data-sw="hideMine">
-      <span><b>Скрыть уже оценённые</b><small>Показывать только то, чего ещё нет в моём топе</small></span><i class="switch"></i></button></section>`;
+      <span><b>${tr('Скрыть уже оценённые')}</b><small>${tr('Показывать только то, чего ещё нет в моём топе')}</small></span><i class="switch"></i></button></section>`;
   }
   body.innerHTML = h; body.scrollTop = keep;
 }
@@ -373,14 +410,14 @@ $('#catFilterBtn').addEventListener('click', () => openFilters('catalog'));
 let genres = [];
 async function loadGenres() {
   try {
-    const c = JSON.parse(localStorage.getItem('animetop.genres') || 'null');
+    const c = JSON.parse(localStorage.getItem('animetop.genres2') || 'null');
     if (c && Date.now() - c.t < 7 * 864e5) genres = c.g;
   } catch {}
   if (!genres.length) {
     try {
-      const d = await gql('{ genres(entryType: Anime) { id russian kind } }');
+      const d = await gql('{ genres(entryType: Anime) { id name russian kind } }');
       genres = d.genres;
-      try { localStorage.setItem('animetop.genres', JSON.stringify({ t: Date.now(), g: genres })); } catch {}
+      try { localStorage.setItem('animetop.genres2', JSON.stringify({ t: Date.now(), g: genres })); } catch {}
     } catch { return; }
   }
   if (fdlg.open) renderFilters();
@@ -426,15 +463,15 @@ function buildRows() {
 const cat = { page: 1, items: [], loaded: false, loading: false, token: 0, more: false, shown: [], auto: 0 };
 
 function sortClient(list, order) {
-  const name = (a) => (a.russian || a.name || '').toLocaleLowerCase('ru');
+  const name = (a) => tn(a).toLocaleLowerCase(LOCALE);
   const date = (a) => a.airedOn?.date || (a.airedOn?.year ? a.airedOn.year + '-01-01' : '');
   const cmp = {
     ranked: (a, b) => (b.score || 0) - (a.score || 0),
     ranked_asc: (a, b) => (a.score || 99) - (b.score || 99),
     aired_on: (a, b) => date(b).localeCompare(date(a)),
     aired_on_asc: (a, b) => (date(a) || '9999').localeCompare(date(b) || '9999'),
-    name: (a, b) => name(a).localeCompare(name(b), 'ru'),
-    name_desc: (a, b) => name(b).localeCompare(name(a), 'ru'),
+    name: (a, b) => name(a).localeCompare(name(b), LOCALE),
+    name_desc: (a, b) => name(b).localeCompare(name(a), LOCALE),
   }[order];
   return cmp ? [...list].sort(cmp) : list;
 }
@@ -478,7 +515,7 @@ async function loadCatalog(reset) {
     if (token !== cat.token) return;
     cat.loading = false;
     if (reset) { $('#catGrid').innerHTML = ''; setMore('off'); catMsg('error'); }
-    else { cat.page--; setMore('button'); toast('Не получилось загрузить — проверь интернет'); }
+    else { cat.page--; setMore('button'); toast(tr('Не получилось загрузить — проверь интернет')); }
   }
 }
 function skeletons(n) {
@@ -506,9 +543,9 @@ function catMsg(kind) {
   const m = $('#catMsg');
   const filtered = activeChips('catalog').length > 0;
   const html = {
-    error: `<div class="empty-art">${icon('wifi')}</div><h2>Не получилось загрузить</h2><p>Проверь интернет и попробуй ещё раз.</p><button class="btn primary" data-act="retry">Повторить</button>`,
-    empty: `<div class="empty-art">${icon('search')}</div><h2>Ничего не нашлось</h2><p>Попробуй другое название${filtered ? ' или убери фильтры' : ''}.</p>${filtered ? '<button class="btn" data-act="reset">Сбросить фильтры</button>' : ''}`,
-    allrated: `<div class="empty-art">${icon('check')}</div><h2>Всё найденное уже оценено</h2><p>Включён фильтр «Скрыть уже оценённые».</p><button class="btn" data-act="showrated">Показать оценённые</button>`,
+    error: `<div class="empty-art">${icon('wifi')}</div><h2>${tr('Не получилось загрузить')}</h2><p>${tr('Проверь интернет и попробуй ещё раз.')}</p><button class="btn primary" data-act="retry">${tr('Повторить')}</button>`,
+    empty: `<div class="empty-art">${icon('search')}</div><h2>${tr('Ничего не нашлось')}</h2><p>${filtered ? tr('Попробуй другое название или убери фильтры.') : tr('Попробуй другое название.')}</p>${filtered ? `<button class="btn" data-act="reset">${tr('Сбросить фильтры')}</button>` : ''}`,
+    allrated: `<div class="empty-art">${icon('check')}</div><h2>${tr('Всё найденное уже оценено')}</h2><p>${tr('Включён фильтр «Скрыть уже оценённые».')}</p><button class="btn" data-act="showrated">${tr('Показать оценённые')}</button>`,
   }[kind];
   m.innerHTML = html; m.hidden = false;
 }
@@ -555,7 +592,7 @@ function renderCatalog() {
 }
 // состав серий для плиток: ключ серии → { first: первая вышедшая часть, count: сколько частей, score: средняя мировая }
 // запоминаем на неделю, чтобы при следующем заходе плитки сразу были верными
-const SERIES_KEY = 'animetop.series2';
+const SERIES_KEY = 'animetop.series3';
 const seriesInfo = new Map();
 try {
   const saved = JSON.parse(localStorage.getItem(SERIES_KEY) || '{}');
@@ -604,18 +641,18 @@ function yearSpan(members) {
 }
 function tileHTML({ a, n, total, avg: seriesAvg, years }, i, my) {
   const series = total > 1;
-  const parts = series ? `${total} ${plural(total, PARTS)}` : n > 1 ? `найдено частей: ${n}` : '';
-  const meta = series ? ['Серия', years] : [KIND[a.kind] || a.kind, a.airedOn?.year];
+  const parts = series ? `${total} ${plural(total, PARTS)}` : n > 1 ? tr('найдено частей: {n}', { n }) : '';
+  const meta = series ? [tr('Серия'), years] : [KIND[a.kind] || a.kind, a.airedOn?.year];
   // у серии показываем среднюю мировую оценку по её частям — ту же, что в карточке
   const world = total > 1 && seriesAvg ? seriesAvg : a.score;
   return `<button class="tile" data-i="${i}">
     <div class="poster">
       <img loading="lazy" src="${esc(a.poster?.previewUrl || a.poster?.mainUrl || '')}" alt="">
-      ${world ? `<span class="b-world" title="${total > 1 ? 'Средняя мировая оценка серии' : 'Мировая оценка'}"><i>★</i>${fmtWorld(world)}</span>` : ''}
-      ${my != null ? `<span class="b-my" title="Моя оценка">${fmtMy(my)}</span>` : ''}
+      ${world ? `<span class="b-world" title="${total > 1 ? tr('Средняя мировая оценка серии') : tr('Мировая оценка')}"><i>★</i>${fmtWorld(world)}</span>` : ''}
+      ${my != null ? `<span class="b-my" title="${tr('Моя оценка')}">${fmtMy(my)}</span>` : ''}
       ${parts ? `<span class="b-parts">${parts}</span>` : ''}
     </div>
-    <div class="t">${esc(a.russian || a.name)}</div>
+    <div class="t">${esc(tn(a))}</div>
     <div class="s">${meta.filter(Boolean).join(' · ')}</div>
   </button>`;
 }
@@ -646,18 +683,18 @@ document.addEventListener('keydown', (e) => {
 
 /* ---------- Тир-лист ---------- */
 const TIERS = [
-  { t: 'S', c: '#ff6b8f', d: 'Лучшие' }, { t: 'A', c: '#ffa257', d: 'Отличные' }, { t: 'B', c: '#ffd75e', d: 'Хорошие' },
-  { t: 'C', c: '#5fd99a', d: 'Нормальные' }, { t: 'D', c: '#62c2ff', d: 'Так себе' }, { t: 'F', c: '#a597ff', d: 'Плохие' },
+  { t: 'S', c: '#ff6b8f', d: tr('Лучшие') }, { t: 'A', c: '#ffa257', d: tr('Отличные') }, { t: 'B', c: '#ffd75e', d: tr('Хорошие') },
+  { t: 'C', c: '#5fd99a', d: tr('Нормальные') }, { t: 'D', c: '#62c2ff', d: tr('Так себе') }, { t: 'F', c: '#a597ff', d: tr('Плохие') },
 ];
 // отдельная полоса внизу — то, что ещё не смотрел (статус «Не смотрел»)
-const NW = { t: 'nw', c: '#9a95ad', name: 'Не смотрел', d: '' };
+const NW = { t: 'nw', c: '#9a95ad', name: tr('Не смотрел'), d: '' };
 const TIER_DEF = Object.fromEntries([...TIERS.map((x) => [x.t, { name: x.t, d: x.d }]), ['nw', { name: NW.name, d: NW.d }]]);
 // свои названия и подписи тиров: { S: { name: 'Топ', d: 'Любимые' } }
 let tierNames = {};
 try { tierNames = JSON.parse(pref('tierNames', '{}')) || {}; } catch {}
 const tierName = (t) => tierNames[t]?.name || TIER_DEF[t]?.name || t;
 const tierDesc = (t) => tierNames[t]?.d ?? TIER_DEF[t]?.d ?? '';
-const tierTitle = (t) => (t === 'nw' ? `«${tierName(t)}»` : `тир ${tierName(t)}`);
+const tierTitle = (t) => (t === 'nw' ? `«${tierName(t)}»` : tr('тир {t}', { t: tierName(t) }));
 function setTierName(t, name, d) {
   const def = TIER_DEF[t];
   const v = { name: name || def.name, d };
@@ -671,15 +708,15 @@ function editTier(anchor, t) {
   closePop();
   pop.onclick = null;
   pop.innerHTML = `<form class="pop-edit" autocomplete="off">
-    <h4>${t === 'nw' ? 'Полоса «Не смотрел»' : `Тир ${esc(TIER_DEF[t].name)}`}</h4>
-    <label>Название<input name="n" maxlength="20" value="${esc(tierName(t))}"></label>
-    <label>Подпись<input name="d" maxlength="28" value="${esc(tierDesc(t))}" placeholder="Например: «Любимые»"></label>
-    <div class="pop-edit-btns"><button type="button" class="link" data-def>Как было</button><button type="submit" class="btn primary">Сохранить</button></div>
+    <h4>${t === 'nw' ? tr('Полоса «Не смотрел»') : tr('Тир {t}', { t: esc(TIER_DEF[t].name) })}</h4>
+    <label>${tr('Название')}<input name="n" maxlength="20" value="${esc(tierName(t))}"></label>
+    <label>${tr('Подпись')}<input name="d" maxlength="28" value="${esc(tierDesc(t))}" placeholder="${tr('Например: «Любимые»')}"></label>
+    <div class="pop-edit-btns"><button type="button" class="link" data-def>${tr('Как было')}</button><button type="submit" class="btn primary">${tr('Сохранить')}</button></div>
   </form>`;
   showPopAt(anchor, 'beside');
   const f = $('form', pop), n = f.elements.n;
   n.focus(); n.select();
-  f.onsubmit = (e) => { e.preventDefault(); setTierName(t, n.value.trim(), f.elements.d.value.trim()); closePop(); toast('Тир переименован'); };
+  f.onsubmit = (e) => { e.preventDefault(); setTierName(t, n.value.trim(), f.elements.d.value.trim()); closePop(); toast(tr('Тир переименован')); };
   $('[data-def]', f).onclick = () => { setTierName(t, '', TIER_DEF[t].d); closePop(); };
 }
 // свёрнутые тиры: видна только первая строка постеров
@@ -700,7 +737,7 @@ function applyFold() {
     sec.classList.toggle('is-folded', folded);
     btn.hidden = false;
     btn.classList.toggle('up', !folded);
-    btn.title = folded ? `Показать все (${items.length})` : 'Свернуть до одной строки';
+    btn.title = folded ? tr('Показать все ({n})', { n: items.length }) : tr('Свернуть до одной строки');
     $('i', btn).textContent = folded ? `+${extra.length}` : '';
   });
 }
@@ -716,7 +753,7 @@ const rowTier = (r) => r.tier || autoTier(r.score);
 const rowId = (r) => (r.type === 'title' ? 't:' + r.key : 's:' + r.anime.id);
 function withinTier(a, b) {
   return (a.pos ?? 1e9) - (b.pos ?? 1e9) || (b.score || 0) - (a.score || 0) || (b.world || 0) - (a.world || 0)
-    || (a.anime.russian || '').localeCompare(b.anime.russian || '', 'ru');
+    || tn(a.anime).localeCompare(tn(b.anime), LOCALE);
 }
 // куда строка попадает в тир-листе: «Не смотрел» — отдельная полоса, остальное — по тиру
 const rowGroup = (r) => (r.status === 'not_watched' ? 'nw' : rowTier(r));
@@ -743,7 +780,7 @@ function dropRow(r, ng, before) {
     writeRow(r, patch);
   }
   save(); renderMine();
-  if (ng !== from) toast(`Перенесено в ${tierTitle(ng)}`);
+  if (ng !== from) toast(tr('Перенесено в {t}', { t: tierTitle(ng) }));
 }
 // сдвинуть на одно место внутри своего тира (кнопки в карточке)
 function stepRow(r, dir) {
@@ -759,14 +796,14 @@ function stepRow(r, dir) {
 let mineRows = [];
 // сортировка «Рейтинга» — та, что выбрана в пилюле
 function sortMine(list) {
-  const name = (r) => (r.anime.russian || r.anime.name || '');
+  const name = (r) => tn(r.anime);
   const cmp = {
     my: (a, b) => (b.score || 0) - (a.score || 0) || (b.world || 0) - (a.world || 0),
     world: (a, b) => (b.world || 0) - (a.world || 0),
     diff: (a, b) => ((b.score || 0) - (b.world || 0)) - ((a.score || 0) - (a.world || 0)),
     added: (a, b) => b.added - a.added,
     year: (a, b) => (b.anime.year || 0) - (a.anime.year || 0),
-    name: (a, b) => name(a).localeCompare(name(b), 'ru'),
+    name: (a, b) => name(a).localeCompare(name(b), LOCALE),
   }[mineF.sort] || ((a, b) => (b.score || 0) - (a.score || 0));
   return list.sort(cmp);
 }
@@ -774,7 +811,7 @@ const mineList = $('#mineList');
 function rowMeta(r) {
   const a = r.anime;
   return (r.type === 'title'
-    ? ['Вся серия', r.parts ? `${r.parts} ${plural(r.parts, PARTS)}` : r.ratedSeasons ? `оценено частей: ${r.ratedSeasons}` : '', WATCH[r.status]]
+    ? [tr('Вся серия'), r.parts ? `${r.parts} ${plural(r.parts, PARTS)}` : r.ratedSeasons ? tr('оценено частей: {n}', { n: r.ratedSeasons }) : '', WATCH[r.status]]
     : [KIND[a.kind] || a.kind, a.year, WATCH[r.status]]).filter(Boolean);
 }
 function rowHTML(r, i) {
@@ -784,35 +821,35 @@ function rowHTML(r, i) {
     <span class="rk ${n <= 3 ? 'rk-' + n : ''}">${n}</span>
     <img class="row-poster" loading="lazy" src="${esc(a.poster)}" alt="">
     <div class="row-main">
-      <div class="row-title">${esc(a.russian || a.name)}</div>
+      <div class="row-title">${esc(tn(a))}</div>
       <div class="row-meta">${rowMeta(r).map(esc).join(' · ')}${r.world ? `<span class="mw"> · <span class="star">★</span> ${fmtWorld(r.world)}</span>` : ''}</div>
       ${r.note ? `<div class="row-note">«${esc(r.note)}»</div>` : ''}
     </div>
-    <div class="row-world" title="${r.type === 'title' ? 'Средняя мировая оценка по частям серии' : 'Мировая оценка'}"><span><span class="star">★</span> ${fmtWorld(r.world)}</span><small>в мире</small></div>
-    <div class="row-my ${myCls}" title="${r.approx ? 'Среднее по моим оценкам сезонов' : 'Моя оценка'}">${r.approx ? '≈' : ''}${fmtMy(r.score)}</div>
+    <div class="row-world" title="${r.type === 'title' ? tr('Средняя мировая оценка по частям серии') : tr('Мировая оценка')}"><span><span class="star">★</span> ${fmtWorld(r.world)}</span><small>${tr('в мире')}</small></div>
+    <div class="row-my ${myCls}" title="${r.approx ? tr('Среднее по моим оценкам сезонов') : tr('Моя оценка')}">${r.approx ? '≈' : ''}${fmtMy(r.score)}</div>
   </li>`;
 }
 function tierItemHTML(r, i, place) {
   const a = r.anime;
-  return `<div class="t-item" data-i="${i}" title="${esc(a.russian || a.name)}">
+  return `<div class="t-item" data-i="${i}" title="${esc(tn(a))}">
     <div class="t-poster">
       <img loading="lazy" draggable="false" src="${esc(a.poster)}" alt="">
       <span class="t-place">${place}</span>
       ${r.score != null ? `<span class="t-my">${r.approx ? '≈' : ''}${fmtMy(r.score)}</span>` : ''}
     </div>
-    <div class="t-name">${esc(a.russian || a.name)}</div>
+    <div class="t-name">${esc(tn(a))}</div>
   </div>`;
 }
 function renderStats(all) {
-  if (!all.length) { $('#stats').textContent = 'Пока пусто'; return; }
+  if (!all.length) { $('#stats').textContent = tr('Пока пусто'); return; }
   const rated = all.filter((r) => r.score != null);
   const tens = rated.filter((r) => r.score === 10).length;
   const done = all.filter((r) => r.status === 'completed').length;
   const bits = [
-    `<b>${all.length}</b> ${mode === 'title' ? 'аниме' : plural(all.length, ['сезон или фильм', 'сезона и фильма', 'сезонов и фильмов'])}`,
-    rated.length ? `средняя <b>${avg(rated.map((r) => r.score)).toFixed(1)}</b>` : '',
+    `<b>${all.length}</b> ${mode === 'title' ? plural(all.length, ['аниме', 'аниме', 'аниме']) : plural(all.length, ['сезон или фильм', 'сезона и фильма', 'сезонов и фильмов'])}`,
+    rated.length ? `${tr('средняя')} <b>${avg(rated.map((r) => r.score)).toFixed(1)}</b>` : '',
     tens ? `<b>${tens}</b> ${plural(tens, ['шедевр', 'шедевра', 'шедевров'])}` : '',
-    done ? `<b>${done}</b> просмотрено` : '',
+    done ? `<b>${done}</b> ${tr('просмотрено')}` : '',
   ].filter(Boolean);
   $('#stats').innerHTML = bits.join('<i>·</i>');
 }
@@ -838,9 +875,9 @@ function statsHTML(list) {
   const tile = (v, l, sub = '') => `<div class="st-tile"><b>${v}</b><span>${l}</span>${sub ? `<small>${sub}</small>` : ''}</div>`;
   const tiles = [
     tile(list.length, mode === 'title' ? plural(list.length, ['аниме в топе', 'аниме в топе', 'аниме в топе']) : plural(list.length, ['сезон или фильм', 'сезона и фильма', 'сезонов и фильмов'])),
-    myAvg != null ? tile(fmt1(myAvg), 'моя средняя', worldAvgAll != null ? `в мире у тех же — ${fmt1(worldAvgAll)}` : '') : '',
-    diff != null ? tile((diff > 0 ? '+' : '') + fmt1(diff), diff >= 0.05 ? 'ты мягче мира' : diff <= -0.05 ? 'ты строже мира' : 'как у всего мира', 'в среднем на столько баллов') : '',
-    eps ? tile(eps, plural(eps, ['эпизод', 'эпизода', 'эпизодов']), '≈ ' + Math.round((eps * 23) / 60) + ' ч просмотра') : '',
+    myAvg != null ? tile(fmt1(myAvg), tr('моя средняя'), worldAvgAll != null ? tr('в мире у тех же — {n}', { n: fmt1(worldAvgAll) }) : '') : '',
+    diff != null ? tile((diff > 0 ? '+' : '') + fmt1(diff), diff >= 0.05 ? tr('ты мягче мира') : diff <= -0.05 ? tr('ты строже мира') : tr('как у всего мира'), tr('в среднем на столько баллов')) : '',
+    eps ? tile(eps, plural(eps, ['эпизод', 'эпизода', 'эпизодов']), tr('≈ {n} ч просмотра', { n: Math.round((eps * 23) / 60) })) : '',
   ].filter(Boolean).join('');
 
   const sec = (title, body, note = '') => `<section class="st-sec"><div class="st-head"><h3>${title}</h3>${note ? `<span>${note}</span>` : ''}</div>${body}</section>`;
@@ -851,32 +888,32 @@ function statsHTML(list) {
       const c = rated.filter((r) => Math.round(r.score) === n).length;
       return { n: c, label: `${n}`, html: `<b>${n}</b> ${LABEL[n]}`, tip: `${n} — ${LABEL[n]}: ${c}` };
     });
-    out.push(sec('Мои оценки', barsHTML(dist), rated.length < list.length ? `без оценки — ${list.length - rated.length}` : ''));
+    out.push(sec(tr('Мои оценки'), barsHTML(dist), rated.length < list.length ? tr('без оценки — {n}', { n: list.length - rated.length }) : ''));
   }
 
   const gmap = new Map();
   list.forEach((r) => (r.anime.genres || []).forEach((g) => {
-    const x = gmap.get(g.id) || { label: g.russian, n: 0, s: [] };
+    const x = gmap.get(g.id) || { label: gname(g), n: 0, s: [] };
     x.n++; if (r.score != null) x.s.push(r.score); gmap.set(g.id, x);
   }));
   const genres = [...gmap.values()].map((x) => ({ ...x, avg: x.s.length ? avg(x.s) : null }));
   if (genres.length) {
     const fav = genres.filter((g) => g.s.length >= 2).sort((a, b) => b.avg - a.avg || b.n - a.n)[0];
     const top = [...genres].sort((a, b) => b.n - a.n || (b.avg || 0) - (a.avg || 0)).slice(0, 10);
-    const lead = fav ? `<p class="st-lead">Любимый жанр — <b>${esc(fav.label)}</b>: средняя <b>${fmt1(fav.avg)}</b> по ${fav.s.length} ${plural(fav.s.length, ['аниме', 'аниме', 'аниме'])}.</p>` : '';
-    out.push(sec('Жанры', lead + barsHTML(top.map((g) => ({ ...g, tip: `${g.label}: ${g.n}${g.avg != null ? `, моя средняя ${fmt1(g.avg)}` : ''}` })), { avgOf: true }), 'сколько и моя средняя'));
+    const lead = fav ? `<p class="st-lead">${tr('Любимый жанр — <b>{g}</b>: средняя <b>{a}</b> по {n} аниме.', { g: esc(fav.label), a: fmt1(fav.avg), n: fav.s.length })}</p>` : '';
+    out.push(sec(tr('Жанры'), lead + barsHTML(top.map((g) => ({ ...g, tip: `${g.label}: ${g.n}${g.avg != null ? `, ${tr('моя средняя')} ${fmt1(g.avg)}` : ''}` })), { avgOf: true }), tr('сколько и моя средняя')));
   }
 
   const dmap = new Map();
   list.forEach((r) => {
     const y = r.anime.year; if (!y) return;
     const d = Math.floor(y / 10) * 10;
-    const x = dmap.get(d) || { label: `${d}-е`, n: 0, s: [] };
+    const x = dmap.get(d) || { label: EN_ON ? `${d}s` : `${d}-е`, n: 0, s: [] };
     x.n++; if (r.score != null) x.s.push(r.score); dmap.set(d, x);
   });
   if (dmap.size) {
     const dec = [...dmap.entries()].sort((a, b) => b[0] - a[0]).map(([, x]) => ({ ...x, avg: x.s.length ? avg(x.s) : null, tip: `${x.label}: ${x.n}` }));
-    out.push(sec('По годам выхода', barsHTML(dec, { avgOf: true }), 'по десятилетиям'));
+    out.push(sec(tr('По годам выхода'), barsHTML(dec, { avgOf: true }), tr('по десятилетиям')));
   }
 
   if (both.length >= 2) {
@@ -885,8 +922,8 @@ function statsHTML(list) {
       const i = mineRows.push(r) - 1, d = r.score - r.world;
       return `<button class="st-pick" data-i="${i}">
         <img loading="lazy" src="${esc(r.anime.poster)}" alt="">
-        <span class="st-pick-name">${esc(r.anime.russian || r.anime.name)}</span>
-        <span class="st-pick-nums">моя <b>${r.approx ? '≈' : ''}${fmtMy(r.score)}</b> · мир <b>${fmtWorld(r.world)}</b></span>
+        <span class="st-pick-name">${esc(tn(r.anime))}</span>
+        <span class="st-pick-nums">${tr('моя')} <b>${r.approx ? '≈' : ''}${fmtMy(r.score)}</b> · ${tr('мир')} <b>${fmtWorld(r.world)}</b></span>
         <span class="st-pick-d ${d > 0 ? 'up' : 'down'}">${d > 0 ? '+' : '−'}${fmt1(Math.abs(d))}</span>
       </button>`;
     };
@@ -894,19 +931,19 @@ function statsHTML(list) {
     const ups = byD.filter((r) => r.score - r.world > 0.3).slice(0, 3);
     const downs = byD.reverse().filter((r) => r.score - r.world < -0.3).slice(0, 3);
     if (ups.length || downs.length) {
-      out.push(sec('Ты и мир', `<div class="st-cols">
-        ${ups.length ? `<div><h4>Ты оценил выше мира</h4>${ups.map(pickHTML).join('')}</div>` : ''}
-        ${downs.length ? `<div><h4>Ты оценил ниже мира</h4>${downs.map(pickHTML).join('')}</div>` : ''}
-      </div>`, 'где твоё мнение сильнее всего расходится'));
+      out.push(sec(tr('Ты и мир'), `<div class="st-cols">
+        ${ups.length ? `<div><h4>${tr('Ты оценил выше мира')}</h4>${ups.map(pickHTML).join('')}</div>` : ''}
+        ${downs.length ? `<div><h4>${tr('Ты оценил ниже мира')}</h4>${downs.map(pickHTML).join('')}</div>` : ''}
+      </div>`, tr('где твоё мнение сильнее всего расходится')));
     }
   }
 
   const small = [];
   const smap = Object.entries(WATCH).map(([k, v]) => ({ label: v, n: list.filter((r) => r.status === k).length })).filter((x) => x.n);
-  if (smap.length) small.push(sec('Статусы', barsHTML(smap)));
+  if (smap.length) small.push(sec(tr('Статусы'), barsHTML(smap)));
   const kmap = new Map();
-  list.forEach((r) => { const k = r.type === 'title' && (r.parts || 0) > 1 ? 'Серия из частей' : KIND[r.anime.kind] || r.anime.kind || 'Другое'; kmap.set(k, (kmap.get(k) || 0) + 1); });
-  if (kmap.size) small.push(sec('Типы', barsHTML([...kmap.entries()].sort((a, b) => b[1] - a[1]).map(([label, n]) => ({ label, n })))));
+  list.forEach((r) => { const k = r.type === 'title' && (r.parts || 0) > 1 ? tr('Серия из частей') : KIND[r.anime.kind] || r.anime.kind || tr('Другое'); kmap.set(k, (kmap.get(k) || 0) + 1); });
+  if (kmap.size) small.push(sec(tr('Типы'), barsHTML([...kmap.entries()].sort((a, b) => b[1] - a[1]).map(([label, n]) => ({ label, n })))));
   if (small.length) out.push(`<div class="st-cols">${small.join('')}</div>`);
 
   return `<div class="stats-view">${out.join('')}</div>`;
@@ -923,11 +960,11 @@ function renderMine() {
   $('#shareBtn').hidden = layout === 'stats';
   if (empty) { mineRows = []; mineList.innerHTML = ''; return; }
 
-  const q = $('#mineSearch').value.trim().toLocaleLowerCase('ru');
+  const q = $('#mineSearch').value.trim().toLocaleLowerCase(LOCALE);
   const min = +mineF.min || 0, wmin = +mineF.wmin || 0;
   const list = all.filter((r) => {
     const a = r.anime;
-    if (q && !(`${a.russian} ${a.name}`.toLocaleLowerCase('ru').includes(q))) return false;
+    if (q && !(`${a.russian} ${a.name} ${a.english || ''}`.toLocaleLowerCase(LOCALE).includes(q))) return false;
     if (mineF.status && r.status !== mineF.status) return false;
     if (min && (r.score || 0) < min) return false;
     if (wmin && (r.world || 0) < wmin) return false;
@@ -936,7 +973,7 @@ function renderMine() {
   });
   if (!list.length) {
     mineRows = [];
-    mineList.innerHTML = `<div class="empty-state small"><div class="empty-art">${icon('search')}</div><h2>Ничего не нашлось</h2><p>В топе нет аниме, подходящих под поиск и фильтры.</p><button class="btn" data-act="reset">Сбросить поиск и фильтры</button></div>`;
+    mineList.innerHTML = `<div class="empty-state small"><div class="empty-art">${icon('search')}</div><h2>${tr('Ничего не нашлось')}</h2><p>${tr('В топе нет аниме, подходящих под поиск и фильтры.')}</p><button class="btn" data-act="reset">${tr('Сбросить поиск и фильтры')}</button></div>`;
     return;
   }
   if (layout === 'stats') { mineRows = []; mineList.innerHTML = statsHTML(list); return; }
@@ -945,10 +982,10 @@ function renderMine() {
     mineRows = [];
     const groups = [...TIERS, NW, { t: null, c: '#4a4560' }].map((x) => ({ ...x, rows: list.filter((r) => rowGroup(r) === x.t).sort(withinTier) }));
     mineList.innerHTML = `<div class="tiers">${groups.filter((g) => g.t || g.rows.length).map((g) => {
-      const name = g.t ? tierName(g.t) : '?', desc = g.t ? tierDesc(g.t) : 'Без оценки';
+      const name = g.t ? tierName(g.t) : '?', desc = g.t ? tierDesc(g.t) : tr('Без оценки');
       return `<section class="tier ${g.t === 'nw' ? 'tier-nw' : ''}" data-tier="${g.t || ''}" style="--c:${g.c}">
         <div class="tier-label">
-          <button class="tier-name" ${g.t ? `data-edit="${g.t}" title="Нажми, чтобы переименовать"` : 'disabled'}>
+          <button class="tier-name" ${g.t ? `data-edit="${g.t}" title="${tr('Нажми, чтобы переименовать')}"` : 'disabled'}>
             <b class="${name.length > 2 ? 'long' : ''}">${esc(name)}</b>${desc ? `<em>${esc(desc)}</em>` : ''}
           </button>
           <span class="tier-count">${g.rows.length}</span>
@@ -956,7 +993,7 @@ function renderMine() {
         </div>
         <div class="tier-body">${g.rows.length
           ? g.rows.map((r, k) => { mineRows.push(r); return tierItemHTML(r, mineRows.length - 1, k + 1); }).join('')
-          : `<span class="tier-empty">${g.t === 'nw' ? 'Сюда — то, что ещё не смотрел' : 'Пусто — перетащи сюда'}</span>`}</div>
+          : `<span class="tier-empty">${g.t === 'nw' ? tr('Сюда — то, что ещё не смотрел') : tr('Пусто — перетащи сюда')}</span>`}</div>
       </section>`;
     }).join('')}</div>`;
     applyFold();
@@ -1134,8 +1171,8 @@ $('#trayClose').addEventListener('click', () => setTray(false));
 function trayHint() {
   const touch = matchMedia('(hover: none) and (pointer: coarse)').matches;
   const tiers = layout === 'tiers' && $('#mineEmpty').hidden;
-  $('#trayHint').innerHTML = `${touch ? 'Задержи палец на постере и перетащи' : 'Перетащи постер'} ${tiers ? (touch ? 'в нужный тир' : 'в нужный тир или в «' + esc(tierName('nw')) + '»') : 'в топ — откроется оценка'}.
-    <span>Показано: <b>${mode === 'title' ? 'аниме целиком' : 'каждый сезон отдельно'}</b></span>`;
+  $('#trayHint').innerHTML = `${touch ? tr('Задержи палец на постере и перетащи') : tr('Перетащи постер')} ${tiers ? (touch ? tr('в нужный тир') : tr('в нужный тир или в «{nw}»', { nw: esc(tierName('nw')) })) : tr('в топ — откроется оценка')}.
+    <span>${tr('Показано:')} <b>${mode === 'title' ? tr('аниме целиком') : tr('каждый сезон отдельно')}</b></span>`;
 }
 async function loadTray(reset) {
   const token = ++tray.token;
@@ -1153,7 +1190,7 @@ async function loadTray(reset) {
   } catch {
     if (token !== tray.token) return;
     tray.loading = false;
-    if (reset) strip.innerHTML = '<p class="tray-msg">Не получилось загрузить — проверь интернет</p>';
+    if (reset) strip.innerHTML = `<p class="tray-msg">${tr('Не получилось загрузить — проверь интернет')}</p>`;
     return;
   }
   tray.loading = false;
@@ -1184,7 +1221,7 @@ function renderTray() {
   }
   const keep = strip.scrollLeft;
   strip.innerHTML = list.length ? list.map(trayItemHTML).join('')
-    : `<p class="tray-msg">${tray.items.length ? 'Всё найденное уже в твоём топе' : 'Ничего не нашлось'}</p>`;
+    : `<p class="tray-msg">${tray.items.length ? tr('Всё найденное уже в твоём топе') : tr('Ничего не нашлось')}</p>`;
   strip.scrollLeft = keep;
   // если почти всё уже в топе — подгрузим ещё, чтобы полоса не была пустой
   if (list.length < 8 && tray.more && !tray.loading && tray.page < 6) { tray.page++; loadTray(false); }
@@ -1193,12 +1230,12 @@ function trayItemHTML({ a, total, avg: sAvg }, i) {
   const series = total > 1;
   const world = series && sAvg ? sAvg : a.score;
   const sub = series ? `${total} ${plural(total, PARTS)}` : [KIND[a.kind] || a.kind, a.airedOn?.year].filter(Boolean).join(' · ');
-  return `<div class="t-item tray-item" data-k="${i}" title="${esc(a.russian || a.name)}">
+  return `<div class="t-item tray-item" data-k="${i}" title="${esc(tn(a))}">
     <div class="t-poster">
       <img loading="lazy" draggable="false" src="${esc(a.poster?.previewUrl || a.poster?.mainUrl || '')}" alt="">
       ${world ? `<span class="t-world"><i>★</i>${fmtWorld(world)}</span>` : ''}
     </div>
-    <div class="t-name">${esc(a.russian || a.name)}</div>
+    <div class="t-name">${esc(tn(a))}</div>
     <div class="t-sub">${esc(sub)}</div>
   </div>`;
 }
@@ -1243,10 +1280,10 @@ async function addFromTray(a, target) {
   const row = buildRows().find((r) => rowId(r) === id);
   if (target.tier && row) {
     dropRow(row, target.tier, target.before);
-    toast(`Добавлено в ${tierTitle(target.tier)}`);
+    toast(tr('Добавлено в {t}', { t: tierTitle(target.tier) }));
   } else {
     afterChange();
-    toast('Добавлено в топ — поставь оценку');
+    toast(tr('Добавлено в топ — поставь оценку'));
     openCard(asTitle ? fromSnap(db.franchises[k].anime) : a, asTitle ? 'franchise' : 'season');
   }
   renderTray();
@@ -1396,11 +1433,11 @@ function renderCard() {
   const rec = waitTitle ? null : curRec();
   const members = st.members || [];
   const multi = members.length > 1;
-  const desc = cleanDesc(full?.description);
+  const desc = EN_ON ? '' : cleanDesc(full?.description);
   const years = members.map((m) => m.airedOn?.year).filter(Boolean);
   const poster = a.poster?.mainUrl || a.poster?.previewUrl || '';
   const world = title ? worldAvg(members) : a.score;
-  const eps = a.status === 'ongoing' && full?.episodesAired ? `${full.episodesAired} из ${a.episodes || '?'} эп.` : a.episodes ? `${a.episodes} эп.` : '';
+  const eps = a.status === 'ongoing' && full?.episodesAired ? tr('{a} из {b} эп.', { a: full.episodesAired, b: a.episodes || '?' }) : a.episodes ? tr('{n} эп.', { n: a.episodes }) : '';
   const facts = (title
     ? [years.length ? (Math.min(...years) === Math.max(...years) ? `${years[0]}` : `${Math.min(...years)}–${Math.max(...years)}`) : '', full?.studios?.length ? full.studios.map((s) => s.name).join(', ') : '']
     : [KIND[a.kind] || a.kind, a.airedOn?.year, eps, STATUS_A[a.status] || a.status, full?.studios?.length ? full.studios.map((s) => s.name).join(', ') : '']
@@ -1412,76 +1449,76 @@ function renderCard() {
       ${safeUrl(poster) ? `<div class="hero-bg" style="background-image:url(&quot;${esc(safeUrl(poster))}&quot;)"></div>` : ''}
       <img class="hero-poster" src="${esc(poster)}" alt="">
       <div class="hero-head">
-        ${!title && multi ? `<button class="crumb" id="toTitle">${icon('back')}Вся серия</button>` : ''}
-        ${title ? `<div class="kicker">${icon('layers')}Вся серия · ${members.length} ${plural(members.length, PARTS)}</div>` : ''}
-        <h2>${esc(a.russian || a.name)}</h2>
-        ${a.russian && a.name ? `<div class="orig">${esc(a.name)}</div>` : ''}
-        ${world ? `<div class="world"><span class="star">★</span><b>${fmtWorld(world)}</b><span>${title ? 'в мире, в среднем по серии' : 'в мире'}</span></div>` : ''}
+        ${!title && multi ? `<button class="crumb" id="toTitle">${icon('back')}${tr('Вся серия')}</button>` : ''}
+        ${title ? `<div class="kicker">${icon('layers')}${tr('Вся серия')} · ${members.length} ${plural(members.length, PARTS)}</div>` : ''}
+        <h2>${esc(tn(a))}</h2>
+        ${!EN_ON && a.russian && a.name ? `<div class="orig">${esc(a.name)}</div>` : EN_ON && a.english && a.name && a.english !== a.name ? `<div class="orig">${esc(a.name)}</div>` : ''}
+        ${world ? `<div class="world"><span class="star">★</span><b>${fmtWorld(world)}</b><span>${title ? tr('в мире, в среднем по серии') : tr('в мире')}</span></div>` : ''}
         ${facts.length ? `<div class="facts">${facts.map(esc).join('<i>·</i>')}</div>` : ''}
       </div>
       <div class="hero-more">
-        ${(a.genres || []).length ? `<div class="tags">${a.genres.map((g) => `<span class="tag">${esc(g.russian)}</span>`).join('')}</div>` : ''}
+        ${(a.genres || []).length ? `<div class="tags">${a.genres.map((g) => `<span class="tag">${esc(gname(g))}</span>`).join('')}</div>` : ''}
         ${full ? (desc ? `<div class="desc clamp" id="desc">${esc(desc)}</div>` : '') : st.loading ? '<div class="skeleton" style="height:84px;border-radius:10px;margin-top:14px"></div>' : ''}
         <div class="hero-links">
-          ${full && desc.length > 260 ? '<button class="link" id="descMore">Читать полностью</button>' : ''}
-          <a class="ext" href="${esc(a.url?.startsWith('http') ? a.url : SITE + (a.url || ''))}" target="_blank" rel="noopener">Открыть на Shikimori${icon('ext')}</a>
-          <a class="ext ax" id="axLink" target="_blank" rel="noopener" hidden>Открыть в Anixart${icon('ext')}</a>
+          ${full && desc.length > 260 ? `<button class="link" id="descMore">${tr('Читать полностью')}</button>` : ''}
+          <a class="ext" href="${esc(a.url?.startsWith('http') ? a.url : SITE + (a.url || ''))}" target="_blank" rel="noopener">${tr('Открыть на Shikimori')}${icon('ext')}</a>
+          <a class="ext ax" id="axLink" target="_blank" rel="noopener" hidden>${tr('Открыть в Anixart')}${icon('ext')}</a>
         </div>
       </div>
     </div>`;
 
   /* --- оценка --- */
-  const rateH = title ? 'Моя оценка всей серии' : multi ? 'Моя оценка этой части' : 'Моя оценка';
+  const rateH = title ? tr('Моя оценка всей серии') : multi ? tr('Моя оценка этой части') : tr('Моя оценка');
   const mySeason = members.map((m) => db.items[m.id]?.score).filter(Boolean);
   const hintText = rec?.score ? ''
-    : title && mySeason.length ? `Среднее по моим оценкам частей — ${fmtMy(Math.round(avg(mySeason) * 10) / 10)}. Можно поставить отдельную оценку всей серии.`
-    : rec ? 'Нажми на число, чтобы оценить.'
-    : 'Нажми на число — аниме сразу попадёт в твой топ.';
+    : title && mySeason.length ? tr('Среднее по моим оценкам частей — {n}. Можно поставить отдельную оценку всей серии.', { n: fmtMy(Math.round(avg(mySeason) * 10) / 10) })
+    : rec ? tr('Нажми на число, чтобы оценить.')
+    : tr('Нажми на число — аниме сразу попадёт в твой топ.');
   const verdictHTML = (n) => (n ? `<b>${n}</b>${LABEL[n]}` : '');
   const row = rec ? curRow() : null;
   let tierField = '';
   if (rec && row) {
     const auto = autoTier(row.score), g = rowGroup(row);
     const inTier = groupRows(g), i = inTier.findIndex((x) => rowId(x) === rowId(row));
-    tierField = `<div class="field"><span class="lbl">Тир <small>для тир-листа</small></span><div>
+    tierField = `<div class="field"><span class="lbl">${tr('Тир')} <small>${tr('для тир-листа')}</small></span><div>
       <div class="chips">
-        <button class="chip ${!rec.tier ? 'on' : ''}" data-tier="" title="Тир подбирается по оценке">Авто${auto ? ` · ${esc(tierName(auto))}` : ''}</button>
+        <button class="chip ${!rec.tier ? 'on' : ''}" data-tier="" title="${tr('Тир подбирается по оценке')}">${tr('Авто')}${auto ? ` · ${esc(tierName(auto))}` : ''}</button>
         ${TIERS.map((x) => `<button class="chip chip-tier ${rec.tier === x.t ? 'on' : ''}" data-tier="${x.t}" style="--c:${x.c}" title="${esc(tierDesc(x.t))}">${esc(tierName(x.t))}</button>`).join('')}
       </div>
-      ${g && inTier.length > 1 ? `<div class="place">Место ${g === 'nw' ? `в «${esc(tierName('nw'))}»` : `в тире ${esc(tierName(g))}`}:
-        <button class="step" data-step="-1" ${i <= 0 ? 'disabled' : ''} aria-label="Выше">${icon('up')}</button>
-        <b>${i + 1}</b> из ${inTier.length}
-        <button class="step" data-step="1" ${i >= inTier.length - 1 ? 'disabled' : ''} aria-label="Ниже">${icon('down')}</button></div>` : ''}
+      ${g && inTier.length > 1 ? `<div class="place">${g === 'nw' ? tr('Место в «{t}»:', { t: esc(tierName('nw')) }) : tr('Место в тире {t}:', { t: esc(tierName(g)) })}
+        <button class="step" data-step="-1" ${i <= 0 ? 'disabled' : ''} aria-label="${tr('Выше')}">${icon('up')}</button>
+        <b>${i + 1}</b> ${tr('из')} ${inTier.length}
+        <button class="step" data-step="1" ${i >= inTier.length - 1 ? 'disabled' : ''} aria-label="${tr('Ниже')}">${icon('down')}</button></div>` : ''}
     </div></div>`;
   }
   let rate;
   if (!title && !st.loading && notOut(st.anime) && !rec) {
-    rate = `<section class="sec"><div class="sec-head"><h3>Моя оценка</h3></div><div class="soon-box">Это аниме ещё не вышло — оценить можно будет после выхода.</div></section>`;
+    rate = `<section class="sec"><div class="sec-head"><h3>${tr('Моя оценка')}</h3></div><div class="soon-box">${tr('Это аниме ещё не вышло — оценить можно будет после выхода.')}</div></section>`;
   } else if (waitTitle) {
-    rate = `<section class="sec"><div class="sec-head"><h3>Моя оценка всей серии</h3></div><div class="skeleton" style="height:50px;border-radius:12px"></div></section>`;
+    rate = `<section class="sec"><div class="sec-head"><h3>${tr('Моя оценка всей серии')}</h3></div><div class="skeleton" style="height:50px;border-radius:12px"></div></section>`;
   } else {
     rate = `<section class="sec">
       <div class="sec-head"><h3>${rateH}</h3><div class="verdict" id="verdict">${verdictHTML(rec?.score)}</div></div>
       <div class="scale" id="scale">${Array.from({ length: 10 }, (_, i) => i + 1).map((n) => `<button data-n="${n}" class="${rec?.score >= n ? 'fill' : ''} ${rec?.score === n ? 'on' : ''}" aria-label="${n} — ${LABEL[n]}">${n}</button>`).join('')}</div>
-      <p class="rate-hint">${rec?.score ? '<button class="link" id="unrate">Убрать оценку</button>' : esc(hintText)}</p>
-      <div class="field"><span class="lbl">Статус</span><div class="chips">${Object.entries(WATCH).map(([k, v]) => `<button class="chip ${rec?.status === k ? 'on' : ''}" data-watch="${k}">${v}</button>`).join('')}</div></div>
+      <p class="rate-hint">${rec?.score ? `<button class="link" id="unrate">${tr('Убрать оценку')}</button>` : esc(hintText)}</p>
+      <div class="field"><span class="lbl">${tr('Статус')}</span><div class="chips">${Object.entries(WATCH).map(([k, v]) => `<button class="chip ${rec?.status === k ? 'on' : ''}" data-watch="${k}">${v}</button>`).join('')}</div></div>
       ${tierField}
-      ${rec ? `<div class="field"><label for="note">Заметка</label><textarea id="note" placeholder="Чем зацепило, любимый персонаж, момент…" maxlength="500">${esc(rec.note || '')}</textarea></div>
-        <div class="rate-foot"><button class="link danger" id="remove">Убрать из топа</button></div>` : ''}
+      ${rec ? `<div class="field"><label for="note">${tr('Заметка')}</label><textarea id="note" placeholder="${tr('Чем зацепило, любимый персонаж, момент…')}" maxlength="500">${esc(rec.note || '')}</textarea></div>
+        <div class="rate-foot"><button class="link danger" id="remove">${tr('Убрать из топа')}</button></div>` : ''}
     </section>`;
   }
 
   /* --- части серии --- */
   const partsBlock = multi ? `
     <section class="sec">
-      <div class="sec-head"><h3>${title ? 'Сезоны и фильмы серии' : 'Все части серии'} · ${members.length}</h3><span class="sec-note">${title ? 'Каждую часть можно оценить отдельно' : ''}</span></div>
+      <div class="sec-head"><h3>${title ? tr('Сезоны и фильмы серии') : tr('Все части серии')} · ${members.length}</h3><span class="sec-note">${title ? tr('Каждую часть можно оценить отдельно') : ''}</span></div>
       <div class="parts">${members.map((m) => {
         const my = db.items[m.id]?.score;
         return `<button class="part ${notOut(m) ? 'soon' : ''} ${!title && String(m.id) === String(st.anime.id) ? 'cur' : ''}" data-id="${m.id}">
           <img loading="lazy" src="${esc(m.poster?.previewUrl || m.poster?.mainUrl || '')}" alt="">
-          <span><span class="part-name">${esc(m.russian || m.name)}</span><small>${[KIND[m.kind] || m.kind, m.airedOn?.year, notOut(m) ? 'ещё не вышло' : ''].filter(Boolean).join(' · ')}</small></span>
+          <span><span class="part-name">${esc(tn(m))}</span><small>${[KIND[m.kind] || m.kind, m.airedOn?.year, notOut(m) ? tr('ещё не вышло') : ''].filter(Boolean).join(' · ')}</small></span>
           <span class="part-world">${m.score ? `<span class="star">★</span> ${fmtWorld(m.score)}` : ''}</span>
-          <span class="part-my ${my ? '' : 'none'}" title="${my ? 'Моя оценка' : 'Не оценено'}">${my || '+'}</span>
+          <span class="part-my ${my ? '' : 'none'}" title="${my ? tr('Моя оценка') : tr('Не оценено')}">${my || '+'}</span>
         </button>`;
       }).join('')}</div>
     </section>` : '';
@@ -1509,22 +1546,22 @@ function renderCard() {
       const n = +b.dataset.n;
       setRec({ score: n });
       renderCard();
-      toast(`Оценка ${n} — ${LABEL[n]}`);
+      toast(`${tr('Оценка')} ${n} — ${LABEL[n]}`);
     });
   });
   scale.addEventListener('pointerleave', () => preview(0));
-  $('#unrate')?.addEventListener('click', () => { setRec({ score: null }); renderCard(); toast('Оценка убрана'); });
+  $('#unrate')?.addEventListener('click', () => { setRec({ score: null }); renderCard(); toast(tr('Оценка убрана')); });
   $$('[data-watch]', card).forEach((b) => b.addEventListener('click', () => {
     const had = !!curRec();
     setRec({ status: b.dataset.watch });
     renderCard();
-    toast(had ? `Статус: ${WATCH[b.dataset.watch]}` : `Добавлено в топ · ${WATCH[b.dataset.watch]}`);
+    toast(had ? `${tr('Статус')}: ${WATCH[b.dataset.watch]}` : `${tr('Добавлено в топ')} · ${WATCH[b.dataset.watch]}`);
   }));
   $$('[data-tier]', card).forEach((b) => b.addEventListener('click', () => {
     const t = b.dataset.tier || null;
     setRec({ tier: t, pos: null });
     renderCard();
-    toast(t ? `Тир ${tierName(t)}` : 'Тир — по оценке');
+    toast(t ? tr('Тир {t}', { t: tierName(t) }) : tr('Тир — по оценке'));
   }));
   $$('[data-step]', card).forEach((b) => b.addEventListener('click', () => {
     saveNote();
@@ -1533,7 +1570,7 @@ function renderCard() {
   }));
   $('#note')?.addEventListener('change', saveNote);
   $('#remove')?.addEventListener('click', () => {
-    const { store, key } = curStore(); delete store[key]; save(); afterChange(); renderCard(); toast('Убрано из топа');
+    const { store, key } = curStore(); delete store[key]; save(); afterChange(); renderCard(); toast(tr('Убрано из топа'));
   });
 }
 function afterChange() {
@@ -1620,11 +1657,11 @@ async function makeShareImage(onProgress) {
   // шапка
   ctx.textBaseline = 'alphabetic';
   ctx.fillStyle = '#f3f1f8'; ctx.font = F(700, 48, true);
-  ctx.fillText(tiers ? 'Мой тир-лист аниме' : 'Мой топ аниме', P, 96);
+  ctx.fillText(tiers ? tr('Мой тир-лист аниме') : tr('Мой топ аниме'), P, 96);
   const rated = all.filter((r) => r.score != null);
-  const sub = [`${all.length} ${mode === 'title' ? 'аниме' : plural(all.length, ['сезон или фильм', 'сезона и фильма', 'сезонов и фильмов'])}`,
-    rated.length ? `моя средняя ${avg(rated.map((r) => r.score)).toFixed(1)}` : '',
-    rated.filter((r) => r.score === 10).length ? `шедевров: ${rated.filter((r) => r.score === 10).length}` : ''].filter(Boolean).join('   ·   ');
+  const sub = [`${all.length} ${mode === 'title' ? plural(all.length, ['аниме', 'аниме', 'аниме']) : plural(all.length, ['сезон или фильм', 'сезона и фильма', 'сезонов и фильмов'])}`,
+    rated.length ? `${tr('моя средняя')} ${avg(rated.map((r) => r.score)).toFixed(1)}` : '',
+    rated.filter((r) => r.score === 10).length ? tr('шедевров: {n}', { n: rated.filter((r) => r.score === 10).length }) : ''].filter(Boolean).join('   ·   ');
   ctx.fillStyle = '#8a859b'; ctx.font = F(500, 24); ctx.fillText(sub, P, 140);
 
   const drawPoster = (r, x, y, w, h, radius) => {
@@ -1634,7 +1671,7 @@ async function makeShareImage(onProgress) {
     else {
       ctx.fillStyle = '#2c283a'; ctx.fillRect(x, y, w, h);
       ctx.fillStyle = '#bab5ca'; ctx.font = F(600, 14);
-      wrapText(ctx, r.anime.russian || r.anime.name, w - 16, 4).forEach((l, i) => ctx.fillText(l, x + 8, y + 26 + i * 18));
+      wrapText(ctx, tn(r.anime), w - 16, 4).forEach((l, i) => ctx.fillText(l, x + 8, y + 26 + i * 18));
     }
     ctx.restore();
   };
@@ -1649,7 +1686,7 @@ async function makeShareImage(onProgress) {
     for (const g of groups) {
       // плашка тира: название и подпись
       rr(P, y, LW, g.h, 20); ctx.fillStyle = g.c; ctx.fill();
-      const name = g.t ? tierName(g.t) : '?', desc = g.t ? tierDesc(g.t) : 'Без оценки';
+      const name = g.t ? tierName(g.t) : '?', desc = g.t ? tierDesc(g.t) : tr('Без оценки');
       ctx.fillStyle = '#16131f'; ctx.textAlign = 'center';
       ctx.font = name.length > 2 ? F(700, 26) : F(700, 60, true);
       const nLines = wrapText(ctx, name, LW - 24, 2), lh = name.length > 2 ? 30 : 60;
@@ -1665,14 +1702,14 @@ async function makeShareImage(onProgress) {
       // постеры тира
       rr(bodyX, y, bodyW, g.h, 20); ctx.fillStyle = '#17151f'; ctx.fill();
       ctx.strokeStyle = '#292535'; ctx.lineWidth = 2; ctx.stroke();
-      if (!g.rows.length) { ctx.fillStyle = '#5d5870'; ctx.font = F(500, 20); ctx.fillText('Пусто', bodyX + 24, y + g.h / 2 + 7); }
+      if (!g.rows.length) { ctx.fillStyle = '#5d5870'; ctx.font = F(500, 20); ctx.fillText(tr('Пусто'), bodyX + 24, y + g.h / 2 + 7); }
       g.rows.forEach((r, k) => {
         const px = bodyX + 12 + (k % per) * (PW + GAP), py = y + 12 + Math.floor(k / per) * (PH + NH + GAP);
         drawPoster(r, px, py, PW, PH, 12);
         badge(px + 6, py + 6, k + 1 > 9 ? 40 : 32, 30, 'rgba(12,11,17,.86)', String(k + 1), F(700, 15, true));
         if (r.score != null) { const t = (r.approx ? '≈' : '') + fmtMy(r.score); badge(px + PW - 8 - (t.length > 2 ? 52 : 36), py + PH - 38, t.length > 2 ? 52 : 36, 32, '#ff4d78', t, F(700, 16, true)); }
         ctx.fillStyle = '#bab5ca'; ctx.font = F(500, 16);
-        wrapText(ctx, r.anime.russian || r.anime.name, PW, 2).forEach((l, i) => ctx.fillText(l, px, py + PH + 21 + i * 20));
+        wrapText(ctx, tn(r.anime), PW, 2).forEach((l, i) => ctx.fillText(l, px, py + PH + 21 + i * 20));
       });
       y += g.h + 12;
     }
@@ -1690,51 +1727,51 @@ async function makeShareImage(onProgress) {
       badge(SHARE_W - P - 96, mid - 38, 76, 76, r.score == null ? '#2c283a' : '#ff4d78', my, F(700, my.length > 2 ? 24 : 30, true), r.score == null ? '#8a859b' : '#fff');
       ctx.textAlign = 'right';
       ctx.fillStyle = '#ffc94a'; ctx.font = F(700, 24); ctx.fillText(`★ ${fmtWorld(r.world)}`, SHARE_W - P - 116, mid + 2);
-      ctx.fillStyle = '#8a859b'; ctx.font = F(500, 16); ctx.fillText('в мире', SHARE_W - P - 116, mid + 26);
+      ctx.fillStyle = '#8a859b'; ctx.font = F(500, 16); ctx.fillText(tr('в мире'), SHARE_W - P - 116, mid + 26);
       ctx.textAlign = 'left';
       // название и подпись
       const tx = P + 192, tw = SHARE_W - P - 236 - tx;
       ctx.fillStyle = '#f3f1f8'; ctx.font = F(700, 27);
-      const tl = wrapText(ctx, r.anime.russian || r.anime.name, tw, 2);
+      const tl = wrapText(ctx, tn(r.anime), tw, 2);
       const meta = rowMeta(r).join(' · ');
       let ty = mid - (tl.length * 34 + 28) / 2 + 26;
       tl.forEach((l) => { ctx.fillText(l, tx, ty); ty += 34; });
       ctx.fillStyle = '#8a859b'; ctx.font = F(500, 20); ctx.fillText(wrapText(ctx, meta, tw, 1)[0] || '', tx, ty - 4);
       y += RH;
     });
-    if (more) { ctx.fillStyle = '#8a859b'; ctx.font = F(600, 24); ctx.fillText(`…и ещё ${more}`, P + 20, y + 30); y += 56; }
+    if (more) { ctx.fillStyle = '#8a859b'; ctx.font = F(600, 24); ctx.fillText(tr('…и ещё {n}', { n: more }), P + 20, y + 30); y += 56; }
   }
   // подвал
   ctx.fillStyle = '#5d5870'; ctx.font = F(500, 22);
   ctx.fillText('AniTier · roketax2.github.io/anitier', P, H - 40);
-  ctx.textAlign = 'right'; ctx.fillText('данные: Shikimori', SHARE_W - P, H - 40); ctx.textAlign = 'left';
+  ctx.textAlign = 'right'; ctx.fillText(tr('данные: Shikimori'), SHARE_W - P, H - 40); ctx.textAlign = 'left';
   return new Promise((res) => cv.toBlob(res, 'image/png'));
 }
 const shareDlg = $('#shareDlg');
 let shareFile = null, shareUrl = '';
 $('#shareBtn').addEventListener('click', async () => {
   shareFile = null; if (shareUrl) URL.revokeObjectURL(shareUrl); shareUrl = '';
-  $('#shareImg').innerHTML = `<div class="share-wait"><span class="spin"></span><span id="shareProg">Рисую картинку…</span></div>`;
-  $('#shareInfo').textContent = layout === 'tiers' ? 'Тир-лист целиком — со всеми тирами, даже свёрнутыми' : 'Рейтинг в выбранной сортировке, до 50 мест';
+  $('#shareImg').innerHTML = `<div class="share-wait"><span class="spin"></span><span id="shareProg">${tr('Рисую картинку…')}</span></div>`;
+  $('#shareInfo').textContent = layout === 'tiers' ? tr('Тир-лист целиком — со всеми тирами, даже свёрнутыми') : tr('Рейтинг в выбранной сортировке, до 50 мест');
   $('#shareSave').disabled = true; $('#shareSend').disabled = true;
   openModal(shareDlg);
   try {
-    const blob = await makeShareImage((d, n) => { const p = $('#shareProg'); if (p) p.textContent = `Загружаю постеры… ${d} из ${n}`; });
+    const blob = await makeShareImage((d, n) => { const p = $('#shareProg'); if (p) p.textContent = tr('Загружаю постеры… {d} из {n}', { d, n }); });
     if (!blob) throw 0;
     shareFile = new File([blob], `anitier-${new Date().toISOString().slice(0, 10)}.png`, { type: 'image/png' });
     shareUrl = URL.createObjectURL(blob);
-    $('#shareImg').innerHTML = `<img src="${shareUrl}" alt="Картинка моего топа">`;
+    $('#shareImg').innerHTML = `<img src="${shareUrl}" alt="${tr('Картинка моего топа')}">`;
     $('#shareSave').disabled = false;
     const canSend = !!navigator.canShare?.({ files: [shareFile] });
     $('#shareSend').hidden = !canSend; $('#shareSend').disabled = !canSend;
   } catch {
-    $('#shareImg').innerHTML = '<p class="share-wait">Не получилось нарисовать картинку. Проверь интернет и попробуй ещё раз.</p>';
+    $('#shareImg').innerHTML = `<p class="share-wait">${tr('Не получилось нарисовать картинку. Проверь интернет и попробуй ещё раз.')}</p>`;
   }
 });
 $('#shareSave').addEventListener('click', () => {
   if (!shareUrl) return;
   const a = document.createElement('a'); a.href = shareUrl; a.download = shareFile.name; a.click();
-  toast('Картинка сохранена');
+  toast(tr('Картинка сохранена'));
 });
 $('#shareSend').addEventListener('click', async () => {
   if (!shareFile) return;
@@ -1762,11 +1799,12 @@ $('#menuBtn').addEventListener('click', (e) => {
   openPop(e.currentTarget, {
     align: 'right',
     items: [
-      { v: 'export', icon: 'download', label: 'Сохранить копию топа', hint: 'Файл с твоими оценками — на всякий случай' },
-      { v: 'import', icon: 'upload', label: 'Загрузить копию', hint: 'Вернуть оценки из сохранённого файла' },
-      ...(installEvt ? [{ v: 'install', icon: 'phone', label: 'Установить как приложение', hint: 'Значок на главном экране' }] : []),
+      { v: 'export', icon: 'download', label: tr('Сохранить копию топа'), hint: tr('Файл с твоими оценками — на всякий случай') },
+      { v: 'import', icon: 'upload', label: tr('Загрузить копию'), hint: tr('Вернуть оценки из сохранённого файла') },
+      ...(installEvt ? [{ v: 'install', icon: 'phone', label: tr('Установить как приложение'), hint: tr('Значок на главном экране') }] : []),
+      { v: 'lang', icon: 'globe', label: EN_ON ? 'Язык: русский' : 'Language: English', hint: EN_ON ? 'Переключить сайт на русский' : 'Switch the site to English' },
     ],
-    note: 'Оценки хранятся только на этом устройстве. Данные об аниме — Shikimori.',
+    note: tr('Оценки хранятся только на этом устройстве. Данные об аниме — Shikimori.'),
     onPick: (it) => {
       if (it.v === 'export') {
         const blob = new Blob([JSON.stringify(db, null, 1)], { type: 'application/json' });
@@ -1774,9 +1812,10 @@ $('#menuBtn').addEventListener('click', (e) => {
         a.href = URL.createObjectURL(blob);
         a.download = `anitier-${new Date().toISOString().slice(0, 10)}.json`;
         a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-        toast('Копия сохранена в файл');
+        toast(tr('Копия сохранена в файл'));
       }
       if (it.v === 'import') $('#importFile').click();
+      if (it.v === 'lang') { setPref('lang', EN_ON ? 'ru' : 'en'); location.reload(); }
       if (it.v === 'install' && installEvt) { installEvt.prompt(); installEvt = null; }
     },
   });
@@ -1787,11 +1826,11 @@ $('#importFile').addEventListener('change', async (e) => {
     const d = JSON.parse(await f.text());
     if (!d.items) throw 0;
     const n = Object.keys(d.items).length + Object.keys(d.franchises || {}).length;
-    if (!confirm(`В файле ${n} ${plural(n, ['оценка', 'оценки', 'оценок'])}. Добавить их в твой топ? Совпадающие заменятся версией из файла.`)) return;
+    if (!confirm(tr('В файле {n} {w}. Добавить их в твой топ? Совпадающие заменятся версией из файла.', { n, w: plural(n, ['оценка', 'оценки', 'оценок']) }))) return;
     db.items = { ...db.items, ...d.items };
     db.franchises = { ...db.franchises, ...(d.franchises || {}) };
-    save(); renderPills(); afterChange(); toast(`Загружено: ${n}`);
-  } catch { toast('Это не файл топа'); }
+    save(); renderPills(); afterChange(); toast(`${tr('Загружено')}: ${n}`);
+  } catch { toast(tr('Это не файл топа')); }
   e.target.value = '';
 });
 
@@ -1815,6 +1854,21 @@ document.addEventListener('error', (e) => {
   setTimeout(() => { img.src = ''; img.src = src; }, 800 + n * 1500 + Math.random() * 600);
 }, true);
 
+// у сохранённых раньше записей нет английского названия — догружаем пачками по 50
+async function fillEnglishNames() {
+  const recs = [...Object.values(db.items), ...Object.values(db.franchises)].filter((r) => r.anime && r.anime.english === undefined);
+  const ids = [...new Set(recs.map((r) => r.anime.id))];
+  for (let i = 0; i < ids.length; i += 50) {
+    try {
+      const part = ids.slice(i, i + 50);
+      const d = await gql(`{ animes(ids: ${JSON.stringify(part.join(','))}, limit: 50) { id english } }`);
+      const en = new Map(d.animes.map((a) => [String(a.id), a.english || '']));
+      recs.forEach((r) => { if (en.has(String(r.anime.id))) r.anime.english = en.get(String(r.anime.id)); });
+    } catch { return; }
+  }
+  if (ids.length) { save(); afterChange(); }
+}
+
 /* ---------- Старт ---------- */
 if (history.state?.modal) history.replaceState(null, ''); // страницу обновили при открытом окне
 updateCount();
@@ -1822,4 +1876,6 @@ renderPills();
 loadGenres();
 view = pref('view', 'mine') === 'catalog' ? 'catalog' : 'mine';
 show(view);
+if (EN_ON) fillEnglishNames();
+try { localStorage.removeItem('animetop.series2'); localStorage.removeItem('animetop.genres'); } catch {} // старые кэши без английских названий
 if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
