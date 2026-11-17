@@ -531,6 +531,49 @@ const FRAME_FX = {
 };
 document.body.insertAdjacentHTML('beforeend', '<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="fg-shoot" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff"/></linearGradient></defs></svg>');
 
+/* ---------- Разные силуэты (2026-11-17): автору рамки казались похожими — «кольцо плюс украшения».
+   Здесь у каждой своя форма целиком: звезда, месяц, капля, свиток, медаль на ленте, крупная корона. */
+const fStarPath = (n, R, r, rot = -90) => Array.from({ length: n * 2 }, (_, i) => { const a = rot + (i * 180) / n; return fP(i % 2 ? r : R, a); }).join(' ');
+Object.assign(FRAME_ART, {
+  // звёздная: аватарка внутри большой пятиконечной звезды из ночной эмали с золотой кромкой
+  star: () => `<polygon points="${fStarPath(5, 60, 41.5)}" fill="url(#fg-night)" stroke="#6b4a0c" stroke-width="3" stroke-linejoin="round" mask="url(#fm-out)"/><polygon points="${fStarPath(5, 60, 41.5)}" fill="none" stroke="url(#fg-gold)" stroke-width="1.800" stroke-linejoin="round"/>`
+    + `<polygon points="${fStarPath(5, 55, 43)}" fill="none" stroke="#ffe38a" stroke-width=".5" stroke-linejoin="round" opacity=".6"/>`
+    + fRep(5, () => fStar5(60, 8.5, 3.2)) + fTwinkles(10, 61, 44, 52, '#fff', 0.4) + fRing(41.2, 1.6, 'url(#fg-gold)'),
+  // луна: огромный месяц обнимает аватарку слева, справа — тонкая дуга и звёзды
+  moon: () => '<path d="M60 2A58 58 0 0 0 60 118A74 74 0 0 1 60 2Z" fill="url(#fg-moon)" stroke="#b8923a" stroke-width="1" mask="url(#fm-out)"/>'
+    + '<path d="M60 2A58 58 0 0 0 60 118" fill="none" stroke="#fffbe6" stroke-width="1.200" opacity=".8"/>' + [[18, 40, 3], [12, 66, 2.2], [24, 88, 2.6], [30, 22, 1.6]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#e6c877" opacity=".75"/>`).join('')
+    + `<path d="${fArc(43, -80, 80)}" fill="none" stroke="url(#fg-silver)" stroke-width="1.600" stroke-linecap="round"/>` + fTwinkles(7, 63, 47, 56, '#e6e9ff', 0.55).replace(/translate\((\d+\.\d) /g, (m, x) => (+x < 62 ? 'translate(' + (120 - x) + ' ' : m)),
+  // вода: аватарка внутри капли — остриё сверху, волны и пузырьки внутри
+  water: () => { const drop = 'M60 -2C72 18 104 32 104 64A44 44 0 0 1 16 64C16 32 48 18 60 -2Z';
+    return `<path d="${drop}" fill="url(#fg-water)" stroke="#0b4fb3" stroke-width="1.600" mask="url(#fm-out)"/><path d="${drop}" fill="none" stroke="#bff4ff" stroke-width=".8" opacity=".8"/>`
+      + `<g class="fa-spin slow" mask="url(#fm-out)">${fWave(47, 1.4, 12, 0).replace(/^/, '<path d="').concat('" fill="none" stroke="#e6fbff" stroke-width="1" opacity=".7"/>')}</g>`
+      + '<path d="M44 20C48 13 54 7 58 3" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".75"/>' + fRing(41.2, 1.4, '#e6fbff', 'opacity=".8"'); },
+  // свиток: аватарка на развёрнутом пергаменте с валиками сверху и снизу
+  paper: () => '<rect x="10" y="12" width="100" height="96" rx="4" fill="url(#fg-paper)" stroke="#8f7443" stroke-width="1.200" mask="url(#fm-out)"/>'
+    + '<path d="M16 20H104M16 100H104" stroke="#c9b384" stroke-width=".8"/><path d="M14 24V96M106 24V96" stroke="#c9b384" stroke-width=".6" stroke-dasharray="2 3"/>'
+    + [6, 108].map((y) => `<rect x="4" y="${y}" width="112" height="8" rx="4" fill="#e4cf9f" stroke="#8f7443" stroke-width="1"/><path d="M8 ${y + 2.5}H112" stroke="#fff" stroke-width="1" opacity=".5"/><circle cx="4" cy="${y + 4}" r="4.200" fill="#a88a55" stroke="#5e4a26" stroke-width=".8"/><circle cx="116" cy="${y + 4}" r="4.200" fill="#a88a55" stroke="#5e4a26" stroke-width=".8"/>`).join('')
+    + fRing(41.4, 1.6, '#8f7443') + '<circle cx="96" cy="96" r="6" fill="#c9163f" stroke="#6b0a22" stroke-width=".8"/>' + fStar5(96, 96, 3.4, 0, '#ff8fa8', '#6b0a22'),
+  // бронза: медаль с рифлёным ребром, на ленте снизу и с ушком сверху
+  bronze: () => '<path d="M38 92 26 120 37 114 44 122 54 96Z" fill="#c9163f" stroke="#6b0a22" stroke-width=".8" stroke-linejoin="round"/><path d="M82 92 94 120 83 114 76 122 66 96Z" fill="#1f3f9e" stroke="#10245e" stroke-width=".8" stroke-linejoin="round"/>'
+    + '<circle cx="60" cy="9" r="5" fill="none" stroke="url(#fg-bronze)" stroke-width="2.600"/><circle cx="60" cy="9" r="5" fill="none" stroke="#3d2610" stroke-width=".6" opacity=".7"/>'
+    + fRing(47, 13, 'url(#fg-bronze)') + fTicks(90, 50.6, 53.4, '#3d2610', 0.5, 0, 0.6) + fRing(53.5, 0.8, '#3d2610', 'opacity=".7"') + fRing(40.6, 0.9, '#3d2610', 'opacity=".7"')
+    + fRing(45, 0.6, '#ffe0bd', 'opacity=".5"') + `<path d="${fArc(47, 200, 280)}" fill="none" stroke="#fff" stroke-width="2.400" stroke-linecap="round" opacity=".55"/>`,
+  // корона: крупная корона над аватаркой и лавровая ветвь снизу, кольцо — тонкий обод
+  crown: () => '<path d="M22 32 14 0 36 16 60 -4 84 16 106 0 98 32Q60 20 22 32Z" fill="url(#fg-gold)" stroke="#5a3d0a" stroke-width="1.400" stroke-linejoin="round"/>'
+    + '<path d="M22 32Q60 20 98 32L97 40Q60 28 23 40Z" fill="#7a0f2b" stroke="#5a3d0a" stroke-width="1" stroke-linejoin="round"/><path d="M25 34.500Q60 23 95 34.500" fill="none" stroke="url(#fg-gold)" stroke-width="1"/>'
+    + '<path d="M26 26 21 9M60 19V4M94 26 99 9" stroke="#fff8d6" stroke-width="1.300" stroke-linecap="round" opacity=".6"/>'
+    + [[14, 0, 3.4], [36, 16, 2.6], [60, -4, 3.8], [84, 16, 2.6], [106, 0, 3.4]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#fff8e6" stroke="#5a3d0a" stroke-width=".7"/><circle cx="${x - r * 0.3}" cy="${y - r * 0.3}" r="${r * 0.3}" fill="#fff"/>`).join('')
+    + fGem(60, 27, 4, '#ff3d6e') + fGem(41, 29.5, 2.8, '#3f6cff') + fGem(79, 29.5, 2.8, '#3f6cff') + fRing(41.6, 2.4, 'url(#fg-gold)')
+    + Array.from({ length: 6 }, (_, i) => { const a = 110 + i * 11, [x, y] = fXY(46, a); return fLeaf(x, y, a + 140, 9, 3, 'url(#fg-gold)', '#6b4a0c') + `<g transform="translate(120 0) scale(-1 1)">${fLeaf(x, y, a + 140, 9, 3, 'url(#fg-gold)', '#6b4a0c')}</g>`; }).join(''),
+});
+Object.assign(FRAME_FX, {
+  star: () => FRAME_FX_star_shoot(), moon: () => fTwinkles(5, 65, 50, 57, '#fff', 0.5),
+  water: () => [[40, 0, 1.6], [70, 0.8, 1.2], [56, 1.5, 1.8], [84, 0.4, 1.3]].map(([x, d, r]) => `<circle class="fa-rise" style="animation-delay:${d}s" cx="${x}" cy="104" r="${r}" fill="none" stroke="#e6fbff" stroke-width=".6"/>`).join(''),
+  paper: () => fTwinkles(3, 67, 44, 52, '#fff6c8', 0.45), bronze: () => fSweep(47, 6, 'fast', '#fff1dc', 0.5),
+  crown: () => fTwinkles(8, 69, 46, 62, '#fff', 0.55).replace(/translate\(([\d.]+) ([\d.]+)\)/g, (m, x, y) => `translate(${x} ${Math.min(+y, 30)})`),
+});
+function FRAME_FX_star_shoot() { return `<g class="fa-shoot"><path d="M14 22L30 28" stroke="url(#fg-shoot)" stroke-width="1.400" stroke-linecap="round"/><circle cx="30" cy="28" r="1.300" fill="#fff"/></g>`; }
+
 const frameArtCache = {};
 function frameArt(id) {
   // последним слоем — тонкая тень у края аватарки, чтобы рамка «сидела» на ней
