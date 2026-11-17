@@ -33,3 +33,6 @@ Object.assign(FRAME_FX, {
     + '<circle class="fa-breath" cx="60" cy="60" r="44" fill="none" stroke="#7cf7ff" stroke-width="1.400"/>' + `<g class="fa-spin fast">${fDot(60, 4.5, 2, '#fff', 'fa-glow')}</g><g class="fa-spin rev">${fDot(60, 10, 1.4, '#ff4dd8')}</g>`
     + `<g class="fa-flicker">${fRep(3, () => `<path d="${fZig(-100, -60, 50, 2.5, 7, 6)}" fill="none" stroke="#7cf7ff" stroke-width=".9"/>`)}</g>`,
 });
+
+// чёрная дыра: джеты не должны проходить по аватарке
+{ const bh = FRAME_ART.blackhole; FRAME_ART.blackhole = () => bh().split('fill="url(#fg-jet)"').join('fill="url(#fg-jet)" mask="url(#fm-out)"').split('<path class="fa-jet"').join('<path mask="url(#fm-out)" class="fa-jet"'); }
