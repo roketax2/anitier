@@ -977,3 +977,24 @@ body.viewing .ach { cursor: pointer; }
 .fa-ga { animation: fr-glitch-a 2.2s steps(1) infinite; }
 .fa-gb { animation: fr-glitch-b 2.2s steps(1) infinite; }
 @media (prefers-reduced-motion: reduce) { .fr-art * { animation: none !important; } }
+
+/* ---------- Сравнение вкусов (compare.js) ---------- */
+.cmp { margin-bottom: 18px; padding: 18px; border-radius: var(--r); background: var(--elev); border: 1px solid var(--line); display: grid; gap: 16px; }
+.cmp-head { display: flex; align-items: center; gap: 18px; }
+.cmp-ring { --p: 0; width: 92px; height: 92px; flex: none; border-radius: 50%; display: grid; place-items: center;
+  background: radial-gradient(closest-side, var(--elev) 76%, transparent 78%), conic-gradient(var(--accent) calc(var(--p) * 1%), var(--elev3) 0); }
+.cmp-ring b { font: 700 24px var(--display); }
+.cmp-head h3 { font: 700 20px var(--display); letter-spacing: -.01em; }
+.cmp-head p { color: var(--text2); font-size: 14px; margin-top: 4px; }
+.cmp-head p b { color: var(--text); }
+.cmp-empty { color: var(--text2); font-size: 14px; }
+.cmp-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.cmp-col h4 { font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+.cmp-item { display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: center; width: 100%; padding: 6px; border: 0; border-radius: 10px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.cmp-item:hover { background: var(--elev2); }
+.cmp-item img { width: 34px; height: 48px; object-fit: cover; border-radius: 6px; background: var(--elev2); }
+.cmp-item span { display: grid; min-width: 0; }
+.cmp-item b { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmp-item small { color: var(--muted); font-size: 12.5px; }
+.cmp-item small b { color: var(--text2); font-size: 12.5px; }
+@media (max-width: 720px) { .cmp-ring { width: 74px; height: 74px; } .cmp-ring b { font-size: 19px; } .cmp-head h3 { font-size: 17px; } }

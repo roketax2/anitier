@@ -271,7 +271,7 @@ function renderAcct() {
         ${achStripHTML()}
         ${msgHTML()}
         <section class="a-sec"><h3>${tr('Ссылка на мой топ')}</h3>
-          <p class="a-lead">${tr('По ссылке видно твой топ и оценки — без заметок. Менять его по ссылке нельзя.')}</p>
+          <p class="a-lead">${tr('По ссылке видно твой топ и оценки — без заметок. Менять его по ссылке нельзя. Друг, открыв ссылку, увидит, насколько ваши вкусы совпадают.')}</p>
           ${shareUrl ? `<div class="a-share"><input readonly value="${esc(shareUrl)}" id="shareUrl"><button class="btn primary" data-copy="${esc(shareUrl)}">${icon('copy')}${tr('Скопировать')}</button></div>
             <p class="a-links"><button class="link" data-act2="shareRenew">${tr('Сделать новую ссылку')}</button><button class="link danger" data-act2="shareOff">${tr('Закрыть ссылку')}</button></p>`
           : `<button class="btn wide" data-act2="shareOn">${icon('link')}${tr('Открыть ссылку на топ')}</button>`}
@@ -516,6 +516,7 @@ acctDlg.addEventListener('submit', async (e) => {
 async function openShared(id) {
   window.VIEWING = { login: '…' };
   document.body.classList.add('viewing');
+  const own = db; // свой топ — для сравнения вкусов (compare.js)
   try {
     const r = await api('GET', '/api/shared/' + encodeURIComponent(id));
     const who = dname(r);
@@ -524,6 +525,7 @@ async function openShared(id) {
     tierNames = r.data.settings?.tierNames || {};
     $('#viewBanner').innerHTML = `<span class="vb-who">${avatarHTML(r, 'a-avatar small', 'sm')}<span>${tr('Топ пользователя')} <b>${esc(who)}</b> · <span class="vb-ach">${icon('trophy')}${Object.keys(r.data.ach || {}).filter((k) => ACH.some((x) => x.id === k)).length}</span>${r.updatedAt ? ` · ${tr('обновлён')} ${new Date(r.updatedAt).toLocaleDateString(LOCALE)}` : ''}</span></span><button class="btn" id="viewExit">${tr('К своему топу')}</button>`;
     $('#view-mine h1').textContent = tr('Топ {l}', { l: who });
+    if (typeof renderCompare === 'function') renderCompare(own, who);
   } catch (e) {
     $('#viewBanner').innerHTML = `<span>${esc(e.status === 404 ? tr('Ссылка не работает — топ закрыли или ссылку сменили') : e.message)}</span><button class="btn" id="viewExit">${tr('К своему топу')}</button>`;
     db = { version: 1, items: {}, franchises: {}, deleted: {} };
