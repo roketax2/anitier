@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Мой аниме-топ</title>
+  <meta name="description" content="Свой топ аниме: оценки по 10-балльной шкале, рейтинг, тир-лист, поиск и фильтры">
+  <meta name="theme-color" content="#0e0d14">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="bar">
+    <div class="bar-in">
+      <div class="brand"><img src="icon.svg" alt="" width="30" height="30"><span>Мой аниме-топ</span></div>
+      <nav class="nav" aria-label="Разделы">
+        <button class="nav-btn" data-view="mine" data-ic="trophy"><span>Мой топ</span><b id="mineCount" hidden>0</b></button>
+        <button class="nav-btn" data-view="catalog" data-ic="compass"><span>Каталог</span></button>
+      </nav>
+      <button id="menuBtn" class="icon-btn" data-ic="dots" title="Ещё" aria-label="Ещё"></button>
+    </div>
+    <input type="file" id="importFile" accept="application/json,.json" hidden>
+  </header>
+
+  <!-- ============ МОЙ ТОП ============ -->
+  <main id="view-mine" class="view">
+    <div class="view-head">
+      <div>
+        <h1>Мой топ</h1>
+        <p class="stats" id="stats"></p>
+      </div>
+      <div class="seg" id="layoutSeg" role="tablist" aria-label="Вид топа">
+        <button data-layout="list" data-ic="list" role="tab"><span>Рейтинг</span></button>
+        <button data-layout="tiers" data-ic="tiers" role="tab"><span>Тир-лист</span></button>
+      </div>
+    </div>
+
+    <div class="tools">
+      <label class="search" data-ic="search">
+        <input id="mineSearch" type="search" placeholder="Поиск в моём топе" autocomplete="off" enterkeyhint="search">
+        <button class="clear" type="button" data-ic="x" aria-label="Очистить" hidden></button>
+      </label>
+      <button class="tool-btn" id="mineFilterBtn" data-ic="sliders"><span>Фильтры</span><b class="n" hidden></b></button>
+    </div>
+    <div class="pills" id="minePills" data-view="mine"></div>
+    <p class="hint" id="tierHint" hidden><span class="for-mouse">Перетаскивай постеры мышью, чтобы менять места и тиры.</span><span class="for-touch">Задержи палец на постере и перетащи, чтобы поменять место или тир.</span> Нажми на название тира, чтобы переименовать; стрелка под ним сворачивает тир до одной строки.</p>
+
+    <div id="mineList"></div>
+
+    <div id="mineEmpty" class="empty-state" hidden>
+      <div class="empty-art" data-ic="trophy"></div>
+      <h2>Здесь будет твой топ</h2>
+      <ol class="steps">
+        <li><b>1</b>Найди аниме в каталоге</li>
+        <li><b>2</b>Поставь оценку от 1 до 10</li>
+        <li><b>3</b>Смотри свой рейтинг или собери тир-лист</li>
+      </ol>
+      <button class="btn primary" data-go="catalog">Открыть каталог</button>
+    </div>
+  </main>
+
+  <!-- ============ КАТАЛОГ ============ -->
+  <main id="view-catalog" class="view" hidden>
+    <div class="view-head">
+      <div>
+        <h1>Каталог</h1>
+        <p class="stats">Найди аниме и нажми на него, чтобы оценить</p>
+      </div>
+    </div>
+
+    <div class="tools">
+      <label class="search" data-ic="search">
+        <input id="catSearch" type="search" placeholder="Название: «Фрирен», «Naruto»…" autocomplete="off" enterkeyhint="search">
+        <button class="clear" type="button" data-ic="x" aria-label="Очистить" hidden></button>
+      </label>
+      <button class="tool-btn" id="catFilterBtn" data-ic="sliders"><span>Фильтры</span><b class="n" hidden></b></button>
+    </div>
+    <div class="pills" id="catPills" data-view="catalog"></div>
+
+    <div id="catGrid" class="grid"></div>
+    <div id="catMsg" class="empty-state" hidden></div>
+    <div id="catMore" class="more" hidden><span class="spin"></span><span>Загружаю ещё…</span><button class="btn" hidden>Показать ещё</button></div>
+  </main>
+
+  <!-- ============ КНОПКА И ВЫДВИЖНАЯ ПОЛОСА «ДОБАВИТЬ» ============ -->
+  <button id="trayBtn" class="fab" data-ic="plus" title="Добавить аниме в топ" aria-label="Добавить аниме в топ" hidden><span>Добавить</span></button>
+  <section id="tray" class="tray" aria-label="Добавить аниме в топ" aria-hidden="true">
+    <div class="tray-in">
+      <div class="tray-head">
+        <label class="search" data-ic="search">
+          <input id="traySearch" type="search" placeholder="Найти аниме, чтобы добавить" autocomplete="off" enterkeyhint="search">
+          <button class="clear" type="button" data-ic="x" aria-label="Очистить" hidden></button>
+        </label>
+        <button class="icon-btn" id="trayClose" data-ic="x" aria-label="Закрыть полосу" title="Закрыть"></button>
+      </div>
+      <p class="tray-hint" id="trayHint"></p>
+      <div class="tray-strip" id="trayStrip"></div>
+    </div>
+  </section>
+
+  <!-- ============ КАРТОЧКА АНИМЕ ============ -->
+  <dialog id="card" class="sheet card" aria-label="Аниме">
+    <button class="icon-btn card-close" data-close data-ic="x" aria-label="Закрыть"></button>
+    <div id="cardBody" class="card-scroll"></div>
+  </dialog>
+
+  <!-- ============ ФИЛЬТРЫ ============ -->
+  <dialog id="filters" class="sheet side" aria-labelledby="fTitle">
+    <div class="sheet-head">
+      <h2 id="fTitle">Фильтры</h2>
+      <button class="icon-btn" data-close data-ic="x" aria-label="Закрыть"></button>
+    </div>
+    <div class="sheet-body" id="fBody"></div>
+    <div class="sheet-foot">
+      <button class="btn" id="fReset">Сбросить</button>
+      <button class="btn primary" data-close>Готово</button>
+    </div>
+  </dialog>
+
+  <div id="pop" class="pop" hidden></div>
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
