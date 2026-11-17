@@ -392,6 +392,42 @@ Object.assign(FRAME_ART, {
     + fRep(4, () => fBezel(44, 1.9, '#bff2ff', 'steel', '#1c2336'), 45),
 });
 
+/* ---------- Космос и взрыв (2026-11-17): Чёрная дыра, Сверхновая, Взрыв ---------- */
+document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<linearGradient id="fg-disk" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ff5a1f" stop-opacity="0"/><stop offset=".2" stop-color="#ff7a2f"/><stop offset=".45" stop-color="#fff2c8"/><stop offset=".6" stop-color="#ffb347"/><stop offset=".85" stop-color="#c2410c"/><stop offset="1" stop-color="#7c2d12" stop-opacity="0"/></linearGradient>
+<radialGradient id="fg-halo" cx="60" cy="60" r="60" gradientUnits="userSpaceOnUse"><stop offset=".66" stop-color="#000" stop-opacity="0"/><stop offset=".72" stop-color="#000" stop-opacity=".85"/><stop offset=".9" stop-color="#1a0d2e" stop-opacity=".35"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>
+<radialGradient id="fg-nova" cx="60" cy="60" r="60" gradientUnits="userSpaceOnUse"><stop offset=".66" stop-color="#fff" stop-opacity=".9"/><stop offset=".74" stop-color="#9fe8ff" stop-opacity=".75"/><stop offset=".86" stop-color="#b061ff" stop-opacity=".35"/><stop offset="1" stop-color="#ff4d9a" stop-opacity="0"/></radialGradient>
+<radialGradient id="fg-blast" cx="60" cy="60" r="60" gradientUnits="userSpaceOnUse"><stop offset=".64" stop-color="#fff6c8"/><stop offset=".74" stop-color="#ffb020"/><stop offset=".88" stop-color="#ff4a12"/><stop offset="1" stop-color="#7a1406"/></radialGradient></defs></svg>`);
+
+Object.assign(FRAME_ART, {
+  // чёрная дыра: тёмный ореол, яркое фотонное кольцо и раскалённый наклонный диск, огибающий аватарку
+  blackhole: () => {
+    const rnd = fRand(21);
+    const swirl = Array.from({ length: 40 }, (_, i) => { const t = i / 40, a = t * 540, r = 56 - t * 13; const [x, y] = fXY(r, a); return fDot(x.toFixed(1), y.toFixed(1), (0.3 + rnd() * 0.5).toFixed(2), i % 3 ? '#ffcf8a' : '#fff'); }).join('');
+    return `<circle cx="60" cy="60" r="60" fill="url(#fg-halo)"/>` + `<g class="fa-spin slow">${swirl}</g>`
+      + `<g transform="rotate(-14 60 60)"><ellipse cx="60" cy="60" rx="58" ry="12" fill="none" stroke="url(#fg-disk)" stroke-width="5" mask="url(#fm-out)" opacity=".9"/>`
+      + `<path d="M2 60A58 12 0 0 0 118 60" fill="none" stroke="url(#fg-disk)" stroke-width="5.500" stroke-linecap="round"/><path d="M8 60A52 9 0 0 0 112 60" fill="none" stroke="#fff6dc" stroke-width="1" opacity=".75"/></g>`
+      + fRing(41.8, 1.8, '#fff3d6', 'class="fa-glow" style="--g:#ffb347"') + fRing(43.4, 0.6, '#ff8a3d', 'opacity=".7"');
+  },
+  // сверхновая: сияющая вспышка вокруг, лучи разной длины и расходящаяся ударная волна
+  supernova: () => {
+    const rnd = fRand(5);
+    const rays = Array.from({ length: 28 }, (_, i) => { const a = i * (360 / 28) + rnd() * 6, l = 6 + rnd() * 9 + (i % 4 === 0 ? 5 : 0), w = 0.5 + rnd() * 0.9; return fAt(a, `<path d="M${60 - w} 17L60 ${17 - l}L${60 + w} 17Z" fill="${i % 3 ? '#e6f8ff' : '#ffd1f0'}" opacity=".9"/>`); }).join('');
+    return `<circle class="fa-shock" cx="60" cy="60" r="50" fill="none" stroke="#9fe8ff" stroke-width="1.400"/><circle class="fa-shock" style="animation-delay:-1.200s" cx="60" cy="60" r="50" fill="none" stroke="#ff8fd8" stroke-width="1"/>`
+      + `<circle cx="60" cy="60" r="60" fill="url(#fg-nova)" mask="url(#fm-out)"/>` + `<g class="fa-glow" style="--g:#9fe8ff">${rays}</g>`
+      + fRing(42.2, 2.4, '#ffffff') + fRing(44.4, 1, '#9fe8ff', 'opacity=".85"') + fSpark(100, 16, 0.7, '#fff', 0.2) + fSpark(18, 98, 0.6, '#ffd1f0', 1);
+  },
+  // взрыв: огненный шар с рваным краем, осколки, дым и ударное кольцо
+  explosion: () => {
+    const burst = (r1, r2, n, seed, fill, cls = '') => { const rnd = fRand(seed); return `<polygon class="${cls}" points="${Array.from({ length: n * 2 }, (_, i) => fP(i % 2 ? r1 + rnd() * 2 : r2 + rnd() * 5, i * (180 / n) + rnd() * 4)).join(' ')}" fill="${fill}" stroke-linejoin="round" mask="url(#fm-out)"/>`; };
+    const rnd = fRand(77);
+    const smoke = Array.from({ length: 9 }, (_, i) => { const [x, y] = fXY(52 + rnd() * 4, i * 40 + rnd() * 15); return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(3 + rnd() * 3).toFixed(1)}" fill="#3a3540" opacity=".55"/>`; }).join('');
+    const shards = Array.from({ length: 10 }, (_, i) => { const a = i * 36 + rnd() * 20; return fAt(a, `<path class="fa-rise" style="animation-delay:${(rnd() * 2).toFixed(2)}s" d="M59 ${5 + rnd() * 4}l2.400-1.200 .8 2.600-2.600.6Z" fill="#ffd75e" stroke="#7a1406" stroke-width=".4"/>`); }).join('');
+    return smoke + burst(46, 55, 16, 3, '#7a1406') + burst(45, 52, 16, 8, 'url(#fg-blast)', 'fa-flick-all') + burst(43, 48, 14, 13, '#fff1a8')
+      + `<circle class="fa-shock" cx="60" cy="60" r="50" fill="none" stroke="#ffd36b" stroke-width="1.600"/>` + shards + fRing(41.6, 1.4, '#7a1406', 'opacity=".8"');
+  },
+});
+
 // общие градиенты и маска «вне аватарки» — один раз на страницу
 document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>${
   Object.entries({

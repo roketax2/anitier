@@ -1017,3 +1017,7 @@ body.viewing .ach { cursor: pointer; }
 .fa-gs4 { animation: fa-gslice 2.9s steps(1) infinite reverse -1.1s; }
 .fa-gn { animation: fa-gnoise 2s steps(1) infinite; opacity: 0; }
 .fa-gflick { animation: fa-gblink 3.1s steps(1) infinite; }
+@keyframes fa-shock { 0% { transform: scale(.82); opacity: .9; } 100% { transform: scale(1.18); opacity: 0; } }
+@keyframes fa-pulse-scale { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.03); } }
+.fa-shock { transform-box: view-box; transform-origin: 60px 60px; animation: fa-shock 2.4s ease-out infinite; }
+.fa-flick-all { transform-box: view-box; transform-origin: 60px 60px; animation: fa-pulse-scale .9s ease-in-out infinite; }

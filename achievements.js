@@ -28,6 +28,9 @@ const GLYPH = {
   trash: '<path d="M4 7h16M9.500 7V4.500h5V7M6.500 7l1 13h9l1-13M10 11v5.500M14 11v5.500"/>',
   list: '<path d="M8.500 6h11.500M8.500 12h11.500M8.500 18h7"/><path d="M4.200 6h.010M4.200 12h.010M4.200 18h.010" stroke-width="3"/>',
   pencil: '<path d="M4 20h4L19 9a2.800 2.800 0 0 0-4-4L4 16v4Z"/><path d="m13.500 6.500 4 4"/>',
+  hole: '<circle cx="12" cy="12" r="3.200" fill="currentColor"/><path d="M12 4.500a7.500 7.500 0 0 1 7.500 7.500M19.500 12A7.500 7.500 0 0 1 12 19.500M12 19.500A7.500 7.500 0 0 1 4.500 12M4.500 12A7.500 7.500 0 0 1 12 4.500" stroke-dasharray="3 2.400"/>',
+  nova: '<path d="M12 2.500v4M12 17.500v4M2.500 12h4M17.500 12h4M5.300 5.300l2.800 2.800M15.900 15.900l2.800 2.800M5.300 18.700l2.800-2.800M15.900 8.100l2.800-2.800"/><circle cx="12" cy="12" r="2.600" fill="currentColor"/>',
+  boom: '<path d="M12 2.800 13.900 8.300 19.500 6.300 16.200 11.100 21.200 13.900 15.400 14.700 16.300 20.500 12 16.700 7.700 20.500 8.600 14.700 2.800 13.900 7.800 11.100 4.500 6.300 10.100 8.300Z"/>',
   gem: '<path d="M7 4h10l4 5-9 11L3 9Z"/><path d="M3 9h18M9.500 4 8 9l4 11 4-11-1.500-5"/>',
   flame: '<path d="M12 21c3.600 0 6.500-2.600 6.500-6.200 0-2.800-1.700-4.600-2.600-6.800-.700 1.500-1.600 2.300-2.700 2.400.400-3-1-6-3.600-7.400.300 3.300-4.100 5.700-4.100 11.300 0 4 2.900 6.700 6.500 6.700Z"/>',
   snow: '<path d="M12 3v18M4.200 7.500l15.600 9M19.800 7.500l-15.600 9"/><path d="M9.700 4.800 12 6.800l2.300-2M9.700 19.200l2.300-2 2.300 2"/>',
@@ -87,6 +90,9 @@ const ACH = [
   { id: 'dropper', g: 'secret', i: 'trash', t: 'Не моё', d: 'Брось 10 аниме', ok: (s) => s.dropped >= 10 },
   { id: 'planner', g: 'secret', i: 'list', t: 'Когда-нибудь посмотрю', d: '30 аниме в «В планах»', ok: (s) => s.planned >= 30 },
   { id: 'renamer', g: 'secret', i: 'pencil', t: 'Свои правила', d: 'Переименуй тир', ok: (s) => s.renamed },
+  { id: 'void', g: 'secret', i: 'hole', t: 'Бездна', d: 'Поставь кому-нибудь 1', ok: (s) => s.ones >= 1 },
+  { id: 'supernova', g: 'taste', i: 'nova', t: 'Сверхновая', d: 'Поставь 25 шедевров (оценка 10)', ok: (s) => s.tens >= 25, p: (s) => [s.tens, 25] },
+  { id: 'burst', g: 'count', i: 'boom', t: 'Взрыв', d: 'Оцени 20 аниме за одни сутки', ok: (s) => s.today >= 20, p: (s) => [s.today, 20] },
 ];
 const ACH_GROUPS = [['count', 'За количество'], ['taste', 'За вкус'], ['era', 'Эпохи и типы'], ['secret', 'Секретные']];
 
@@ -123,6 +129,9 @@ const FRAMES = [
   { id: 'ash', t: 'Пепел', need: 'dropper', fx: 'ember' },
   { id: 'paper', t: 'Свиток', need: 'planner', fx: 'dots slow' },
   { id: 'glitch', t: 'Глитч', need: 'renamer', fx: 'glitch' },
+  { id: 'blackhole', t: 'Чёрная дыра', need: 'void' },
+  { id: 'supernova', t: 'Сверхновая', need: 'supernova' },
+  { id: 'explosion', t: 'Взрыв', need: 'burst' },
 ];
 const frameById = (id) => FRAMES.find((f) => f.id === (id || '')) || FRAMES[0];
 const frameOpen = (f, ach) => !f.need || !!(ach || db.ach || {})[f.need];
@@ -158,6 +167,8 @@ function achStats(d = db) {
     planned: recs.filter((r) => r.status === 'planned').length,
     achCount: Object.keys(d.ach || {}).filter((k) => k !== 'collector' && ACH.some((a) => a.id === k)).length,
     renamed: d === db && Object.keys(tierNames || {}).length > 0,
+    ones: rated.filter((r) => r.score === 1).length,
+    today: rated.filter((r) => Date.now() - (r.added || 0) < 864e5).length,
     night: d === db && (() => { const h = new Date().getHours(); return h >= 2 && h < 5 && rated.length > 0; })(),
   };
 }

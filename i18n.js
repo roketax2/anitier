@@ -220,6 +220,8 @@ const EN = {
   'У вас пока мало общих оценённых аниме ({n}) — процент совпадения появится от трёх.': 'You have few rated anime in common so far ({n}) — the match appears from three.',
   'Совпадение вкусов с {w} по {n} общим аниме': 'Taste match with {w} across {n} shared anime', 'всего общих: {n}': '{n} in common total',
   'Сходитесь': 'You agree', 'Расходитесь': 'You differ', 'Советует {w}': 'Recommended by {w}',
+  'Чёрная дыра': 'Black hole', 'Сверхновая': 'Supernova', 'Взрыв': 'Explosion', 'Бездна': 'Abyss', 'Поставь кому-нибудь 1': 'Give something a 1',
+  'Поставь 25 шедевров (оценка 10)': 'Give twenty-five 10s', 'Оцени 20 аниме за одни сутки': 'Rate 20 anime within one day',
   // сообщения сервера
   'Google не ответил — попробуйте ещё раз': 'Google didn’t respond — try again', 'Google не подтвердил вход — попробуйте ещё раз': 'Google didn’t confirm the sign-in — try again',
   'Google — единственный способ войти. Сначала задайте пароль или привяжите почту.': 'Google is your only way to sign in. Set a password or link an email first.',
