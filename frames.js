@@ -143,6 +143,59 @@ const FRAME_ART = {
     + '<path d="M19 50H27M19 54H24M93 78H101M96 82H101" stroke="#fff" stroke-width="1" opacity=".6"/>',
 };
 
+/* ---------- «Ювелирные» рамки (2026-11-17): тонкий металл, гравировка, камни ----------
+   Автору рисованные показались мультяшными — эти заменяют одноимённые выше (записи ниже
+   перекрывают их). Рисованными оставлены для разнообразия: sakura, heart, fire, retro, moon, glitch.
+   Правило: ничего не заходит на аватарку (всё не ближе радиуса 41). */
+const fTicks = (n, r1, r2, stroke, w = 0.7, off = 0, op = 0.5) => fRep(n, () => `<path d="M60 ${60 - r2}V${60 - r1}" stroke="${stroke}" stroke-width="${w}" opacity="${op}"/>`, off);
+const fDiamond = (x, y, s, fill = '#f4fbff', stroke = '#6b4a0c') => `<path d="M${x} ${y - s}L${x + s * 0.72} ${y}L${x} ${y + s}L${x - s * 0.72} ${y}Z" fill="${fill}" stroke="${stroke}" stroke-width=".5" stroke-linejoin="round"/><path d="M${x - s * 0.72} ${y}H${x + s * 0.72}" stroke="${stroke}" stroke-width=".35" opacity=".55"/>`;
+const fPave = (n, r, s, fill, stroke, off = 0) => fRep(n, () => fDiamond(60, 60 - r, s, fill, stroke), off);
+const fBezel = (r, s, gem, metal = 'gold', edge = '#6b4a0c') => `<circle cx="60" cy="${60 - r}" r="${s + 1.5}" fill="url(#fg-${metal})" stroke="${edge}" stroke-width=".8"/>` + fGem(60, 60 - r, s, gem, edge);
+const fAt = (deg, html) => `<g transform="rotate(${deg} 60 60)">${html}</g>`;
+const fScallops = (n, r, h, stroke, w = 1) => fRep(n, () => { const a = 180 / n, [x1, y1] = fXY(r, -90 - a), [x2, y2] = fXY(r, -90 + a); return `<path d="M${x1.toFixed(1)} ${y1.toFixed(1)}Q60 ${(60 - r - h * 2).toFixed(1)} ${x2.toFixed(1)} ${y2.toFixed(1)}" fill="none" stroke="${stroke}" stroke-width="${w}" stroke-linecap="round"/>`; });
+// гранёный кристалл остриём наружу: светлая и тёмная грани
+const fCrystal = (r, len, w, deg, light, dark, edge) => fAt(deg, `<path d="M60 ${60 - r}L${60 - w} ${60 - r - len * 0.35}L60 ${60 - r - len}Z" fill="${light}"/><path d="M60 ${60 - r}L${60 + w} ${60 - r - len * 0.35}L60 ${60 - r - len}Z" fill="${dark}"/><path d="M60 ${60 - r}L${60 - w} ${60 - r - len * 0.35}L60 ${60 - r - len}L${60 + w} ${60 - r - len * 0.35}Z" fill="none" stroke="${edge}" stroke-width=".5" stroke-linejoin="round"/>`);
+
+Object.assign(FRAME_ART, {
+  // росток: тонкое золотое кольцо, три «листа»-хризолита сверху и изумруд снизу
+  sprout: () => fRing(44, 2.2, 'url(#fg-gold)') + fRing(47.3, 0.7, '#c9a24a', 'opacity=".8"') + fRep(12, () => '<circle cx="60" cy="16" r=".9" fill="#fff6c8"/>', 15)
+    + [[0, 11, 3.3], [-25, 8.5, 2.8], [25, 8.5, 2.8], [-47, 6, 2.2], [47, 6, 2.2]].map(([a, l, w]) => fCrystal(46.5, l, w, a, '#c8f5a6', '#2fbf71', '#147a45')).join('')
+    + fAt(180, fBezel(45.5, 2.5, '#2fcf96')),
+  // бронза: широкое кольцо с двумя рядами гравировки и заклёпками
+  bronze: () => fRing(50.3, 1.2, 'url(#fg-bronze)') + fBevel('bronze', 44, 7.4) + fTicks(48, 41.3, 43.2, '#3d2610', 0.6, 0, 0.55) + fTicks(48, 44.8, 46.7, '#3d2610', 0.6, 3.75, 0.55)
+    + fRep(4, () => '<circle cx="60" cy="16" r="2.600" fill="url(#fg-bronze)" stroke="#3d2610" stroke-width=".8"/><circle cx="59.300" cy="15.300" r=".8" fill="#fff" opacity=".8"/>', 45),
+  // золото: кольцо с россыпью бриллиантов, кружевной кант и два камня
+  gold: () => fScallops(20, 48, 2.4, 'url(#fg-gold)', 1.2) + fRep(20, () => '<circle cx="60" cy="12" r="1.100" fill="url(#fg-gold)" stroke="#7a5310" stroke-width=".4"/>', 9)
+    + fBevel('gold', 44, 6) + fPave(20, 44, 1.5, '#fffbe6', '#7a5310', 9) + fBezel(52, 2.6, '#eaf6ff') + fAt(180, fBezel(52, 2.6, '#ff4d78')),
+  // корона: кольцо и тиара из пяти тонких арок с бриллиантами
+  crown: () => fBevel('gold', 44, 5.6) + fPave(24, 44, 1.2, '#fffbe6', '#7a5310', 7.5)
+    + [[0, 10.5, 2.5], [-22, 8, 2], [22, 8, 2], [-42, 5.5, 1.6], [42, 5.5, 1.6]].map(([a, h, s]) => fAt(a, `<path d="M53.500 13.400Q59.200 11.200 60 ${13.4 - h}Q60.800 11.200 66.500 13.400" fill="none" stroke="#6b4a0c" stroke-width="2.600" stroke-linecap="round" stroke-linejoin="round"/><path d="M53.500 13.400Q59.200 11.200 60 ${13.4 - h}Q60.800 11.200 66.500 13.400" fill="none" stroke="url(#fg-gold)" stroke-width="1.600" stroke-linecap="round" stroke-linejoin="round"/>${fDiamond(60, 13.4 - h - s * 0.6, s, '#eaf6ff', '#6b4a0c')}`)).join('')
+    + [-11, 11, -32, 32].map((a) => fAt(a, '<circle cx="60" cy="12.800" r="1.300" fill="#fff8e0" stroke="#6b4a0c" stroke-width=".5"/>')).join('') + fAt(180, fBezel(46, 2.2, '#ff4d78')),
+  // легенда: радужное кольцо в восьмиконечной золотой звезде с камнями
+  legend: () => `<g class="fa-spin slow"><polygon points="${Array.from({ length: 16 }, (_, i) => fP(i % 2 ? 49 : 57, i * 22.5)).join(' ')}" fill="none" stroke="#6b4a0c" stroke-width="2.400" stroke-linejoin="round"/><polygon points="${Array.from({ length: 16 }, (_, i) => fP(i % 2 ? 49 : 57, i * 22.5)).join(' ')}" fill="none" stroke="url(#fg-gold)" stroke-width="1.400" stroke-linejoin="round"/>${fRep(8, () => fDiamond(60, 6.2, 1.9, '#eaf6ff', '#6b4a0c'))}</g>`
+    + fBevel('rainbow', 44, 6.2) + fRep(4, () => fBezel(44, 2.3, '#7fe9ff')) + fRep(4, () => fDiamond(60, 16, 1.7, '#fffbe6', '#6b4a0c'), 45) + fSpark(96, 22, 0.5, '#fff', 0.4) + fSpark(24, 98, 0.45, '#fff', 1.2),
+  // звёздная: тонкое двойное кольцо и лучи компаса
+  star: () => fRep(16, (k) => { const len = k % 4 === 0 ? 10.5 : k % 2 === 0 ? 7 : 4, w = k % 4 === 0 ? 1.9 : 1.3; return `<path d="M${60 - w} 12.600L60 ${12.6 - len}L${60 + w} 12.600Z" fill="url(#fg-gold)" stroke="#7a5310" stroke-width=".5" stroke-linejoin="round"/>`; })
+    + fRing(43.8, 2.4, 'url(#fg-gold)') + fRing(47.2, 0.8, '#c9a24a') + fRing(42, 0.6, '#fff6c8', 'opacity=".8"')
+    + fRep(4, () => `<g class="fa-tw">${fDiamond(60, 1.8, 1.7, '#fff', '#7a5310')}</g>`) + fRep(8, () => '<circle cx="60" cy="16.200" r=".9" fill="#fff6c8"/>', 22.5),
+  // S-тир: розовое золото, медальон с буквой S и бриллианты
+  stier: () => fBevel('pink', 44, 6) + fRing(48.6, 0.8, '#ffb3c4', 'opacity=".9"') + [0, 16, -16].map((a) => fAt(a, fDiamond(60, 16, 1.5, '#fff', '#5e0820'))).join('')
+    + fAt(158, fDiamond(60, 13, 2, '#fff', '#5e0820')) + fAt(202, fDiamond(60, 13, 2, '#fff', '#5e0820'))
+    + '<circle cx="60" cy="105.500" r="8.200" fill="url(#fg-pink)" stroke="#5e0820" stroke-width="1"/><circle cx="60" cy="105.500" r="6.400" fill="none" stroke="#fff" stroke-width=".6" opacity=".7"/>'
+    + '<text x="60" y="109.300" text-anchor="middle" font-size="10" font-weight="800" fill="#fff" stroke="#5e0820" stroke-width=".4" paint-order="stroke" font-family="Unbounded,Onest,sans-serif">S</text>',
+  // лёд: кольцо и гранёные кристаллы аквамарина
+  ice: () => Array.from({ length: 12 }, (_, k) => fCrystal(45.6, k % 2 ? 6.5 : 11, k % 2 ? 2.2 : 3.1, k * 30, '#f2fdff', '#5db6ff', '#1f66b8')).join('') + fBevel('ice', 43.6, 4.6) + fSpark(98, 20, 0.5, '#fff', 0.5) + fSpark(22, 100, 0.4, '#fff', 1.3),
+  // страж: стальное кольцо из восьми сегментов, сапфиры и болты
+  shield: () => fRing(50.4, 1.1, 'url(#fg-steel)') + fBevel('steel', 44, 7.4) + fTicks(8, 40.6, 47.4, '#1c2336', 1, 22.5, 0.6) + fTicks(32, 44.8, 46.8, '#1c2336', 0.6, 5.6, 0.4)
+    + fRep(4, () => fBezel(44, 2.7, '#3f8cff', 'steel', '#1c2336')) + fRep(4, () => '<circle cx="60" cy="16" r="2.200" fill="url(#fg-steel)" stroke="#1c2336" stroke-width=".7"/><path d="M58.700 16H61.300" stroke="#1c2336" stroke-width=".7"/>', 45),
+  // молния: зубчатая светящаяся трубка
+  lightning: () => `<g class="fa-flicker">${fTube('polygon', `points="${Array.from({ length: 24 }, (_, i) => fP(i % 2 ? 44 : 53, i * 15)).join(' ')}" stroke-linejoin="miter"`, '#ffe93b', 2.4)}</g>`
+    + `<polygon points="${Array.from({ length: 24 }, (_, i) => fP(i % 2 ? 42.5 : 47.5, i * 15 + 7.5)).join(' ')}" fill="none" stroke="#4dd2ff" stroke-width="1.100" opacity=".9"/>` + fSpark(100, 16, 0.5, '#fff', 0.3) + fSpark(18, 102, 0.45, '#bff2ff', 1.1),
+  // свиток: кольцо цвета пергамента с золотыми кромками, насечками и рубином
+  paper: () => fRing(44, 5, 'url(#fg-paper)') + fRing(46.7, 0.9, '#a8873f') + fRing(41.3, 0.9, '#a8873f') + fTicks(24, 42.6, 45.4, '#8f7443', 0.7, 7.5, 0.7)
+    + fRep(24, () => '<circle cx="60" cy="16" r=".7" fill="#8f7443"/>') + fAt(180, fBezel(44, 2.5, '#c9163f')) + fDiamond(60, 16, 2, '#fffbe6', '#7a5310'),
+});
+
 // общие градиенты и маска «вне аватарки» — один раз на страницу
 document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>${
   Object.entries({
