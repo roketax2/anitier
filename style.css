@@ -1048,3 +1048,6 @@ body.viewing .ach { cursor: pointer; }
 .fw-aurora { animation: fw-hue 6s ease-in-out infinite; }
 .fw-blackhole { animation: fw-breathe 5s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .fw { animation: none !important; } }
+
+@keyframes fw-flick { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.02, 1.05); } }
+.fw-flick { transform-box: view-box; transform-origin: 60px 100px; animation: fw-flick .9s ease-in-out infinite; }
