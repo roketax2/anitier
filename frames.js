@@ -497,8 +497,42 @@ document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="
 }<linearGradient id="fg-fire" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#ff3d00"/><stop offset=".55" stop-color="#ff9a1f"/><stop offset="1" stop-color="#ffe38a"/></linearGradient>
 <mask id="fm-out" maskUnits="userSpaceOnUse" x="-10" y="-10" width="140" height="140"><rect x="-10" y="-10" width="140" height="140" fill="#fff"/><circle cx="60" cy="60" r="40.5" fill="#000"/></mask></defs></svg>`);
 
+/* ---------- Слой движения поверх рисунка (2026-11-17, просьба автора «больше анимации») ----------
+   Рисунок рамки целиком лежит в <g class="fw fw-ID"> (CSS может его «дышать», мерцать, менять оттенок),
+   а FRAME_FX добавляет движущиеся детали: ток, искры, блики, падающий снег, осколки. */
+// блик, бегущий по кольцу радиуса r
+const fSweep = (r, w, speed = 'fast', color = '#fff', op = 0.75) => `<g class="fa-spin ${speed}"><path d="${fArc(r, -112, -78)}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round" opacity="${op}"/></g>`;
+// частицы, разлетающиеся наружу (каждая в своём повороте)
+const fFly = (n, seed, r0, color, size = 1.1, dur = 1.8) => { const rnd = fRand(seed); return Array.from({ length: n }, () => fAt(rnd() * 360, `<circle class="fa-fly" style="animation-delay:${-(rnd() * dur).toFixed(2)}s;animation-duration:${(dur * (0.7 + rnd() * 0.6)).toFixed(2)}s" cx="60" cy="${(60 - r0).toFixed(1)}" r="${(size * (0.6 + rnd() * 0.7)).toFixed(2)}" fill="${color}"/>`)).join(''); };
+const fTwinkles = (n, seed, r0, r1, color = '#fff', size = 0.5) => { const rnd = fRand(seed); return Array.from({ length: n }, (_, i) => { const [x, y] = fXY(r0 + rnd() * (r1 - r0), rnd() * 360); return `<g transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${(size * (0.6 + rnd() * 0.8)).toFixed(2)})"><path class="fa-tw" style="animation-delay:${-(rnd() * 2).toFixed(2)}s" d="M0-8Q1.200-1.200 8 0 1.200 1.200 0 8-1.200 1.200-8 0-1.200-1.200 0-8Z" fill="${color}"/></g>`; }).join(''); };
+const FRAME_FX = {
+  gold: () => fSweep(44, 2.6, 'fast', '#fffbe6', 0.85) + `<g class="fa-spin rev">${fSweep(48.2, 0.9, '', '#fff', 0.7)}</g>` + fTwinkles(6, 51, 47, 57, '#fff', 0.5),
+  bronze: () => fSweep(44, 3, 'fast', '#fff1dc', 0.65) + `<g class="fa-spin rev slow">${fSweep(50.3, 0.9, '', '#ffe0bd', 0.6)}</g>` + fTwinkles(4, 53, 47, 52, '#ffe9cc', 0.45),
+  legend: () => fSweep(45, 2.6, 'fast', '#fff', 0.7) + fTwinkles(10, 55, 50, 58, '#fff6c8', 0.5),
+  emerald: () => fSweep(49.5, 3, 'fast', '#eafff5', 0.6) + fTwinkles(6, 57, 46, 56, '#fff', 0.5),
+  shield: () => fSweep(45.5, 2.4, 'fast', '#f4f7ff', 0.6) + fTwinkles(4, 59, 50, 56, '#fff', 0.45),
+  neon: () => [[51, -75, 30], [51, 42, 150], [51, 162, 268], [45.5, -20, 160], [45.5, 172, 328]].map(([r, a0, a1], i) => `<path class="fa-flow${i % 2 ? ' rev' : ''}" d="${fArc(r, a0, a1)}" fill="none" stroke="#fff" stroke-width="${r > 50 ? 1.1 : 0.8}" stroke-dasharray="1.500 7" stroke-linecap="round"/>`).join(''),
+  fire: () => fFly(16, 4, 56, '#ffd36b', 1.1, 1.6) + fFly(8, 6, 52, '#ff7a1f', 0.9, 2.2) + fSweep(44, 1.6, 'fast', '#fff3b0', 0.6),
+  crown: () => fSweep(44, 2, 'fast', '#fffbe6', 0.8) + fTwinkles(7, 12, 52, 58, '#fff', 0.5),
+  star: () => `<g class="fa-shoot"><path d="M14 22L30 28" stroke="url(#fg-shoot)" stroke-width="1.400" stroke-linecap="round"/><circle cx="30" cy="28" r="1.300" fill="#fff"/></g>`
+    + `<g class="fa-shoot" style="animation-delay:-2.200s;animation-duration:5.500s"><path d="M84 92L100 98" stroke="url(#fg-shoot)" stroke-width="1.100" stroke-linecap="round"/><circle cx="100" cy="98" r="1" fill="#fff"/></g>` + fTwinkles(8, 14, 52, 58, '#fff6c8', 0.45) + fSweep(51, 1, 'slow', '#ffe38a', 0.8),
+  ice: () => { const rnd = fRand(17); return Array.from({ length: 8 }, () => { const x = 12 + rnd() * 96; return `<g transform="translate(${x.toFixed(1)} ${(rnd() * 10).toFixed(1)})"><path class="fa-snow" style="animation-delay:${-(rnd() * 5).toFixed(2)}s;animation-duration:${(4 + rnd() * 3).toFixed(2)}s" d="M0-1.600V1.600M-1.400-.800 1.400.800M-1.400.800 1.400-.800" stroke="#fff" stroke-width=".5" stroke-linecap="round"/></g>`; }).join('') + fSweep(45, 2.2, 'fast', '#fff', 0.7) + fTwinkles(8, 19, 52, 57, '#e6faff', 0.45); },
+  lightning: () => `<g class="fa-spin fast">${fDot(60, 10.5, 2, '#fff', 'fa-glow')}<circle cx="60" cy="10.500" r="4" fill="#5fe3ff" opacity=".35"/></g><g class="fa-spin rev fast">${fDot(60, 8, 1.4, '#fff36b')}</g>` + fFly(8, 23, 52, '#bff2ff', 0.8, 1.2),
+  aurora: () => fTwinkles(12, 25, 46, 56, '#e6fffa', 0.4) + `<g class="fa-spin rev">${fSweep(48, 1.2, '', '#fff', 0.5)}</g>`,
+  galaxy: () => `<g transform="rotate(-20 60 60)"><circle r="1.600" fill="#fff"><animateMotion dur="7s" repeatCount="indefinite" path="M117 60A57 13.500 0 1 1 3 60A57 13.500 0 1 1 117 60"/></circle></g>` + fTwinkles(12, 27, 50, 58, '#fff', 0.45) + `<g class="fa-spin">${fDot(60, 4, 0.9, '#ffd1f0')}</g>`,
+  moon: () => fTwinkles(10, 29, 52, 58, '#e6e9ff', 0.5) + fSweep(49.6, 1.1, 'slow', '#ffffff', 0.7) + `<g class="fa-shoot" style="animation-duration:6s"><path d="M8 24L22 30" stroke="url(#fg-shoot)" stroke-width="1" stroke-linecap="round"/><circle cx="22" cy="30" r="1" fill="#fff"/></g>`,
+  ash: () => fFly(16, 31, 50, '#ffb03a', 1, 2.2) + fFly(6, 33, 50, '#ff5a1f', 1.4, 2.8) + [[28, 0], [64, 1.2], [96, 2.1]].map(([x, d]) => `<circle class="fa-smoke" style="animation-delay:${-d}s" cx="${x}" cy="104" r="4" fill="#4a4550"/>`).join(''),
+  paper: () => `<g class="fa-spin slow">${fRing(50.5, 0.9, '#e9d6ab', 'stroke-dasharray="1 3.500" stroke-linecap="round"')}</g>` + fSweep(44, 1.2, '', '#fff8e3', 0.8) + fTwinkles(4, 35, 50, 55, '#fff6c8', 0.45),
+  blackhole: () => `<g transform="rotate(-14 60 60)"><path class="fa-flow" d="M2 60A58 12 0 0 0 118 60" fill="none" stroke="#fff6dc" stroke-width="1.400" stroke-dasharray="3 10" stroke-linecap="round" opacity=".85"/><ellipse class="fa-flow rev" cx="60" cy="60" rx="58" ry="12" fill="none" stroke="#ffcf8a" stroke-width="1" stroke-dasharray="2 12" mask="url(#fm-out)" opacity=".6"/></g>`
+    + `<circle class="fa-breath" cx="60" cy="60" r="42" fill="none" stroke="#ffd9a8" stroke-width="1.200" opacity=".7"/>`,
+  supernova: () => fTwinkles(14, 37, 46, 58, '#ffffff', 0.5) + fFly(10, 39, 46, '#9fe8ff', 0.8, 1.4),
+  explosion: () => { const rnd = fRand(41); return Array.from({ length: 12 }, () => fAt(rnd() * 360, `<path class="fa-fly" style="animation-delay:${-(rnd() * 1.6).toFixed(2)}s;animation-duration:${(1.2 + rnd() * 0.8).toFixed(2)}s" d="M59 ${(10 + rnd() * 3).toFixed(1)}l2.400-1.200 .8 2.600-2.600.6Z" fill="#ffd75e" stroke="#7a1406" stroke-width=".4"/>`)).join('') + fFly(10, 43, 52, '#ff8a1f', 1, 1.3)
+    + `<circle class="fa-shock" style="animation-delay:-1.200s" cx="60" cy="60" r="50" fill="none" stroke="#fff1a8" stroke-width="1"/>`; },
+};
+document.body.insertAdjacentHTML('beforeend', '<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="fg-shoot" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff"/></linearGradient></defs></svg>');
+
 const frameArtCache = {};
 function frameArt(id) {
   // последним слоем — тонкая тень у края аватарки, чтобы рамка «сидела» на ней
-  return (frameArtCache[id] ||= `<svg class="fr-art" viewBox="0 0 120 120" aria-hidden="true">${FRAME_ART[id]()}${id === 'glitch' ? '' : fRing(40.4, 1.4, '#000', 'opacity=".4"')}</svg>`);
+  return (frameArtCache[id] ||= `<svg class="fr-art" viewBox="0 0 120 120" aria-hidden="true"><g class="fw fw-${id}">${FRAME_ART[id]()}</g>${FRAME_FX[id] ? FRAME_FX[id]() : ''}${id === 'glitch' ? '' : fRing(40.4, 1.4, '#000', 'opacity=".4"')}</svg>`);
 }
