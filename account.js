@@ -537,4 +537,5 @@ async function openShared(id) {
 updateAcctBtn();
 const sharedId = new URLSearchParams(location.search).get('u');
 if (sharedId) openShared(sharedId);
+else if (new URLSearchParams(location.search).get('preview') === 'all') { window.VIEWING = { login: '' }; document.body.classList.add('viewing'); showPreview(acct.user); }
 else if (acct.token) pull().then(() => { if (pref('syncDirty', '0') === '1') push(); });

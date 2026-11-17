@@ -928,3 +928,21 @@ body.viewing #trayBtn, body.viewing .nav-btn[data-view="catalog"], body.viewing 
 .fx-glitch::before { animation: fr-glitch-a 2.2s steps(1) infinite; }
 .fx-glitch::after { display: block; -webkit-mask: none; mask: none; border: var(--p) solid #2bf0ff; box-sizing: border-box; mix-blend-mode: screen; z-index: 0; animation: fr-glitch-b 2.2s steps(1) infinite; }
 @media (prefers-reduced-motion: reduce) { .ava-wrap, .ava-wrap::before, .ava-wrap::after, .ach-pop, .ach-pop * { animation: none !important; } }
+
+/* ---------- Витрина рамок (?preview=all) ---------- */
+.pv-frames { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
+.pv-frame { display: grid; justify-items: center; gap: 4px; padding: 14px 6px 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--elev2); color: var(--text); font: inherit; }
+.pv-frame:hover { border-color: var(--line2); background: var(--elev3); }
+.pv-frame .a-avatar { width: 64px; height: 64px; font-size: 26px; }
+.pv-frame b { font-size: 13px; margin-top: 6px; }
+.pv-frame small { color: var(--muted); font-size: 11.5px; text-align: center; line-height: 1.25; }
+.pv-big { display: flex; align-items: center; gap: 28px; margin-bottom: 16px; padding: 22px; border-radius: 16px; background: var(--elev2); }
+.pv-big .a-avatar.huge { width: 150px; height: 150px; font-size: 60px; }
+.pv-big > .ava-wrap.lg { --p: 8px; }
+.pv-big > .ava-wrap.lg > .fr-badge { min-width: 38px; height: 38px; border-radius: 19px; }
+.pv-big > .ava-wrap.lg > .fr-badge svg { width: 22px; height: 22px; }
+.pv-big b { font: 700 22px var(--display); }
+.pv-sizes { display: flex; align-items: center; gap: 16px; margin-top: 14px; }
+.pv-sizes .a-avatar { width: 52px; height: 52px; }
+.pv-sizes .acct-letter { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: var(--accent-soft); color: var(--accent); }
+body.viewing .ach { cursor: pointer; }

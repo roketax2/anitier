@@ -222,3 +222,41 @@ function framed(inner, frame, size = '') {
   return `<span class="ava-wrap ${frameCls(f)} ${size}">${inner}${f.b ? `<i class="fr-badge">${glyphSvg(f.b)}</i>` : ''}</span>`;
 }
 checkAch(true); achReady = true;
+
+/* ---------- витрина: все рамки и достижения открыты (?preview=all) ----------
+   Только посмотреть: прогресс и рамка в профиле не меняются. */
+function showPreview(user) {
+  const u = user || { login: 'AniTier' };
+  show('mine'); window.PREVIEW = true; // дальше свой топ не перерисовывается поверх витрины
+  const ach = Object.fromEntries(ACH.map((a) => [a.id, Date.now()]));
+  const ava = (frame, size, cls = 'a-avatar') => framed(typeof avatarInner === 'function' ? avatarInner(u, cls) : `<span class="${cls}">A</span>`, frame, size);
+  $('#viewBanner').innerHTML = `<span>${tr('Витрина: все рамки и достижения открыты — только посмотреть, ничего не сохраняется')}</span><button class="btn" id="viewExit">${tr('К своему топу')}</button>`;
+  $('#viewBanner').hidden = false;
+  $('#viewExit').addEventListener('click', () => { location.href = location.pathname; });
+  $('#view-mine h1').textContent = tr('Рамки и достижения');
+  for (const s of ['.tools', '.pills', '#mineActions', '#tierHint', '#mineEmpty']) { const el = $(s, $('#view-mine')); if (el) el.hidden = true; }
+  $('#stats').textContent = `${FRAMES.length} ${tr('рамок')} · ${ACH.length} ${tr('достижений')}`;
+  $('#mineList').innerHTML = `<div class="stats-view">
+    <section class="st-sec"><div class="st-head"><h3>${tr('Рамки')}</h3><span>${tr('нажми на рамку — покажу крупно')}</span></div>
+      <div class="pv-big" id="pvBig"></div>
+      <div class="pv-frames">${FRAMES.map((f) => {
+        const a = f.need && ACH.find((x) => x.id === f.need);
+        return `<button class="pv-frame" data-pv="${f.id}">${ava(f.id, 'lg')}<b>${esc(tr(f.t))}</b><small>${a ? esc(tr(a.t)) : tr('сразу')}</small></button>`;
+      }).join('')}</div>
+    </section>
+    <section class="st-sec"><div class="st-head"><h3>${tr('Достижения')}</h3><span>${tr('нажми на достижение — покажу, как оно выпадает')}</span></div>${achShelfHTML(ach, false)}</section>
+  </div>`;
+  const big = (id) => {
+    const f = frameById(id);
+    $('#pvBig').innerHTML = `${ava(f.id, 'lg', 'a-avatar huge')}<div><b>${esc(tr(f.t))}</b><div class="pv-sizes">${ava(f.id, '')}${ava(f.id, 'sm', 'acct-letter')}</div></div>`;
+  };
+  big('legend');
+  $('#mineList').addEventListener('click', (e) => {
+    const fb = e.target.closest('[data-pv]');
+    if (fb) { big(fb.dataset.pv); $('#pvBig').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); return; }
+    const card = e.target.closest('.ach'); if (!card) return;
+    const i = [...$$('.ach', $('#mineList'))].indexOf(card);
+    const a = ACH_GROUPS.flatMap(([g]) => ACH.filter((x) => x.g === g))[i];
+    if (a) achPop(a);
+  });
+}

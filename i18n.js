@@ -212,6 +212,9 @@ const EN = {
   'Достижение получено': 'Achievement unlocked', 'Коллекционер': 'Collector', 'Получи 15 других достижений': 'Earn 15 other achievements',
   'Небо': 'Sky', 'Закат': 'Sunset', 'Росток': 'Sprout', 'Бронза': 'Bronze', 'Изумруд': 'Emerald', 'Легенда': 'Legend', 'Звёздная': 'Starlight',
   'Сердце': 'Heart', 'Страж': 'Guardian', 'Молния': 'Lightning', 'Сияние': 'Aurora', 'Галактика': 'Galaxy', 'Цепь': 'Chain', 'Пепел': 'Ash', 'Свиток': 'Scroll', 'Глитч': 'Glitch',
+  'Витрина: все рамки и достижения открыты — только посмотреть, ничего не сохраняется': 'Showcase: every frame and achievement unlocked — just for viewing, nothing is saved',
+  'Рамки и достижения': 'Frames and achievements', 'рамок': 'frames', 'достижений': 'achievements', 'Рамки': 'Frames', 'нажми на рамку — покажу крупно': 'tap a frame to see it large',
+  'сразу': 'from the start', 'нажми на достижение — покажу, как оно выпадает': 'tap an achievement to see the unlock popup',
   // сообщения сервера
   'Google не ответил — попробуйте ещё раз': 'Google didn’t respond — try again', 'Google не подтвердил вход — попробуйте ещё раз': 'Google didn’t confirm the sign-in — try again',
   'Google — единственный способ войти. Сначала задайте пароль или привяжите почту.': 'Google is your only way to sign in. Set a password or link an email first.',

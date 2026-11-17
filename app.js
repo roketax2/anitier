@@ -971,6 +971,7 @@ function statsHTML(list) {
 }
 
 function renderMine() {
+  if (window.PREVIEW) return; // открыта витрина рамок (achievements.js)
   $$('#layoutSeg button').forEach((b) => { const on = b.dataset.layout === layout; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
   const all = buildRows();
   const empty = !all.length;
