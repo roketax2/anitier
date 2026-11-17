@@ -147,17 +147,25 @@ function setSync(s, detail) {
   acct.status = s; acct.detail = detail || '';
   const b = $('#acctBtn'); if (!b) return;
   b.dataset.sync = acct.token ? s : '';
-  b.title = acct.user ? `${acct.user.login} · ${tr(SYNC_TEXT[s] || '')}` : tr('Войти в аккаунт');
+  b.title = acct.user ? `${dname(acct.user)} · ${tr(SYNC_TEXT[s] || '')}` : tr('Войти в аккаунт');
   if (acctDlg.open && acct.screen === 'profile') { const el = $('#syncLine'); if (el) el.textContent = syncLineText(); }
 }
 function syncLineText() {
   return acct.status === 'error' && acct.detail ? `${tr(SYNC_TEXT.error)}: ${acct.detail}` : tr(SYNC_TEXT[acct.status] || SYNC_TEXT.ok);
 }
+// имя для показа: ник, а если его нет — логин
+const dname = (u) => u?.nick || u?.login || '';
+// аватарка: картинка или первая буква ника в кружке (cls — размер)
+const AVATAR_OK = /^(data:image\/(webp|jpeg|png);base64,|https:\/\/([a-z0-9-]+\.)?shikimori\.(io|one)\/)/;
+function avatarHTML(u, cls) {
+  const src = u?.avatar && AVATAR_OK.test(u.avatar) ? u.avatar : '';
+  return src ? `<img class="${cls} ava-img" src="${esc(src)}" alt="">` : `<span class="${cls}">${esc([...dname(u)][0]?.toUpperCase() || '?')}</span>`;
+}
 function updateAcctBtn() {
   const b = $('#acctBtn'); if (!b) return;
-  const letter = acct.user?.login?.[0]?.toUpperCase();
-  b.innerHTML = letter ? `<span class="acct-letter">${esc(letter)}</span><i class="acct-dot"></i>` : icon('user');
-  b.classList.toggle('in', !!letter);
+  const u = acct.user;
+  b.innerHTML = u ? `${avatarHTML(u, 'acct-letter')}<i class="acct-dot"></i>` : icon('user');
+  b.classList.toggle('in', !!u);
   setSync(acct.status);
 }
 $('#acctBtn').addEventListener('click', async () => {
@@ -248,8 +256,10 @@ function renderAcct() {
     case 'profile': {
       if (!u) { acct.screen = 'start'; return renderAcct(); }
       const shareUrl = u.shareId ? `${location.origin}${location.pathname}?u=${u.shareId}` : '';
-      h = `<div class="a-head"><span class="a-avatar">${esc(u.login[0].toUpperCase())}</span><div><h2>${esc(u.login)}</h2>
-          <p class="a-sync" id="syncLine">${esc(syncLineText())}</p></div></div>
+      h = `<div class="a-head"><button class="a-ava-btn" data-screen="profileEdit" title="${tr('Сменить аву')}">${avatarHTML(u, 'a-avatar')}<i>${icon('edit')}</i></button>
+          <div class="a-who"><h2>${esc(dname(u))}</h2>
+          <p class="a-sync">${u.nick ? `${tr('логин')}: ${esc(u.login)} · ` : ''}<span id="syncLine">${esc(syncLineText())}</span></p></div></div>
+        <button class="btn wide" data-screen="profileEdit">${icon('edit')}${tr('Сменить ник и аву')}</button>
         ${msgHTML()}
         <section class="a-sec"><h3>${tr('Ссылка на мой топ')}</h3>
           <p class="a-lead">${tr('По ссылке видно твой топ и оценки — без заметок. Менять его по ссылке нельзя.')}</p>
@@ -264,6 +274,29 @@ function renderAcct() {
           ${!u.google && c.googleClientId ? '<div class="a-google" id="gBtn"></div>' : ''}
         </section>
         <div class="a-btns"><button class="btn" data-act2="logout">${tr('Выйти')}</button><button class="link danger" data-screen="delete">${tr('Удалить аккаунт')}</button></div>`;
+      break;
+    }
+    case 'profileEdit': {
+      if (!u) { acct.screen = 'start'; return renderAcct(); }
+      if (!('avatar' in d)) { d.avatar = u.avatar || null; d.nick = u.nick || ''; }
+      const posters = d.posters ? myPosters() : [];
+      h = `<h2>${tr('Ник и аватарка')}</h2>
+        <form data-act="profile">
+          <div class="a-ava-edit">${avatarHTML({ ...u, nick: d.nick || u.nick, avatar: d.avatar }, 'a-avatar big')}
+            <div class="a-ava-btns">
+              <button type="button" class="btn" data-ava="upload">${icon('upload')}${tr('Загрузить фото')}</button>
+              <button type="button" class="btn" data-ava="posters">${icon('tiers')}${tr('Постер из моего топа')}</button>
+              ${d.avatar ? `<button type="button" class="link" data-ava="clear">${tr('Убрать аву — будет буква')}</button>` : ''}
+            </div>
+          </div>
+          ${d.posters ? (posters.length ? `<div class="a-posters">${posters.map((p) => `<button type="button" class="${p === d.avatar ? 'on' : ''}" data-poster="${esc(p)}"><img loading="lazy" src="${esc(p)}" alt=""></button>`).join('')}</div>`
+            : `<p class="a-hint">${tr('В твоём топе пока нет постеров — добавь аниме.')}</p>`) : ''}
+          <label class="a-field"><span>${tr('Ник')}</span><input name="nick" maxlength="40" value="${esc(d.nick)}" placeholder="${esc(u.login)}"></label>
+          <small class="a-hint">${tr('2–24 знака, можно по-русски и с эмодзи. Ник видят по ссылке на топ. Входить всё так же по логину {l}.', { l: u.login })}</small>
+          ${msgHTML()}<button class="btn primary wide">${tr('Сохранить')}</button>
+        </form>
+        <input type="file" id="avaFile" accept="image/*" hidden>
+        <p class="a-links">${linkBtn('profile', '← Назад')}</p>`;
       break;
     }
     case 'password':
@@ -332,6 +365,15 @@ acctDlg.addEventListener('click', async (e) => {
     return;
   }
   if (t.dataset.send) { e.preventDefault(); await sendCode(t.dataset.send, t); return; }
+  if (t.dataset.ava || t.dataset.poster) {
+    const nick = $('input[name="nick"]', acctDlg)?.value; if (nick !== undefined) acct.data.nick = nick;
+    acct.msg = null;
+    if (t.dataset.ava === 'upload') { $('#avaFile').click(); return; }
+    if (t.dataset.ava === 'posters') acct.data.posters = !acct.data.posters;
+    if (t.dataset.ava === 'clear') acct.data.avatar = null;
+    if (t.dataset.poster) acct.data.avatar = t.dataset.poster;
+    renderAcct(); return;
+  }
   const a = t.dataset.act2; if (!a) return;
   t.disabled = true;
   try {
@@ -344,6 +386,37 @@ acctDlg.addEventListener('click', async (e) => {
     if (a === 'emailUnlink') { setUser((await api('POST', '/api/auth/email/unlink', {})).user); acct.msg = { ok: true, text: tr('Почта отвязана') }; }
     if (a === 'googleUnlink') { setUser((await api('POST', '/api/auth/google/unlink', {})).user); acct.msg = { ok: true, text: tr('Google отвязан') }; }
   } catch (err) { acct.msg = { text: err.message }; }
+  renderAcct();
+});
+// постеры аниме из своего топа — для аватарки
+function myPosters() {
+  const seen = new Set();
+  for (const r of [...Object.values(db.franchises), ...Object.values(db.items)].sort((a, b) => (b.score || 0) - (a.score || 0))) {
+    const p = r.anime?.poster;
+    if (p && AVATAR_OK.test(p) && !p.includes('missing')) seen.add(p);
+    if (seen.size >= 40) break;
+  }
+  return [...seen];
+}
+// своё фото → квадрат 160×160 из середины, webp (или jpeg, если браузер не умеет webp)
+async function avatarFromFile(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image(); img.src = url; await img.decode();
+    const side = Math.min(img.naturalWidth, img.naturalHeight);
+    const cv = document.createElement('canvas'); cv.width = cv.height = 160;
+    cv.getContext('2d').drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, 160, 160);
+    let out = cv.toDataURL('image/webp', 0.82);
+    if (!out.startsWith('data:image/webp')) out = cv.toDataURL('image/jpeg', 0.85);
+    for (let q = 0.7; out.length > 46000 && q > 0.3; q -= 0.15) out = cv.toDataURL('image/jpeg', q);
+    return out;
+  } finally { URL.revokeObjectURL(url); }
+}
+acctDlg.addEventListener('change', async (e) => {
+  if (e.target.id !== 'avaFile') return;
+  const f = e.target.files[0]; if (!f) return;
+  try { acct.data.avatar = await avatarFromFile(f); acct.data.posters = false; acct.msg = null; }
+  catch { acct.msg = { text: tr('Не получилось открыть картинку — выбери другую') }; }
   renderAcct();
 });
 // перерисовка (переключатель «с почтой») не должна стирать введённое
@@ -396,6 +469,9 @@ acctDlg.addEventListener('submit', async (e) => {
       const login = acct.user.login;
       const r = await api('POST', '/api/auth/password', { newPasswordHash: await passHash(login, v.password), ...(v.old ? { oldPasswordHash: await passHash(login, v.old) } : {}) });
       setUser(r.user); goScreen('profile'); acct.msg = { ok: true, text: tr('Пароль сохранён. На других устройствах нужно войти заново.') }; renderAcct();
+    } else if (act === 'profile') {
+      const r = await api('POST', '/api/auth/profile', { nick: (v.nick || '').trim() || null, avatar: acct.data.avatar || null });
+      setUser(r.user); goScreen('profile'); acct.msg = { ok: true, text: tr('Ник и аватарка сохранены') }; renderAcct();
     } else if (act === 'emailLink') {
       const r = await api('POST', '/api/auth/email/link', { email: v.email.trim(), code: (v.code || '').trim() });
       setUser(r.user); goScreen('profile'); acct.msg = { ok: true, text: tr('Почта привязана') }; renderAcct();
@@ -415,11 +491,12 @@ async function openShared(id) {
   document.body.classList.add('viewing');
   try {
     const r = await api('GET', '/api/shared/' + encodeURIComponent(id));
-    window.VIEWING = { login: r.login, updatedAt: r.updatedAt };
+    const who = dname(r);
+    window.VIEWING = { login: who, updatedAt: r.updatedAt };
     db = { version: 1, items: r.data.items || {}, franchises: r.data.franchises || {}, deleted: {} };
     tierNames = r.data.settings?.tierNames || {};
-    $('#viewBanner').innerHTML = `<span>${tr('Топ пользователя')} <b>${esc(r.login)}</b>${r.updatedAt ? ` · ${tr('обновлён')} ${new Date(r.updatedAt).toLocaleDateString(LOCALE)}` : ''}</span><button class="btn" id="viewExit">${tr('К своему топу')}</button>`;
-    $('#view-mine h1').textContent = tr('Топ {l}', { l: r.login });
+    $('#viewBanner').innerHTML = `<span class="vb-who">${avatarHTML(r, 'a-avatar small')}<span>${tr('Топ пользователя')} <b>${esc(who)}</b>${r.updatedAt ? ` · ${tr('обновлён')} ${new Date(r.updatedAt).toLocaleDateString(LOCALE)}` : ''}</span></span><button class="btn" id="viewExit">${tr('К своему топу')}</button>`;
+    $('#view-mine h1').textContent = tr('Топ {l}', { l: who });
   } catch (e) {
     $('#viewBanner').innerHTML = `<span>${esc(e.status === 404 ? tr('Ссылка не работает — топ закрыли или ссылку сменили') : e.message)}</span><button class="btn" id="viewExit">${tr('К своему топу')}</button>`;
     db = { version: 1, items: {}, franchises: {}, deleted: {} };

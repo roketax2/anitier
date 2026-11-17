@@ -40,6 +40,8 @@ type UserRow = {
   email_mask: string | null;
   google_sub: string | null;
   share_id: string | null;
+  nick?: string | null;
+  avatar?: string | null;
 };
 type SessionVia = "password" | "recovery" | "email" | "google";
 export type SessionUser = { userId: string; login: string; createdAt: number; tokenHash: string; via: SessionVia; sessionCreatedAt: number };
@@ -247,7 +249,47 @@ export function publicUser(_env: Env, user: UserRow) {
     google: Boolean(user.google_sub),
     hasPassword: hasPassword(user),
     shareId: user.share_id ?? null,
+    nick: user.nick ?? null,
+    avatar: user.avatar ?? null,
   };
+}
+
+/** Ник: любые буквы и эмодзи, 2–24 знака, без управляющих символов; пусто — показывать логин. */
+// управляющие и невидимые знаки (переводы строк, смена направления текста)
+const INVISIBLE_RE = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu;
+export function cleanNick(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== "string") throw new HttpError(400, "Некорректный ник");
+  const nick = value.replace(INVISIBLE_RE, "").replace(/\s+/g, " ").trim();
+  if (!nick) return null;
+  const len = [...nick].length;
+  if (len < 2 || len > 24) throw new HttpError(400, "Ник — от 2 до 24 знаков");
+  return nick;
+}
+
+const AVATAR_DATA_RE = /^data:image\/(webp|jpeg|png);base64,[A-Za-z0-9+/]+=*$/;
+const AVATAR_URL_RE = /^https:\/\/(?:[a-z0-9-]+\.)?shikimori\.(?:io|one)\/[A-Za-z0-9/_.\-]+\.(?:webp|jpe?g|png)(?:\?\d+)?$/;
+/** Аватарка: своя маленькая картинка или постер с Shikimori; пусто — буква ника. */
+export function cleanAvatar(value: unknown): string | null {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value !== "string") throw new HttpError(400, "Некорректная аватарка");
+  if (AVATAR_DATA_RE.test(value)) {
+    if (value.length > 48_000) throw new HttpError(413, "Аватарка слишком большая");
+    return value;
+  }
+  if (value.length <= 300 && AVATAR_URL_RE.test(value)) return value;
+  throw new HttpError(400, "Некорректная аватарка");
+}
+
+/** Сменить ник и аватарку. Поле не прислали — не трогаем; null — убрать. */
+async function updateProfile(env: Env, request: Request): Promise<Response> {
+  const session = await requireUser(env, request);
+  const body = await readJson(request);
+  const user = await sessionAccount(env, session);
+  const nick = "nick" in body ? cleanNick(body.nick) : (user.nick ?? null);
+  const avatar = "avatar" in body ? cleanAvatar(body.avatar) : (user.avatar ?? null);
+  await env.DB.prepare("UPDATE users SET nick = ?, avatar = ? WHERE id = ?").bind(nick, avatar, user.id).run();
+  return json({ user: publicUser(env, { ...user, nick, avatar }) });
 }
 
 export { findUserById, sessionAccount, randomToken };
@@ -566,6 +608,7 @@ export async function handleAccounts(request: Request, env: Env, path: string): 
   if (method === "POST" && path === "/api/auth/google/register") return googleRegister(env, request);
   if (method === "POST" && path === "/api/auth/google/link") return googleLink(env, request);
   if (method === "POST" && path === "/api/auth/google/unlink") return googleUnlink(env, request);
+  if (method === "POST" && path === "/api/auth/profile") return updateProfile(env, request);
   if (method === "POST" && path === "/api/auth/logout") {
     const { tokenHash } = await requireUser(env, request);
     await env.DB.prepare("DELETE FROM sessions WHERE token_hash = ?").bind(tokenHash).run();

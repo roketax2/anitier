@@ -173,6 +173,12 @@ const EN = {
   'Ещё раз': 'Resend', 'Прислать код': 'Send code',
   'Топ сохранён в аккаунте': 'Top saved to your account', 'Сохраняю…': 'Saving…', 'Нет связи — сохраню, когда появится интернет': 'Offline — will save when you’re back online',
   'Не удалось сохранить в аккаунт': 'Couldn’t save to your account',
+  'Сменить аву': 'Change avatar', 'логин': 'username', 'Сменить ник и аву': 'Change nickname and avatar', 'Ник и аватарка': 'Nickname and avatar',
+  'Загрузить фото': 'Upload a photo', 'Постер из моего топа': 'Poster from my top', 'Убрать аву — будет буква': 'Remove avatar — show a letter',
+  'В твоём топе пока нет постеров — добавь аниме.': 'No posters in your top yet — add some anime.', 'Ник': 'Nickname',
+  '2–24 знака, можно по-русски и с эмодзи. Ник видят по ссылке на топ. Входить всё так же по логину {l}.': '2–24 characters, any language and emoji. People see it via your top link. You still sign in with the username {l}.',
+  'Не получилось открыть картинку — выбери другую': 'Couldn’t open the image — pick another one', 'Ник и аватарка сохранены': 'Nickname and avatar saved',
+  'Некорректный ник': 'Invalid nickname', 'Ник — от 2 до 24 знаков': 'Nickname must be 2–24 characters', 'Некорректная аватарка': 'Invalid avatar', 'Аватарка слишком большая': 'The avatar is too large',
   // сообщения сервера
   'Google не ответил — попробуйте ещё раз': 'Google didn’t respond — try again', 'Google не подтвердил вход — попробуйте ещё раз': 'Google didn’t confirm the sign-in — try again',
   'Google — единственный способ войти. Сначала задайте пароль или привяжите почту.': 'Google is your only way to sign in. Set a password or link an email first.',
