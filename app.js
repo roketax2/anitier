@@ -1184,6 +1184,41 @@ function cleanDesc(s) {
 }
 const safeUrl = (u) => (/^https?:\/\/[^"'()\s\\]+$/.test(u || '') ? u : '');
 
+/* ---------- Anixart: ищем тот же релиз через их поиск и даём ссылку ---------- */
+const AX_API = 'https://api.anixart.tv/search/releases/0';
+const axCache = (() => { try { return JSON.parse(localStorage.getItem('animetop.anixart')) || {}; } catch { return {}; } })();
+const axNorm = (s) => (s || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-z0-9а-я]/g, '');
+async function findAnixart(a) {
+  const key = String(a.id);
+  if (key in axCache) return axCache[key];
+  const ask = async (query) => {
+    const r = await fetch(AX_API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query, searchBy: 0 }), signal: AbortSignal.timeout(10000) });
+    if (!r.ok) throw new Error('anixart ' + r.status);
+    return (await r.json()).content || [];
+  };
+  const pick = (list) => {
+    const n = axNorm(a.name), ru = axNorm(a.russian), y = String(a.airedOn?.year || '');
+    return list.find((x) => n && axNorm(x.title_original) === n)
+      || list.find((x) => ru && axNorm(x.title_ru) === ru && (!y || !x.year || String(x.year) === y))
+      || null;
+  };
+  let hit = null;
+  try {
+    hit = pick(await ask(a.name || a.russian));
+    if (!hit && a.russian) hit = pick(await ask(a.russian));
+  } catch { return null; } // сеть или Anixart недоступны — в кэш не пишем, попробуем в другой раз
+  axCache[key] = hit ? hit.id : 0;
+  try { localStorage.setItem('animetop.anixart', JSON.stringify(axCache)); } catch {}
+  return axCache[key];
+}
+async function showAnixart(a) {
+  const id = await findAnixart(a);
+  const link = $('#axLink');
+  if (!id || !link || (cs && (cs.repFull || cs.rep || cs.anime)?.id !== a.id && cs.anime.id !== a.id)) return;
+  link.href = `https://anixart.tv/release/${id}`;
+  link.hidden = false;
+}
+
 async function openCard(anime, level = 'season') {
   saveNote();
   const st = (cs = { anime, full: null, level, members: null, rep: null, repFull: null, loading: true });
@@ -1291,6 +1326,7 @@ function renderCard() {
         <div class="hero-links">
           ${full && desc.length > 260 ? '<button class="link" id="descMore">Читать полностью</button>' : ''}
           <a class="ext" href="${esc(a.url?.startsWith('http') ? a.url : SITE + (a.url || ''))}" target="_blank" rel="noopener">Открыть на Shikimori${icon('ext')}</a>
+          <a class="ext ax" id="axLink" target="_blank" rel="noopener" hidden>Открыть в Anixart${icon('ext')}</a>
         </div>
       </div>
     </div>`;
@@ -1352,6 +1388,7 @@ function renderCard() {
     </section>` : '';
 
   $('#cardBody').innerHTML = hero + rate + partsBlock;
+  if (!st.loading) showAnixart(a);
 
   /* --- действия --- */
   $('#descMore')?.addEventListener('click', (e) => { $('#desc').classList.remove('clamp'); e.target.remove(); });
