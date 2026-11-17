@@ -284,6 +284,7 @@ body.is-dragging, body.is-dragging * { cursor: grabbing !important; user-select:
   background: linear-gradient(140deg, rgba(255, 77, 120, .22), rgba(124, 108, 255, .22)); color: #fff;
 }
 .empty-art .ic { width: 38px; height: 38px; }
+.empty-eye { display: block; width: min(234px, 62vw); height: auto; margin: 0 auto 18px; }
 .empty-state h2 { font: 700 20px/1.25 var(--display); letter-spacing: -.01em; }
 .empty-state p { margin-top: 8px; color: var(--muted); }
 .empty-state .btn { margin-top: 20px; }
@@ -457,7 +458,7 @@ textarea::placeholder { color: var(--muted); }
   body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
   .bar-in { height: 54px; padding: 0 8px 0 14px; }
   .brand { font-size: 14px; }
-  .brand img { width: 41px; height: 28px; }
+  .brand img { width: 53px; height: 36px; }
   /* навигация уезжает вниз, под большой палец */
   .nav {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; margin: 0; gap: 0;
