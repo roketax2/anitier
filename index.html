@@ -34,9 +34,12 @@
         <h1>Мой топ</h1>
         <p class="stats" id="stats"></p>
       </div>
-      <div class="seg" id="layoutSeg" role="tablist" aria-label="Вид топа">
-        <button data-layout="list" data-ic="list" role="tab"><span>Рейтинг</span></button>
-        <button data-layout="tiers" data-ic="tiers" role="tab"><span>Тир-лист</span></button>
+      <div class="head-actions" id="mineActions">
+        <button class="tool-btn" id="shareBtn" data-ic="share" title="Сделать картинку топа, чтобы поделиться"><span>Поделиться</span></button>
+        <div class="seg" id="layoutSeg" role="tablist" aria-label="Вид топа">
+          <button data-layout="list" data-ic="list" role="tab"><span>Рейтинг</span></button>
+          <button data-layout="tiers" data-ic="tiers" role="tab"><span>Тир-лист</span></button>
+        </div>
       </div>
     </div>
 
@@ -107,6 +110,22 @@
   <dialog id="card" class="sheet card" aria-label="Аниме">
     <button class="icon-btn card-close" data-close data-ic="x" aria-label="Закрыть"></button>
     <div id="cardBody" class="card-scroll"></div>
+  </dialog>
+
+  <!-- ============ КАРТИНКА ТОПА ============ -->
+  <dialog id="shareDlg" class="sheet card share-dlg" aria-label="Картинка топа">
+    <button class="icon-btn card-close" data-close data-ic="x" aria-label="Закрыть"></button>
+    <div class="card-scroll">
+      <div class="share-body">
+        <h2>Картинка топа</h2>
+        <p class="stats" id="shareInfo">Рисую…</p>
+        <div class="share-img" id="shareImg"></div>
+        <div class="share-btns">
+          <button class="btn" id="shareSave" data-ic="download" disabled><span>Скачать</span></button>
+          <button class="btn primary" id="shareSend" data-ic="share" disabled hidden><span>Поделиться</span></button>
+        </div>
+      </div>
+    </div>
   </dialog>
 
   <!-- ============ ФИЛЬТРЫ ============ -->

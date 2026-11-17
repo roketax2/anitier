@@ -612,3 +612,22 @@ body.tray-open .view { padding-bottom: 320px; }
   .tray-item { width: 86px; }
   body.tray-open .view { padding-bottom: 300px; }
 }
+
+/* ============ Картинка топа ============ */
+.head-actions { display: flex; align-items: center; gap: 10px; }
+.head-actions .tool-btn { height: 48px; }
+.share-dlg { width: min(640px, calc(100vw - 32px)); }
+.share-body { padding: 26px 26px 22px; }
+.share-body h2 { font: 700 21px var(--display); letter-spacing: -.01em; padding-right: 40px; }
+.share-img { margin-top: 16px; border-radius: 14px; overflow: hidden; background: var(--elev2); min-height: 220px; display: grid; place-items: center; }
+.share-img img { display: block; width: 100%; height: auto; }
+.share-wait { display: flex; align-items: center; gap: 10px; padding: 30px; color: var(--muted); font-size: 14px; text-align: center; }
+.share-btns { display: flex; gap: 10px; margin-top: 16px; }
+.share-btns .btn { flex: 1; }
+@media (max-width: 720px) {
+  .head-actions { width: 100%; }
+  .head-actions .seg { flex: 1; width: auto; }
+  .head-actions .tool-btn { width: 48px; padding: 0; justify-content: center; flex: none; }
+  .head-actions .tool-btn span { display: none; }
+  .share-body { padding: calc(18px + env(safe-area-inset-top)) 16px 20px; }
+}

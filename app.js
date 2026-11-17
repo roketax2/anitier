@@ -47,6 +47,7 @@ const ICONS = {
   x: '<path d="M6 6l12 12M18 6 6 18"/>',
   check: '<path d="m5 12.5 4.5 4.5L19 7"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
+  share: '<path d="M12 15V3M7.5 7.5 12 3l4.5 4.5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/>',
   dots: '<circle cx="12" cy="5" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="19" r="1.4" fill="currentColor"/>',
   download: '<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 20h14"/>',
   upload: '<path d="M12 16V5M7.5 9.5 12 5l4.5 4.5M5 20h14"/>',
@@ -755,6 +756,19 @@ function stepRow(r, dir) {
 
 /* ---------- Мой топ ---------- */
 let mineRows = [];
+// сортировка «Рейтинга» — та, что выбрана в пилюле
+function sortMine(list) {
+  const name = (r) => (r.anime.russian || r.anime.name || '');
+  const cmp = {
+    my: (a, b) => (b.score || 0) - (a.score || 0) || (b.world || 0) - (a.world || 0),
+    world: (a, b) => (b.world || 0) - (a.world || 0),
+    diff: (a, b) => ((b.score || 0) - (b.world || 0)) - ((a.score || 0) - (a.world || 0)),
+    added: (a, b) => b.added - a.added,
+    year: (a, b) => (b.anime.year || 0) - (a.anime.year || 0),
+    name: (a, b) => name(a).localeCompare(name(b), 'ru'),
+  }[mineF.sort] || ((a, b) => (b.score || 0) - (a.score || 0));
+  return list.sort(cmp);
+}
 const mineList = $('#mineList');
 function rowMeta(r) {
   const a = r.anime;
@@ -807,7 +821,7 @@ function renderMine() {
   const empty = !all.length;
   renderStats(all);
   $('#mineEmpty').hidden = !empty;
-  for (const s of ['.tools', '.pills', '#layoutSeg']) $(s, $('#view-mine')).hidden = empty;
+  for (const s of ['.tools', '.pills', '#mineActions']) $(s, $('#view-mine')).hidden = empty;
   $('#tierHint').hidden = empty || layout !== 'tiers';
   if (empty) { mineRows = []; mineList.innerHTML = ''; return; }
 
@@ -848,16 +862,7 @@ function renderMine() {
     }).join('')}</div>`;
     applyFold();
   } else {
-    const name = (r) => (r.anime.russian || r.anime.name || '');
-    const cmp = {
-      my: (a, b) => (b.score || 0) - (a.score || 0) || (b.world || 0) - (a.world || 0),
-      world: (a, b) => (b.world || 0) - (a.world || 0),
-      diff: (a, b) => ((b.score || 0) - (b.world || 0)) - ((a.score || 0) - (a.world || 0)),
-      added: (a, b) => b.added - a.added,
-      year: (a, b) => (b.anime.year || 0) - (a.anime.year || 0),
-      name: (a, b) => name(a).localeCompare(name(b), 'ru'),
-    }[mineF.sort] || ((a, b) => (b.score || 0) - (a.score || 0));
-    list.sort(cmp);
+    sortMine(list);
     mineRows = list;
     mineList.innerHTML = `<ol class="rows">${list.map(rowHTML).join('')}</ol>`;
   }
@@ -1401,6 +1406,204 @@ function afterChange() {
   if (view === 'catalog' && cat.loaded) renderCatalog();
 }
 card.addEventListener('close', () => { saveNote(); cs = null; afterChange(); });
+
+/* ---------- Картинка топа («Поделиться») ----------
+   Рисуем на canvas тот вид, что выбран: тир-лист или рейтинг. Shikimori не разрешает браузеру
+   копировать свои постеры в картинку, поэтому постеры берём через открытый прокси картинок wsrv.nl. */
+const SHARE_W = 1080;
+const proxied = (u) => (u ? `https://wsrv.nl/?url=${encodeURIComponent(u.replace(/^https?:\/\//, ''))}&w=248&h=352&fit=cover&output=jpg&q=82` : '');
+function loadImg(src) {
+  return new Promise((res) => {
+    if (!src) return res(null);
+    const im = new Image(); im.crossOrigin = 'anonymous';
+    const t = setTimeout(() => res(null), 12000);
+    im.onload = () => { clearTimeout(t); res(im); };
+    im.onerror = () => { clearTimeout(t); res(null); };
+    im.src = src;
+  });
+}
+async function loadPosters(urls, onProgress) {
+  const out = new Array(urls.length); let i = 0, done = 0;
+  const worker = async () => { while (i < urls.length) { const k = i++; out[k] = await loadImg(proxied(urls[k])); onProgress?.(++done, urls.length); } };
+  await Promise.all(Array.from({ length: 6 }, worker));
+  return out;
+}
+// перенос текста по словам, не больше maxLines строк, с «…» в конце
+function wrapText(ctx, text, maxW, maxLines) {
+  const fit = (t) => { if (ctx.measureText(t).width <= maxW) return t; while (t.length && ctx.measureText(t + '…').width > maxW) t = t.slice(0, -1); return t + '…'; };
+  const words = String(text || '').split(/\s+/).filter(Boolean);
+  const lines = []; let cur = '', i = 0;
+  for (; i < words.length; i++) {
+    const t = cur ? cur + ' ' + words[i] : words[i];
+    if (ctx.measureText(t).width <= maxW || !cur) cur = t;
+    else { lines.push(cur); cur = words[i]; if (lines.length === maxLines) break; }
+  }
+  if (lines.length < maxLines && cur) { lines.push(cur); i = words.length; }
+  if (i < words.length) lines[lines.length - 1] = fit(lines[lines.length - 1] + '…').replace(/……$/, '…');
+  return lines.map(fit);
+}
+async function makeShareImage(onProgress) {
+  const all = buildRows();
+  try { await Promise.all([document.fonts.load('700 40px Unbounded'), document.fonts.load('700 20px Onest'), document.fonts.load('500 20px Onest')]); } catch {}
+  const F = (w, px, disp) => `${w} ${px}px ${disp ? 'Unbounded' : 'Onest'}, system-ui, sans-serif`;
+  const P = 48, HEAD = 176, FOOT = 92;
+  const tiers = layout === 'tiers';
+  let groups = [], list = [], more = 0, H;
+  // размеры тир-листа
+  const LW = 176, PW = 124, PH = 176, NH = 46, GAP = 12;
+  const bodyX = P + LW + 12, bodyW = SHARE_W - P - bodyX;
+  const per = Math.floor((bodyW - 24 + GAP) / (PW + GAP));
+  // размеры рейтинга
+  const RH = 140, LIMIT = 50;
+  if (tiers) {
+    groups = [...TIERS, NW, { t: null, c: '#4a4560' }]
+      .map((x) => ({ ...x, rows: all.filter((r) => rowGroup(r) === x.t).sort(withinTier) }))
+      .filter((g) => (g.t && g.t !== 'nw') || g.rows.length);
+    groups.forEach((g) => { g.h = g.rows.length ? Math.ceil(g.rows.length / per) * (PH + NH + GAP) - GAP + 24 : 116; });
+    H = HEAD + groups.reduce((sum, g) => sum + g.h + 12, 0) + FOOT;
+  } else {
+    list = sortMine([...all]);
+    more = Math.max(0, list.length - LIMIT); list = list.slice(0, LIMIT);
+    H = HEAD + list.length * RH + (more ? 56 : 0) + FOOT;
+  }
+  const rows = tiers ? groups.flatMap((g) => g.rows) : list;
+  const imgs = await loadPosters(rows.map((r) => r.anime.poster), onProgress);
+  const img = new Map(rows.map((r, i) => [r, imgs[i]]));
+
+  const cv = document.createElement('canvas');
+  cv.width = SHARE_W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  const rr = (x, y, w, h, r) => { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); };
+  // фон
+  ctx.fillStyle = '#0e0d14'; ctx.fillRect(0, 0, SHARE_W, H);
+  for (const [x, c] of [[120, 'rgba(255,77,120,.20)'], [960, 'rgba(124,108,255,.20)']]) {
+    const g = ctx.createRadialGradient(x, -40, 0, x, -40, 620);
+    g.addColorStop(0, c); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, SHARE_W, 700);
+  }
+  // шапка
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = '#f3f1f8'; ctx.font = F(700, 48, true);
+  ctx.fillText(tiers ? 'Мой тир-лист аниме' : 'Мой топ аниме', P, 96);
+  const rated = all.filter((r) => r.score != null);
+  const sub = [`${all.length} ${mode === 'title' ? 'аниме' : plural(all.length, ['сезон или фильм', 'сезона и фильма', 'сезонов и фильмов'])}`,
+    rated.length ? `моя средняя ${avg(rated.map((r) => r.score)).toFixed(1)}` : '',
+    rated.filter((r) => r.score === 10).length ? `шедевров: ${rated.filter((r) => r.score === 10).length}` : ''].filter(Boolean).join('   ·   ');
+  ctx.fillStyle = '#8a859b'; ctx.font = F(500, 24); ctx.fillText(sub, P, 140);
+
+  const drawPoster = (r, x, y, w, h, radius) => {
+    ctx.save(); rr(x, y, w, h, radius); ctx.clip();
+    const im = img.get(r);
+    if (im) ctx.drawImage(im, x, y, w, h);
+    else {
+      ctx.fillStyle = '#2c283a'; ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = '#bab5ca'; ctx.font = F(600, 14);
+      wrapText(ctx, r.anime.russian || r.anime.name, w - 16, 4).forEach((l, i) => ctx.fillText(l, x + 8, y + 26 + i * 18));
+    }
+    ctx.restore();
+  };
+  const badge = (x, y, w, h, fill, text, font, color = '#fff') => {
+    rr(x, y, w, h, 9); ctx.fillStyle = fill; ctx.fill();
+    ctx.fillStyle = color; ctx.font = font; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, x + w / 2, y + h / 2 + 1);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  };
+  let y = HEAD;
+  if (tiers) {
+    for (const g of groups) {
+      // плашка тира: название и подпись
+      rr(P, y, LW, g.h, 20); ctx.fillStyle = g.c; ctx.fill();
+      const name = g.t ? tierName(g.t) : '?', desc = g.t ? tierDesc(g.t) : 'Без оценки';
+      ctx.fillStyle = '#16131f'; ctx.textAlign = 'center';
+      ctx.font = name.length > 2 ? F(700, 26) : F(700, 60, true);
+      const nLines = wrapText(ctx, name, LW - 24, 2), lh = name.length > 2 ? 30 : 60;
+      ctx.font = F(600, 19);
+      const dLines = desc ? wrapText(ctx, desc, LW - 24, 2) : [];
+      const blockH = nLines.length * lh + (dLines.length ? 10 + dLines.length * 23 : 0);
+      let ty = y + (g.h - blockH) / 2 + lh * 0.82;
+      ctx.font = name.length > 2 ? F(700, 26) : F(700, 60, true);
+      nLines.forEach((l) => { ctx.fillText(l, P + LW / 2, ty); ty += lh; });
+      ctx.font = F(600, 19); ctx.fillStyle = 'rgba(22,19,31,.72)'; ty += 10 - lh + 23;
+      dLines.forEach((l) => { ctx.fillText(l, P + LW / 2, ty); ty += 23; });
+      ctx.textAlign = 'left';
+      // постеры тира
+      rr(bodyX, y, bodyW, g.h, 20); ctx.fillStyle = '#17151f'; ctx.fill();
+      ctx.strokeStyle = '#292535'; ctx.lineWidth = 2; ctx.stroke();
+      if (!g.rows.length) { ctx.fillStyle = '#5d5870'; ctx.font = F(500, 20); ctx.fillText('Пусто', bodyX + 24, y + g.h / 2 + 7); }
+      g.rows.forEach((r, k) => {
+        const px = bodyX + 12 + (k % per) * (PW + GAP), py = y + 12 + Math.floor(k / per) * (PH + NH + GAP);
+        drawPoster(r, px, py, PW, PH, 12);
+        badge(px + 6, py + 6, k + 1 > 9 ? 40 : 32, 30, 'rgba(12,11,17,.86)', String(k + 1), F(700, 15, true));
+        if (r.score != null) { const t = (r.approx ? '≈' : '') + fmtMy(r.score); badge(px + PW - 8 - (t.length > 2 ? 52 : 36), py + PH - 38, t.length > 2 ? 52 : 36, 32, '#ff4d78', t, F(700, 16, true)); }
+        ctx.fillStyle = '#bab5ca'; ctx.font = F(500, 16);
+        wrapText(ctx, r.anime.russian || r.anime.name, PW, 2).forEach((l, i) => ctx.fillText(l, px, py + PH + 21 + i * 20));
+      });
+      y += g.h + 12;
+    }
+  } else {
+    list.forEach((r, i) => {
+      rr(P, y, SHARE_W - P * 2, RH - 14, 20); ctx.fillStyle = '#17151f'; ctx.fill();
+      ctx.strokeStyle = '#292535'; ctx.lineWidth = 2; ctx.stroke();
+      const n = i + 1, mid = y + (RH - 14) / 2;
+      ctx.fillStyle = n === 1 ? '#ffd24a' : n === 2 ? '#d3d9e6' : n === 3 ? '#e89c62' : '#8a859b';
+      ctx.font = F(700, n <= 3 ? 34 : 28, true); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(String(n), P + 46, mid + 2); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+      drawPoster(r, P + 92, y + 10, 78, RH - 34, 10);
+      // справа: моя оценка и мировая
+      const my = r.score == null ? '—' : (r.approx ? '≈' : '') + fmtMy(r.score);
+      badge(SHARE_W - P - 96, mid - 38, 76, 76, r.score == null ? '#2c283a' : '#ff4d78', my, F(700, my.length > 2 ? 24 : 30, true), r.score == null ? '#8a859b' : '#fff');
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#ffc94a'; ctx.font = F(700, 24); ctx.fillText(`★ ${fmtWorld(r.world)}`, SHARE_W - P - 116, mid + 2);
+      ctx.fillStyle = '#8a859b'; ctx.font = F(500, 16); ctx.fillText('в мире', SHARE_W - P - 116, mid + 26);
+      ctx.textAlign = 'left';
+      // название и подпись
+      const tx = P + 192, tw = SHARE_W - P - 236 - tx;
+      ctx.fillStyle = '#f3f1f8'; ctx.font = F(700, 27);
+      const tl = wrapText(ctx, r.anime.russian || r.anime.name, tw, 2);
+      const meta = rowMeta(r).join(' · ');
+      let ty = mid - (tl.length * 34 + 28) / 2 + 26;
+      tl.forEach((l) => { ctx.fillText(l, tx, ty); ty += 34; });
+      ctx.fillStyle = '#8a859b'; ctx.font = F(500, 20); ctx.fillText(wrapText(ctx, meta, tw, 1)[0] || '', tx, ty - 4);
+      y += RH;
+    });
+    if (more) { ctx.fillStyle = '#8a859b'; ctx.font = F(600, 24); ctx.fillText(`…и ещё ${more}`, P + 20, y + 30); y += 56; }
+  }
+  // подвал
+  ctx.fillStyle = '#5d5870'; ctx.font = F(500, 22);
+  ctx.fillText('roketax2.github.io/anime-top', P, H - 40);
+  ctx.textAlign = 'right'; ctx.fillText('данные: Shikimori', SHARE_W - P, H - 40); ctx.textAlign = 'left';
+  return new Promise((res) => cv.toBlob(res, 'image/png'));
+}
+const shareDlg = $('#shareDlg');
+let shareFile = null, shareUrl = '';
+$('#shareBtn').addEventListener('click', async () => {
+  shareFile = null; if (shareUrl) URL.revokeObjectURL(shareUrl); shareUrl = '';
+  $('#shareImg').innerHTML = `<div class="share-wait"><span class="spin"></span><span id="shareProg">Рисую картинку…</span></div>`;
+  $('#shareInfo').textContent = layout === 'tiers' ? 'Тир-лист целиком — со всеми тирами, даже свёрнутыми' : 'Рейтинг в выбранной сортировке, до 50 мест';
+  $('#shareSave').disabled = true; $('#shareSend').disabled = true;
+  openModal(shareDlg);
+  try {
+    const blob = await makeShareImage((d, n) => { const p = $('#shareProg'); if (p) p.textContent = `Загружаю постеры… ${d} из ${n}`; });
+    if (!blob) throw 0;
+    shareFile = new File([blob], `anime-top-${new Date().toISOString().slice(0, 10)}.png`, { type: 'image/png' });
+    shareUrl = URL.createObjectURL(blob);
+    $('#shareImg').innerHTML = `<img src="${shareUrl}" alt="Картинка моего топа">`;
+    $('#shareSave').disabled = false;
+    const canSend = !!navigator.canShare?.({ files: [shareFile] });
+    $('#shareSend').hidden = !canSend; $('#shareSend').disabled = !canSend;
+  } catch {
+    $('#shareImg').innerHTML = '<p class="share-wait">Не получилось нарисовать картинку. Проверь интернет и попробуй ещё раз.</p>';
+  }
+});
+$('#shareSave').addEventListener('click', () => {
+  if (!shareUrl) return;
+  const a = document.createElement('a'); a.href = shareUrl; a.download = shareFile.name; a.click();
+  toast('Картинка сохранена');
+});
+$('#shareSend').addEventListener('click', async () => {
+  if (!shareFile) return;
+  try { await navigator.share({ files: [shareFile], title: 'Мой аниме-топ' }); } catch {}
+});
 
 /* ---------- Окна и кнопка «назад» ---------- */
 function openModal(d) {
