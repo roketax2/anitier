@@ -116,6 +116,7 @@ function save() {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(db)); } catch { toast(tr('Не удалось сохранить — память браузера недоступна')); }
   updateCount();
   if (typeof onDbSaved === 'function') onDbSaved(); // синхронизация с аккаунтом (account.js)
+  if (typeof checkAch === 'function') checkAch(); // достижения (achievements.js)
 }
 function updateCount() {
   const n = buildRows().length;
@@ -712,6 +713,7 @@ function setTierName(t, name, d) {
   setPref('tierNames', JSON.stringify(tierNames));
   setPref('tierNamesAt', String(Date.now()));
   if (typeof onDbSaved === 'function') onDbSaved();
+  if (typeof checkAch === 'function') checkAch();
   renderMine();
 }
 // окошко переименования тира
@@ -867,6 +869,8 @@ function renderStats(all) {
   $('#stats').innerHTML = bits.join('<i>·</i>');
 }
 /* ---------- Статистика ---------- */
+const prefAchOpen = () => pref('achOpen', '1') === '1';
+document.addEventListener('toggle', (e) => { if (e.target.classList?.contains('st-ach')) setPref('achOpen', e.target.open ? '1' : '0'); }, true);
 const fmt1 = (n) => (Math.round(n * 10) / 10).toFixed(1).replace(/\.0$/, '');
 function barsHTML(items, { max, avgOf } = {}) {
   const top = max || Math.max(1, ...items.map((x) => x.n));
@@ -895,6 +899,10 @@ function statsHTML(list) {
 
   const sec = (title, body, note = '') => `<section class="st-sec"><div class="st-head"><h3>${title}</h3>${note ? `<span>${note}</span>` : ''}</div>${body}</section>`;
   const out = [`<div class="st-tiles">${tiles}</div>`];
+  if (typeof achShelfHTML === 'function') {
+    const ach = db.ach || {}, n = ACH.filter((x) => ach[x.id]).length;
+    out.push(`<details class="st-sec st-ach" ${prefAchOpen() ? 'open' : ''}><summary class="st-head"><h3>${tr('Достижения')} · ${n} ${tr('из')} ${ACH.length}</h3><span>${ACH.filter((x) => ach[x.id]).slice(-8).map((x) => x.i).join(' ')}</span></summary>${achShelfHTML(ach, !window.VIEWING, window.VIEWING ? null : achStats())}</details>`);
+  }
 
   if (rated.length) {
     const dist = Array.from({ length: 10 }, (_, i) => 10 - i).map((n) => {

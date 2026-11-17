@@ -64,7 +64,7 @@ function setUser(u) { acct.user = u; setPref('user', JSON.stringify(u)); updateA
 /* ---------- синхронизация ---------- */
 const recTime = (r) => r?.updated || r?.added || 0;
 function syncData() {
-  return { v: 1, items: db.items, franchises: db.franchises, deleted: db.deleted || {}, settings: { tierNames, tierNamesAt: +pref('tierNamesAt', '0') || 0 } };
+  return { v: 1, items: db.items, franchises: db.franchises, deleted: db.deleted || {}, ach: db.ach || {}, settings: { tierNames, tierNamesAt: +pref('tierNamesAt', '0') || 0 } };
 }
 function mergeTop(a, b) {
   const now = Date.now(), KEEP = 120 * 864e5, del = {};
@@ -79,15 +79,18 @@ function mergeTop(a, b) {
     return out;
   };
   const sa = a.settings || {}, sb = b.settings || {};
-  return { v: 1, items: side('i:', a.items, b.items), franchises: side('f:', a.franchises, b.franchises), deleted: del, settings: (sb.tierNamesAt || 0) > (sa.tierNamesAt || 0) ? sb : sa };
+  // достижения: объединяем, дата — самая ранняя
+  const ach = { ...(b.ach || {}) };
+  for (const [k, t] of Object.entries(a.ach || {})) if (!ach[k] || t < ach[k]) ach[k] = t;
+  return { v: 1, ach, items: side('i:', a.items, b.items), franchises: side('f:', a.franchises, b.franchises), deleted: del, settings: (sb.tierNamesAt || 0) > (sa.tierNamesAt || 0) ? sb : sa };
 }
 // одинаковы ли два топа по составу и датам — тогда не нужно отправлять обратно
 function sameTop(a, b) {
-  const sig = (t) => ['items', 'franchises'].map((p) => Object.entries(t[p] || {}).map(([k, r]) => k + ':' + recTime(r)).sort().join(',')).join('|') + '|' + Object.keys(t.deleted || {}).length + '|' + (t.settings?.tierNamesAt || 0);
+  const sig = (t) => ['items', 'franchises'].map((p) => Object.entries(t[p] || {}).map(([k, r]) => k + ':' + recTime(r)).sort().join(',')).join('|') + '|' + Object.keys(t.deleted || {}).length + '|' + (t.settings?.tierNamesAt || 0) + '|' + Object.keys(t.ach || {}).length;
   return sig(a) === sig(b);
 }
 function applyTop(m) {
-  db.items = m.items || {}; db.franchises = m.franchises || {}; db.deleted = m.deleted || {};
+  db.items = m.items || {}; db.franchises = m.franchises || {}; db.deleted = m.deleted || {}; db.ach = m.ach || db.ach || {};
   const st = m.settings || {};
   if ((st.tierNamesAt || 0) > (+pref('tierNamesAt', '0') || 0)) {
     tierNames = st.tierNames || {};
@@ -98,6 +101,7 @@ function applyTop(m) {
 }
 function onDbSaved() {
   if (acct.applying || !acct.token || window.VIEWING) return;
+  setPref('syncDirty', '1');
   clearTimeout(acct.timer);
   acct.timer = setTimeout(push, 1200);
   setSync('pending');
@@ -110,7 +114,7 @@ async function push() {
     for (let i = 0; i < 4; i++) {
       const r = await api('PUT', '/api/top', { base: acct.version, data: syncData() });
       if (r.status === 409) { acct.version = r.version; applyTop(mergeTop(syncData(), r.data || {})); continue; }
-      acct.version = r.version; setPref('syncv', String(r.version));
+      acct.version = r.version; setPref('syncv', String(r.version)); setPref('syncDirty', '0');
       break;
     }
     setSync('ok');
@@ -157,14 +161,18 @@ function syncLineText() {
 const dname = (u) => u?.nick || u?.login || '';
 // аватарка: картинка или первая буква ника в кружке (cls — размер)
 const AVATAR_OK = /^(data:image\/(webp|jpeg|png);base64,|https:\/\/([a-z0-9-]+\.)?shikimori\.(io|one)\/)/;
-function avatarHTML(u, cls) {
+function avatarHTML(u, cls, size = '') {
+  const inner = avatarInner(u, cls);
+  return typeof framed === 'function' ? framed(inner, u?.frame, size) : inner;
+}
+function avatarInner(u, cls) {
   const src = u?.avatar && AVATAR_OK.test(u.avatar) ? u.avatar : '';
   return src ? `<img class="${cls} ava-img" src="${esc(src)}" alt="">` : `<span class="${cls}">${esc([...dname(u)][0]?.toUpperCase() || '?')}</span>`;
 }
 function updateAcctBtn() {
   const b = $('#acctBtn'); if (!b) return;
   const u = acct.user;
-  b.innerHTML = u ? `${avatarHTML(u, 'acct-letter')}<i class="acct-dot"></i>` : icon('user');
+  b.innerHTML = u ? `${avatarHTML(u, 'acct-letter', 'sm')}<i class="acct-dot"></i>` : icon('user');
   b.classList.toggle('in', !!u);
   setSync(acct.status);
 }
@@ -259,7 +267,8 @@ function renderAcct() {
       h = `<div class="a-head"><button class="a-ava-btn" data-screen="profileEdit" title="${tr('Сменить аву')}">${avatarHTML(u, 'a-avatar')}<i>${icon('edit')}</i></button>
           <div class="a-who"><h2>${esc(dname(u))}</h2>
           <p class="a-sync">${u.nick ? `${tr('логин')}: ${esc(u.login)} · ` : ''}<span id="syncLine">${esc(syncLineText())}</span></p></div></div>
-        <button class="btn wide" data-screen="profileEdit">${icon('edit')}${tr('Сменить ник и аву')}</button>
+        <button class="btn wide" data-screen="profileEdit">${icon('edit')}${tr('Ник, аватарка и рамка')}</button>
+        ${achStripHTML()}
         ${msgHTML()}
         <section class="a-sec"><h3>${tr('Ссылка на мой топ')}</h3>
           <p class="a-lead">${tr('По ссылке видно твой топ и оценки — без заметок. Менять его по ссылке нельзя.')}</p>
@@ -278,11 +287,11 @@ function renderAcct() {
     }
     case 'profileEdit': {
       if (!u) { acct.screen = 'start'; return renderAcct(); }
-      if (!('avatar' in d)) { d.avatar = u.avatar || null; d.nick = u.nick || ''; }
+      if (!('avatar' in d)) { d.avatar = u.avatar || null; d.nick = u.nick || ''; d.frame = u.frame || ''; }
       const posters = d.posters ? myPosters() : [];
       h = `<h2>${tr('Ник и аватарка')}</h2>
         <form data-act="profile">
-          <div class="a-ava-edit">${avatarHTML({ ...u, nick: d.nick || u.nick, avatar: d.avatar }, 'a-avatar big')}
+          <div class="a-ava-edit">${avatarHTML({ ...u, nick: d.nick || u.nick, avatar: d.avatar, frame: d.frame }, 'a-avatar big', 'lg')}
             <div class="a-ava-btns">
               <button type="button" class="btn" data-ava="upload">${icon('upload')}${tr('Загрузить фото')}</button>
               <button type="button" class="btn" data-ava="posters">${icon('tiers')}${tr('Постер из моего топа')}</button>
@@ -291,6 +300,9 @@ function renderAcct() {
           </div>
           ${d.posters ? (posters.length ? `<div class="a-posters">${posters.map((p) => `<button type="button" class="${p === d.avatar ? 'on' : ''}" data-poster="${esc(p)}"><img loading="lazy" src="${esc(p)}" alt=""></button>`).join('')}</div>`
             : `<p class="a-hint">${tr('В твоём топе пока нет постеров — добавь аниме.')}</p>`) : ''}
+          <div class="a-frames-h"><span>${tr('Рамка')}</span><small>${tr('Новые рамки открываются достижениями')}</small></div>
+          <div class="a-frames">${FRAMES.map((f) => { const open = frameOpen(f); const need = f.need && ACH.find((x) => x.id === f.need);
+            return `<button type="button" class="${(d.frame || '') === f.id ? 'on' : ''} ${open ? '' : 'locked'}" data-frame="${f.id}" ${open ? '' : 'aria-disabled="true"'} title="${esc(open ? tr(f.t) : tr('Откроется за «{a}»: {d}', { a: tr(need.t), d: need.g === 'secret' ? tr('секретное достижение') : tr(need.d) }))}">${framed(avatarInner({ ...u, nick: d.nick || u.nick, avatar: d.avatar }, 'a-avatar'), f.id, '')}<small>${open ? esc(tr(f.t)) : '🔒 ' + esc(tr(f.t))}</small></button>`; }).join('')}</div>
           <label class="a-field"><span>${tr('Ник')}</span><input name="nick" maxlength="40" value="${esc(d.nick)}" placeholder="${esc(u.login)}"></label>
           <small class="a-hint">${tr('2–24 знака, можно по-русски и с эмодзи. Ник видят по ссылке на топ. Входить всё так же по логину {l}.', { l: u.login })}</small>
           ${msgHTML()}<button class="btn primary wide">${tr('Сохранить')}</button>
@@ -365,6 +377,13 @@ acctDlg.addEventListener('click', async (e) => {
     return;
   }
   if (t.dataset.send) { e.preventDefault(); await sendCode(t.dataset.send, t); return; }
+  if (t.dataset.frame !== undefined) {
+    const nick = $('input[name="nick"]', acctDlg)?.value; if (nick !== undefined) acct.data.nick = nick;
+    const f = frameById(t.dataset.frame);
+    if (!frameOpen(f)) { const need = ACH.find((x) => x.id === f.need); acct.msg = { text: tr('Рамка «{f}» откроется за достижение «{a}»', { f: tr(f.t), a: need.g === 'secret' ? '???' : tr(need.t) }) }; }
+    else { acct.data.frame = f.id; acct.msg = null; }
+    renderAcct(); return;
+  }
   if (t.dataset.ava || t.dataset.poster) {
     const nick = $('input[name="nick"]', acctDlg)?.value; if (nick !== undefined) acct.data.nick = nick;
     acct.msg = null;
@@ -382,12 +401,20 @@ acctDlg.addEventListener('click', async (e) => {
       signedOut(); toast(tr('Ты вышел из аккаунта. Оценки остались на этом устройстве.')); return;
     }
     if (a === 'shareOn' || a === 'shareRenew') { if (acct.timer || acct.busy) await push(); setUser((await api('POST', '/api/top/share', { on: true, renew: a === 'shareRenew' })).user); acct.msg = { ok: true, text: tr(a === 'shareOn' ? 'Ссылка открыта — скопируй и отправь' : 'Новая ссылка готова, старая больше не работает') }; }
+    if (a === 'toStats') { acctDlg.close(); show('mine'); setLayout('stats'); setPref('achOpen', '1'); renderMine(); setTimeout(() => $('.st-ach')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60); return; }
     if (a === 'shareOff') { setUser((await api('POST', '/api/top/share', { on: false })).user); acct.msg = { ok: true, text: tr('Ссылка закрыта') }; }
     if (a === 'emailUnlink') { setUser((await api('POST', '/api/auth/email/unlink', {})).user); acct.msg = { ok: true, text: tr('Почта отвязана') }; }
     if (a === 'googleUnlink') { setUser((await api('POST', '/api/auth/google/unlink', {})).user); acct.msg = { ok: true, text: tr('Google отвязан') }; }
   } catch (err) { acct.msg = { text: err.message }; }
   renderAcct();
 });
+// полоска полученных достижений в профиле
+function achStripHTML() {
+  const ach = db.ach || {}, got = ACH.filter((x) => ach[x.id]);
+  return `<section class="a-sec"><h3>${tr('Достижения')} · ${got.length} ${tr('из')} ${ACH.length}</h3>
+    <div class="a-ach">${got.length ? got.map((x) => `<span title="${esc(tr(x.t))}">${x.i}</span>`).join('') : `<small class="a-hint">${tr('Пока нет — оцени первое аниме')}</small>`}</div>
+    <button class="link" data-act2="toStats">${tr('Все достижения — в «Статистике»')}</button></section>`;
+}
 // постеры аниме из своего топа — для аватарки
 function myPosters() {
   const seen = new Set();
@@ -470,8 +497,8 @@ acctDlg.addEventListener('submit', async (e) => {
       const r = await api('POST', '/api/auth/password', { newPasswordHash: await passHash(login, v.password), ...(v.old ? { oldPasswordHash: await passHash(login, v.old) } : {}) });
       setUser(r.user); goScreen('profile'); acct.msg = { ok: true, text: tr('Пароль сохранён. На других устройствах нужно войти заново.') }; renderAcct();
     } else if (act === 'profile') {
-      const r = await api('POST', '/api/auth/profile', { nick: (v.nick || '').trim() || null, avatar: acct.data.avatar || null });
-      setUser(r.user); goScreen('profile'); acct.msg = { ok: true, text: tr('Ник и аватарка сохранены') }; renderAcct();
+      const r = await api('POST', '/api/auth/profile', { nick: (v.nick || '').trim() || null, avatar: acct.data.avatar || null, frame: acct.data.frame || null });
+      setUser(r.user); goScreen('profile'); acct.msg = { ok: true, text: tr('Профиль сохранён') }; renderAcct();
     } else if (act === 'emailLink') {
       const r = await api('POST', '/api/auth/email/link', { email: v.email.trim(), code: (v.code || '').trim() });
       setUser(r.user); goScreen('profile'); acct.msg = { ok: true, text: tr('Почта привязана') }; renderAcct();
@@ -493,9 +520,9 @@ async function openShared(id) {
     const r = await api('GET', '/api/shared/' + encodeURIComponent(id));
     const who = dname(r);
     window.VIEWING = { login: who, updatedAt: r.updatedAt };
-    db = { version: 1, items: r.data.items || {}, franchises: r.data.franchises || {}, deleted: {} };
+    db = { version: 1, items: r.data.items || {}, franchises: r.data.franchises || {}, deleted: {}, ach: r.data.ach || {} };
     tierNames = r.data.settings?.tierNames || {};
-    $('#viewBanner').innerHTML = `<span class="vb-who">${avatarHTML(r, 'a-avatar small')}<span>${tr('Топ пользователя')} <b>${esc(who)}</b>${r.updatedAt ? ` · ${tr('обновлён')} ${new Date(r.updatedAt).toLocaleDateString(LOCALE)}` : ''}</span></span><button class="btn" id="viewExit">${tr('К своему топу')}</button>`;
+    $('#viewBanner').innerHTML = `<span class="vb-who">${avatarHTML(r, 'a-avatar small', 'sm')}<span>${tr('Топ пользователя')} <b>${esc(who)}</b> · 🏆 ${Object.keys(r.data.ach || {}).filter((k) => ACH.some((x) => x.id === k)).length}${r.updatedAt ? ` · ${tr('обновлён')} ${new Date(r.updatedAt).toLocaleDateString(LOCALE)}` : ''}</span></span><button class="btn" id="viewExit">${tr('К своему топу')}</button>`;
     $('#view-mine h1').textContent = tr('Топ {l}', { l: who });
   } catch (e) {
     $('#viewBanner').innerHTML = `<span>${esc(e.status === 404 ? tr('Ссылка не работает — топ закрыли или ссылку сменили') : e.message)}</span><button class="btn" id="viewExit">${tr('К своему топу')}</button>`;
@@ -510,4 +537,4 @@ async function openShared(id) {
 updateAcctBtn();
 const sharedId = new URLSearchParams(location.search).get('u');
 if (sharedId) openShared(sharedId);
-else if (acct.token) pull();
+else if (acct.token) pull().then(() => { if (pref('syncDirty', '0') === '1') push(); });

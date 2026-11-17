@@ -743,3 +743,74 @@ body.viewing #trayBtn, body.viewing .nav-btn[data-view="catalog"], body.viewing 
 .a-posters button.on { border-color: var(--accent); }
 .a-posters img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .vb-who { display: inline-flex; align-items: center; gap: 10px; }
+
+/* ---------- Рамки аватарки ---------- */
+@keyframes fr-spin { to { transform: rotate(1turn); } }
+@keyframes fr-glow { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.35); } }
+.ava-wrap { position: relative; display: inline-grid; place-items: center; border-radius: 50%; padding: 3px; isolation: isolate; flex: none; vertical-align: middle; }
+.ava-wrap.sm { padding: 2px; }
+.ava-wrap.lg { padding: 5px; }
+.ava-wrap.xs { padding: 0; width: 18px; height: 18px; }
+.ava-wrap::before { content: ''; position: absolute; inset: 0; border-radius: 50%; z-index: -1; background: var(--fr, var(--line2)); }
+.ava-wrap > :first-child { position: relative; z-index: 1; box-shadow: 0 0 0 2px var(--elev); }
+.ava-wrap .ring-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--elev); box-shadow: none; }
+.fr-badge { position: absolute; z-index: 2; right: -4px; bottom: -4px; min-width: 20px; height: 20px; padding: 0 3px; display: grid; place-items: center; border-radius: 10px; font: 700 11px/1 var(--display); font-style: normal; background: var(--elev); }
+.ava-wrap.sm .fr-badge { display: none; }
+.ava-wrap.lg .fr-badge { min-width: 28px; height: 28px; font-size: 15px; border-radius: 14px; right: -2px; bottom: -2px; }
+.fr-none::before { background: var(--line2); }
+.fr-pink { --fr: linear-gradient(135deg, #ff4d78, #ff9ab3); }
+.fr-violet { --fr: linear-gradient(135deg, #8b6cff, #c9a8ff); }
+.fr-mint { --fr: linear-gradient(135deg, #2fd39a, #9ff0c4); }
+.fr-gold { --fr: linear-gradient(135deg, #b8842a, #ffd75e 45%, #fff2b8 55%, #c99a35); }
+.fr-stier { --fr: linear-gradient(135deg, #ff4d78, #ffa257); }
+.fr-stier .fr-badge { color: #ff6b8f; }
+.fr-sakura { --fr: linear-gradient(135deg, #ffc2d6, #ff7aa6, #ffe1ec); }
+.fr-ice { --fr: linear-gradient(135deg, #7fe9ff, #3f8cff, #d6f6ff); }
+.fr-fire { --fr: conic-gradient(from 0deg, #ff3d00, #ffb300, #ff5e3a, #ffd75e, #ff3d00); }
+.fr-retro { --fr: repeating-conic-gradient(#ffd75e 0 25deg, #ff6b8f 25deg 50deg, #62c2ff 50deg 75deg); }
+.fr-moon { --fr: linear-gradient(135deg, #1b1f4a, #6a5acd, #1b1f4a); }
+.fr-crown { --fr: linear-gradient(135deg, #ffd75e, #ff9f43, #ffd75e); }
+.fr-neon::before, .fr-fire::before, .fr-crown::before { animation: fr-spin 4s linear infinite; }
+.fr-neon { --fr: conic-gradient(#ff4d78, #ffd75e, #5fd99a, #62c2ff, #a597ff, #ff4d78); }
+.fr-neon::before { box-shadow: 0 0 10px rgba(255, 77, 120, .5); }
+.fr-crown::before, .fr-gold::before { animation-name: fr-spin, fr-glow; animation-duration: 6s, 2.4s; animation-iteration-count: infinite; animation-timing-function: linear, ease-in-out; }
+.fr-gold::before { animation: fr-glow 2.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .ava-wrap::before { animation: none !important; } }
+.acct-btn .ava-wrap { margin: 0; }
+.acct-btn .ava-wrap .acct-letter { width: 26px; height: 26px; font-size: 12px; }
+
+/* выбор рамки */
+.a-frames-h { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--muted); }
+.a-frames-h small { font-size: 12px; }
+.a-frames { display: grid; grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: 8px; }
+.a-frames button { display: grid; justify-items: center; gap: 6px; padding: 10px 4px 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--elev2); color: var(--text2); font: inherit; }
+.a-frames button .a-avatar { width: 42px; height: 42px; font-size: 17px; }
+.a-frames button small { font-size: 11.5px; line-height: 1.2; text-align: center; }
+.a-frames button.on { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+.a-frames button.locked { opacity: .45; filter: grayscale(.7); }
+.a-ach { display: flex; flex-wrap: wrap; gap: 6px; font-size: 22px; line-height: 1; }
+.a-ach span { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 10px; background: var(--elev2); cursor: default; }
+.a-sec > .link { justify-self: start; font-size: 13px; }
+
+/* ---------- Достижения ---------- */
+.st-ach summary { list-style: none; cursor: pointer; margin-bottom: 0; }
+.st-ach summary::-webkit-details-marker { display: none; }
+.st-ach summary h3::before { content: '▸ '; color: var(--muted); }
+.st-ach[open] summary h3::before { content: '▾ '; }
+.st-ach[open] summary { margin-bottom: 12px; }
+.st-ach summary span { font-size: 18px; letter-spacing: 2px; }
+.ach-sum { color: var(--text2); font-size: 14px; margin-bottom: 12px; }
+.ach-sum b { color: var(--text); }
+.ach-group + .ach-group { margin-top: 14px; }
+.ach-group h4 { font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 8px; }
+.ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.ach { position: relative; display: grid; grid-template-columns: 40px 1fr; column-gap: 10px; align-content: start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--elev2); opacity: .55; }
+.ach.on { opacity: 1; border-color: rgba(255, 201, 74, .35); background: linear-gradient(135deg, rgba(255, 201, 74, .1), var(--elev2) 60%); }
+.ach-i { grid-row: 1 / 6; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 10px; background: var(--elev3); font-size: 22px; filter: grayscale(1); }
+.ach.on .ach-i { filter: none; }
+.ach-t { font-weight: 600; font-size: 14px; padding-right: 22px; }
+.ach small { color: var(--muted); font-size: 12px; line-height: 1.35; }
+.ach-bar { height: 5px; margin-top: 6px; border-radius: 3px; background: var(--elev3); overflow: hidden; }
+.ach-bar i { display: block; height: 100%; background: var(--star); border-radius: 3px; }
+.ach small.ach-n { font-variant-numeric: tabular-nums; margin-top: 2px; }
+.ach-frame { position: absolute; top: 10px; right: 10px; }

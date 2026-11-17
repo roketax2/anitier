@@ -75,10 +75,10 @@ async function setShare(env: Env, request: Request): Promise<Response> {
 /** Чужой топ по ссылке: только оценки, тиры и места — заметки не отдаём. */
 async function getShared(env: Env, id: string): Promise<Response> {
   const row = await env.DB.prepare(
-    "SELECT u.login, u.nick, u.avatar, t.data, t.updated_at FROM users u LEFT JOIN tops t ON t.user_id = u.id WHERE u.share_id = ?",
+    "SELECT u.login, u.nick, u.avatar, u.frame, t.data, t.updated_at FROM users u LEFT JOIN tops t ON t.user_id = u.id WHERE u.share_id = ?",
   )
     .bind(id)
-    .first<{ login: string; nick: string | null; avatar: string | null; data: string | null; updated_at: number | null }>();
+    .first<{ login: string; nick: string | null; avatar: string | null; frame: string | null; data: string | null; updated_at: number | null }>();
   if (!row) throw new HttpError(404, "Ссылка не работает — топ закрыли или ссылку сменили");
   let data: Record<string, unknown> = {};
   try {
@@ -101,8 +101,9 @@ async function getShared(env: Env, id: string): Promise<Response> {
     login: row.login,
     nick: row.nick ?? null,
     avatar: row.avatar ?? null,
+    frame: row.frame ?? null,
     updatedAt: row.updated_at ?? 0,
-    data: { items: strip(data.items), franchises: strip(data.franchises), settings: { tierNames: settings.tierNames ?? {} } },
+    data: { items: strip(data.items), franchises: strip(data.franchises), settings: { tierNames: settings.tierNames ?? {} }, ach: data.ach && typeof data.ach === "object" ? data.ach : {} },
   });
 }
 

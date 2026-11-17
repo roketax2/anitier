@@ -42,6 +42,7 @@ type UserRow = {
   share_id: string | null;
   nick?: string | null;
   avatar?: string | null;
+  frame?: string | null;
 };
 type SessionVia = "password" | "recovery" | "email" | "google";
 export type SessionUser = { userId: string; login: string; createdAt: number; tokenHash: string; via: SessionVia; sessionCreatedAt: number };
@@ -251,6 +252,7 @@ export function publicUser(_env: Env, user: UserRow) {
     shareId: user.share_id ?? null,
     nick: user.nick ?? null,
     avatar: user.avatar ?? null,
+    frame: user.frame ?? null,
   };
 }
 
@@ -288,8 +290,14 @@ async function updateProfile(env: Env, request: Request): Promise<Response> {
   const user = await sessionAccount(env, session);
   const nick = "nick" in body ? cleanNick(body.nick) : (user.nick ?? null);
   const avatar = "avatar" in body ? cleanAvatar(body.avatar) : (user.avatar ?? null);
-  await env.DB.prepare("UPDATE users SET nick = ?, avatar = ? WHERE id = ?").bind(nick, avatar, user.id).run();
-  return json({ user: publicUser(env, { ...user, nick, avatar }) });
+  // рамку открывают достижения на сайте; сервер проверяет только вид id — это украшение
+  let frame = user.frame ?? null;
+  if ("frame" in body) {
+    if (body.frame !== null && body.frame !== "" && (typeof body.frame !== "string" || !/^[a-z]{1,12}$/.test(body.frame))) throw new HttpError(400, "Некорректная рамка");
+    frame = (body.frame as string) || null;
+  }
+  await env.DB.prepare("UPDATE users SET nick = ?, avatar = ?, frame = ? WHERE id = ?").bind(nick, avatar, frame, user.id).run();
+  return json({ user: publicUser(env, { ...user, nick, avatar, frame }) });
 }
 
 export { findUserById, sessionAccount, randomToken };
