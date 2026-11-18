@@ -1120,3 +1120,25 @@ body.viewing .ach { cursor: pointer; }
 .fw-an_rezero { animation: fw-rewind 7s ease-in-out infinite; }
 @keyframes fa-wh5 { 0% { transform: scale(0); opacity: 0; } 2% { transform: scale(1.08); opacity: 1; } 3%, 16% { transform: scale(1); opacity: 1; } 19%, 100% { transform: scale(.9); opacity: 0; } }
 .fa-wh5 { transform-box: fill-box; transform-origin: 15% 100%; animation: fa-wh5 30s ease-out infinite; opacity: 0; }
+
+/* аниме-рамки, правки 3 (frames9.js) */
+@keyframes fa-titan { 0%, 55% { transform: translateY(0); } 64% { transform: translateY(-17px); } 67% { transform: translateY(-15.5px); } 70%, 84% { transform: translateY(-17px); } 94%, 100% { transform: translateY(0); } }
+.fa-titan { animation: fa-titan 11s ease-in-out infinite; }
+@keyframes fa-jab { 0%, 55% { transform: translateY(-3px); } 62% { transform: translateY(3.5px); } 70% { transform: translateY(2px); } 90%, 100% { transform: translateY(-3px); } }
+.fa-jab { animation: fa-jab 3s ease-in-out infinite; }
+@keyframes fa-hit { 0%, 60% { transform: scale(0); opacity: 0; } 63% { transform: scale(1.3); opacity: 1; } 74% { transform: scale(1); opacity: .8; } 80%, 100% { transform: scale(.6); opacity: 0; } }
+.fa-hit, .fa-hit2 { transform-box: fill-box; transform-origin: center; animation: fa-hit 3s ease-out infinite; opacity: 0; }
+@keyframes fa-hitring { 0%, 61% { transform: scale(.82); opacity: 0; } 63% { opacity: 1; } 85%, 100% { transform: scale(1.2); opacity: 0; } }
+.fa-hitring { transform-box: view-box; transform-origin: 60px 60px; animation: fa-hitring 3s ease-out infinite; opacity: 0; }
+@keyframes fa-cyc3 { 0% { opacity: 0; } 3%, 30% { opacity: 1; } 33.3%, 100% { opacity: 0; } }
+.fa-cyc3 { animation: fa-cyc3 9s linear infinite; opacity: 0; }
+@keyframes fa-fw { 0%, 10% { transform: scale(0); opacity: 0; } 14% { opacity: 1; } 30% { transform: scale(1); opacity: 1; } 45%, 100% { transform: scale(1.15); opacity: 0; } }
+.fa-fw { animation: fa-fw 4.2s ease-out infinite; opacity: 0; }
+@keyframes fa-bflash { 0%, 70% { transform: scale(0); opacity: 0; } 73% { transform: scale(1.25); opacity: 1; } 78% { transform: scale(.9); opacity: 1; } 86%, 100% { transform: scale(1.1); opacity: 0; } }
+.fa-bflash { animation: fa-bflash 4.5s ease-out infinite; opacity: 0; }
+@keyframes fa-atf { 0%, 60%, 100% { opacity: 0; } 66% { opacity: 1; } 80% { opacity: .2; } }
+.fa-atf { animation: fa-atf 3.5s ease-in-out infinite; opacity: 0; }
+@keyframes fa-sande { 0%, 70% { transform: translateX(0); opacity: 0; } 72% { opacity: .75; } 90%, 100% { transform: translateX(-14px); opacity: 0; } }
+.fa-sande { animation: fa-sande 5s ease-out infinite; }
+@keyframes fa-wh6 { 0% { transform: scale(0); opacity: 0; } 1.7% { transform: scale(1.08); opacity: 1; } 2.5%, 14% { transform: scale(1); opacity: 1; } 16%, 100% { transform: scale(.9); opacity: 0; } }
+.fa-wh6 { transform-box: fill-box; transform-origin: 15% 100%; animation: fa-wh6 36s ease-out infinite; opacity: 0; }
