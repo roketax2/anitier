@@ -187,7 +187,8 @@ $('#acctBtn').addEventListener('click', async () => {
 /* ---------- окно аккаунта ---------- */
 const goScreen = (screen, data = {}) => { acct.screen = screen; acct.msg = null; acct.data = data; renderAcct(); };
 const field = (name, label, type = 'text', extra = '') => `<label class="a-field"><span>${tr(label)}</span><input name="${name}" type="${type}" ${extra}></label>`;
-const pwd = (name, label, auto = 'current-password') => field(name, label, 'password', `autocomplete="${auto}" minlength="8" required`);
+// пароль с «глазом»: показать/скрыть, что вводишь (2026-11-18)
+const pwd = (name, label, auto = 'current-password') => `<label class="a-field"><span>${tr(label)}</span><span class="a-pw"><input name="${name}" type="password" autocomplete="${auto}" minlength="8" required><button type="button" class="a-eye" data-eye aria-label="${tr('Показать пароль')}" aria-pressed="false">${icon('eye')}</button></span></label>`;
 const LOGIN_ATTR = 'autocomplete="username" required minlength="3" maxlength="24" pattern="[A-Za-z0-9_.\\-]{3,24}" spellcheck="false" autocapitalize="off"';
 const msgHTML = () => (acct.msg ? `<p class="a-msg ${acct.msg.ok ? 'ok' : ''}">${esc(acct.msg.text)}</p>` : '');
 const linkBtn = (to, text) => `<button type="button" class="link" data-screen="${to}">${tr(text)}</button>`;
@@ -369,6 +370,19 @@ function formVals(f) { return Object.fromEntries(new FormData(f).entries()); }
 function samePasswords(v) {
   if (v.password !== v.password2) throw new Error(tr('Пароли не совпадают'));
 }
+Object.assign(EN, { 'Показать пароль': 'Show password', 'Скрыть пароль': 'Hide password' });
+acctDlg.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-eye]');
+  if (!b) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  const inp = b.previousElementSibling, show = inp.type === 'password';
+  const a = inp.selectionStart, z = inp.selectionEnd;
+  inp.type = show ? 'text' : 'password';
+  b.innerHTML = icon(show ? 'eyeoff' : 'eye');
+  b.setAttribute('aria-pressed', String(show));
+  b.setAttribute('aria-label', tr(show ? 'Скрыть пароль' : 'Показать пароль'));
+  inp.focus(); try { inp.setSelectionRange(a, z); } catch {}
+});
 acctDlg.addEventListener('click', async (e) => {
   const t = e.target.closest('button'); if (!t) return;
   if (t.dataset.screen) { e.preventDefault(); goScreen(t.dataset.screen); return; }

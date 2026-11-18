@@ -694,6 +694,11 @@ body.tray-open .view { padding-bottom: 320px; }
 .a-field { display: grid; gap: 5px; font-size: 13px; color: var(--muted); }
 .a-field input { height: 44px; padding: 0 14px; border: 1px solid var(--line2); border-radius: 12px; background: var(--elev2); color: var(--text); font: inherit; font-size: 15px; }
 .a-field input:focus { outline: none; border-color: var(--accent); }
+.a-pw { position: relative; display: grid; }
+.a-pw input { padding-right: 48px; }
+.a-eye { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 40px; height: 36px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 9px; background: none; color: var(--muted); cursor: pointer; }
+.a-eye:hover, .a-eye[aria-pressed="true"] { color: var(--text); }
+.a-eye svg { width: 20px; height: 20px; }
 .a-hint { color: var(--muted); font-size: 12.5px; margin-top: -4px; }
 .a-code { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: end; }
 .a-msg { padding: 10px 12px; border-radius: 10px; background: rgba(255, 122, 122, .12); color: #ffb0b0; font-size: 14px; }
