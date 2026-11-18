@@ -62,7 +62,7 @@ document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="
 // значок достижения; hidden — секретное, ещё не полученное
 function achIcon(a, hidden) {
   const shape = ACH_SHAPE[a.g], grad = hidden ? 'hidden' : a.g;
-  if (a.g === 'anime' && typeof FRAME_ART !== 'undefined' && FRAME_ART[a.id]) return `<svg class="ach-svg" viewBox="0 0 48 48" aria-hidden="true"><g fill="url(#ag-anime)" stroke="url(#ag-anime)" stroke-width="3" stroke-linejoin="round">${shape}</g><circle cx="24" cy="24" r="10" fill="#1b1726"/><svg x="6" y="6" width="36" height="36" viewBox="0 0 120 120" overflow="visible">${FRAME_ART[a.id]()}</svg></svg>`;
+  if (a.g === 'anime' && typeof FRAME_ART !== 'undefined' && FRAME_ART[a.id]) return `<svg class="ach-svg" viewBox="0 0 48 48" aria-hidden="true"><g fill="url(#ag-anime)" stroke="url(#ag-anime)" stroke-width="3" stroke-linejoin="round">${shape}</g><circle cx="24" cy="24" r="10" fill="#1b1726"/><svg class="fr-still" x="6" y="6" width="36" height="36" viewBox="0 0 120 120" overflow="visible">${noSmil(FRAME_ART[a.id]())}</svg></svg>`;
   return `<svg class="ach-svg" viewBox="0 0 48 48" aria-hidden="true">
     <g fill="url(#ag-${grad})" stroke="url(#ag-${grad})" stroke-width="3" stroke-linejoin="round">${shape}</g>
     <g transform="translate(24 24) scale(.830) translate(-24 -24)" fill="none" stroke="#fff" stroke-opacity=".380" stroke-width="1.500" stroke-linejoin="round">${shape}</g>
@@ -281,7 +281,11 @@ function achShelfHTML(ach, own, stats) {
 // маленький кружок-образец рамки
 // у рамки есть свой рисунок (frames.js)?
 const frameHasArt = (f) => typeof FRAME_ART !== 'undefined' && !!FRAME_ART[f.id];
-const frameRing = (f) => (frameHasArt(f) ? `<span class="ava-wrap fa xs"><span class="ring-dot"></span>${frameArt(f.id)}</span>` : `<span class="ava-wrap ${frameCls(f)} xs"><span class="ring-dot"></span></span>`);
+// неподвижный рисунок: без слоя движения, без SMIL; анимации и размытие выключены классом fr-still (style.css)
+const frameStillCache = {};
+const noSmil = (h) => h.replace(/<animate[A-Za-z]*\b[^>]*\/>/g, '').replace(/<animate[A-Za-z]*\b[^>]*>[\s\S]*?<\/animate[A-Za-z]*>/g, '');
+const frameStill = (id) => (frameStillCache[id] ||= `<svg class="fr-art fr-still" viewBox="0 0 120 120" aria-hidden="true"><g class="fw fw-${id}">${noSmil(FRAME_ART[id]())}</g>${id === 'glitch' ? '' : fRing(40.4, 1.4, '#000', 'opacity=".4"')}</svg>`);
+const frameRing = (f) => (frameHasArt(f) ? `<span class="ava-wrap fa xs"><span class="ring-dot"></span>${frameStill(f.id)}</span>` : `<span class="ava-wrap ${frameCls(f)} xs"><span class="ring-dot"></span></span>`);
 // обернуть аватарку в рамку
 function framed(inner, frame, size = '') {
   const f = frameById(frame);
@@ -289,13 +293,11 @@ function framed(inner, frame, size = '') {
   if (frameHasArt(f)) return `<span class="ava-wrap fa fa-${f.id} ${size}">${inner}${frameArt(f.id)}</span>`;
   return `<span class="ava-wrap ${frameCls(f)} ${size}">${inner}${f.b ? `<i class="fr-badge">${glyphSvg(f.b)}</i>` : ''}</span>`;
 }
-// миниатюра для списка выбора: только рисунок, без слоя движения (анимации и размытие там выключены в CSS)
-const frameThumbCache = {};
-function framedThumb(inner, frame) {
+// миниатюра для списков: тот же рисунок, но неподвижный
+function framedThumb(inner, frame, size = '') {
   const f = frameById(frame);
-  if (!f.id || !frameHasArt(f)) return framed(inner, frame, '');
-  frameThumbCache[f.id] ||= `<svg class="fr-art" viewBox="0 0 120 120" aria-hidden="true"><g class="fw fw-${f.id}">${FRAME_ART[f.id]()}</g>${f.id === 'glitch' ? '' : fRing(40.4, 1.4, '#000', 'opacity=".4"')}</svg>`;
-  return `<span class="ava-wrap fa fa-${f.id}">${inner}${frameThumbCache[f.id]}</span>`;
+  if (!f.id || !frameHasArt(f)) return framed(inner, frame, size);
+  return `<span class="ava-wrap fa fa-${f.id} ${size}">${inner}${frameStill(f.id)}</span>`;
 }
 checkAch(true); achReady = true;
 
@@ -305,7 +307,7 @@ function showPreview(user) {
   const u = user || { login: 'AniTier' };
   show('mine'); window.PREVIEW = true; // дальше свой топ не перерисовывается поверх витрины
   const ach = Object.fromEntries(ACH.map((a) => [a.id, Date.now()]));
-  const ava = (frame, size, cls = 'a-avatar') => framed(typeof avatarInner === 'function' ? avatarInner(u, cls) : `<span class="${cls}">A</span>`, frame, size);
+  const ava = (frame, size, cls = 'a-avatar', still) => (still ? framedThumb : framed)(typeof avatarInner === 'function' ? avatarInner(u, cls) : `<span class="${cls}">A</span>`, frame, size);
   $('#viewBanner').innerHTML = `<span>${tr('Витрина: все рамки и достижения открыты — только посмотреть, ничего не сохраняется')}</span><button class="btn" id="viewExit">${tr('К своему топу')}</button>`;
   $('#viewBanner').hidden = false;
   $('#viewExit').addEventListener('click', () => { location.href = location.pathname; });
@@ -317,7 +319,7 @@ function showPreview(user) {
       <div class="pv-big" id="pvBig"></div>
       <div class="pv-frames">${FRAMES.map((f) => {
         const a = f.need && ACH.find((x) => x.id === f.need);
-        return `<button class="pv-frame" data-pv="${f.id}">${ava(f.id, 'lg')}<b>${esc(tr(f.t))}</b><small>${a ? esc(tr(a.t)) : tr('сразу')}</small></button>`;
+        return `<button class="pv-frame" data-pv="${f.id}">${ava(f.id, 'lg', 'a-avatar', true)}<b>${esc(tr(f.t))}</b><small>${a ? esc(tr(a.t)) : tr('сразу')}</small></button>`;
       }).join('')}</div>
     </section>
     <section class="st-sec"><div class="st-head"><h3>${tr('Достижения')}</h3><span>${tr('нажми на достижение — покажу, как оно выпадает')}</span></div>${achShelfHTML(ach, false)}</section>

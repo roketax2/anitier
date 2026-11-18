@@ -163,7 +163,9 @@ const dname = (u) => u?.nick || u?.login || '';
 const AVATAR_OK = /^(data:image\/(webp|jpeg|png);base64,|https:\/\/([a-z0-9-]+\.)?shikimori\.(io|one)\/)/;
 function avatarHTML(u, cls, size = '') {
   const inner = avatarInner(u, cls);
-  return typeof framed === 'function' ? framed(inner, u?.frame, size) : inner;
+  // маленькие аватарки (шапка, баннер чужого топа) — с неподвижной рамкой: они видны на каждой странице и не должны грузить её
+  if (typeof framed !== 'function') return inner;
+  return size === 'sm' && typeof framedThumb === 'function' ? framedThumb(inner, u?.frame, size) : framed(inner, u?.frame, size);
 }
 function avatarInner(u, cls) {
   const src = u?.avatar && AVATAR_OK.test(u.avatar) ? u.avatar : '';
