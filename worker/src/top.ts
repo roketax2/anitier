@@ -1,4 +1,5 @@
 import { findUserById, publicUser, requireUser } from "./accounts";
+import { parseRewards } from "./promo";
 import { HttpError, json, jsonText, readJson } from "./http";
 
 // Топ на сервере (2026-11-17): весь топ одним JSON — как он лежит в браузере. Сервер его не
@@ -75,10 +76,10 @@ async function setShare(env: Env, request: Request): Promise<Response> {
 /** Чужой топ по ссылке: только оценки, тиры и места — заметки не отдаём. */
 async function getShared(env: Env, id: string): Promise<Response> {
   const row = await env.DB.prepare(
-    "SELECT u.login, u.nick, u.avatar, u.frame, t.data, t.updated_at FROM users u LEFT JOIN tops t ON t.user_id = u.id WHERE u.share_id = ?",
+    "SELECT u.login, u.nick, u.avatar, u.frame, u.rewards, t.data, t.updated_at FROM users u LEFT JOIN tops t ON t.user_id = u.id WHERE u.share_id = ?",
   )
     .bind(id)
-    .first<{ login: string; nick: string | null; avatar: string | null; frame: string | null; data: string | null; updated_at: number | null }>();
+    .first<{ login: string; nick: string | null; avatar: string | null; frame: string | null; rewards: string | null; data: string | null; updated_at: number | null }>();
   if (!row) throw new HttpError(404, "Ссылка не работает — топ закрыли или ссылку сменили");
   let data: Record<string, unknown> = {};
   try {
@@ -102,6 +103,7 @@ async function getShared(env: Env, id: string): Promise<Response> {
     nick: row.nick ?? null,
     avatar: row.avatar ?? null,
     frame: row.frame ?? null,
+    badges: parseRewards(row.rewards).badges,
     updatedAt: row.updated_at ?? 0,
     data: { items: strip(data.items), franchises: strip(data.franchises), themes: strip(data.themes), chars: strip(data.chars), settings: { tierNames: settings.tierNames ?? {} }, ach: data.ach && typeof data.ach === "object" ? data.ach : {} },
   });

@@ -267,7 +267,7 @@ function renderAcct() {
       if (!u) { acct.screen = 'start'; return renderAcct(); }
       const shareUrl = u.shareId ? `${location.origin}${location.pathname}?u=${u.shareId}` : '';
       h = `<div class="a-head"><button class="a-ava-btn" data-screen="profileEdit" title="${tr('Сменить аву')}">${avatarHTML(u, 'a-avatar')}<i>${icon('edit')}</i></button>
-          <div class="a-who"><h2>${esc(dname(u))}</h2>
+          <div class="a-who"><h2>${esc(dname(u))}</h2>${typeof badgesHTML === 'function' ? badgesHTML(u.rewards?.badges) : ''}
           <p class="a-sync">${u.nick ? `${tr('логин')}: ${esc(u.login)} · ` : ''}<span id="syncLine">${esc(syncLineText())}</span></p></div></div>
         <button class="btn wide" data-screen="profileEdit">${icon('edit')}${tr('Ник, аватарка и рамка')}</button>
         ${achStripHTML()}
@@ -304,6 +304,7 @@ function renderAcct() {
             : `<p class="a-hint">${tr('В твоём топе пока нет постеров — добавь аниме.')}</p>`) : ''}
           <div class="a-frames-h"><span>${tr('Рамка')}</span><small id="frameSt">${tr('Новые рамки открываются достижениями')}</small></div>
           <div class="a-frames">${FRAMES.map((f) => { const open = frameOpen(f); const need = f.need && ACH.find((x) => x.id === f.need);
+            if (f.code && !open) return '';
             return `<button type="button" class="${(d.frame || '') === f.id ? 'on' : ''} ${open ? '' : 'locked'}" data-frame="${f.id}" ${open ? '' : 'aria-disabled="true"'} title="${esc(open ? tr(f.t) : tr('Откроется за «{a}»: {d}', { a: tr(need.t), d: need.g === 'secret' ? tr('секретное достижение') : tr(need.d) }))}">${framedThumb(avatarInner({ ...u, nick: d.nick || u.nick, avatar: d.avatar }, 'a-avatar'), f.id)}<small>${open ? '' : `<span class="lk">${glyphSvg('lock')}</span>`}${esc(tr(f.t))}</small></button>`; }).join('')}</div>
           <label class="a-field"><span>${tr('Ник')}</span><input name="nick" maxlength="40" value="${esc(d.nick)}" placeholder="${esc(u.login)}"></label>
           <small class="a-hint">${tr('2–24 знака, можно по-русски и с эмодзи. Ник видят по ссылке на топ. Входить всё так же по логину {l}.', { l: u.login })}</small>
@@ -395,6 +396,7 @@ acctDlg.addEventListener('click', async (e) => {
   if (t.dataset.frame !== undefined) {
     // окно целиком не перерисовываем (в нём десятки рамок — это и тормозило): меняем подсветку и превью и сразу сохраняем
     const f = frameById(t.dataset.frame), st = $('#frameSt', acctDlg), u = acct.user;
+    if (!frameOpen(f) && f.code) { if (st) st.textContent = tr('Только по промокоду'); return; }
     if (!frameOpen(f)) { const need = ACH.find((x) => x.id === f.need); if (st) st.textContent = tr('Рамка «{f}» откроется за достижение «{a}»', { f: tr(f.t), a: need.g === 'secret' ? '???' : tr(need.t) }); return; }
     if ((acct.data.frame || '') === f.id) return;
     acct.data.frame = f.id;
@@ -550,7 +552,7 @@ async function openShared(id) {
     window.VIEWING = { login: who, updatedAt: r.updatedAt };
     db = { version: 1, items: r.data.items || {}, franchises: r.data.franchises || {}, themes: r.data.themes || {}, chars: r.data.chars || {}, deleted: {}, ach: r.data.ach || {} };
     tierNames = r.data.settings?.tierNames || {};
-    $('#viewBanner').innerHTML = `<span class="vb-who">${avatarHTML(r, 'a-avatar small', 'sm')}<span>${tr('Топ пользователя')} <b>${esc(who)}</b> · <span class="vb-ach">${icon('trophy')}${Object.keys(r.data.ach || {}).filter((k) => ACH.some((x) => x.id === k)).length}</span>${r.updatedAt ? ` · ${tr('обновлён')} ${new Date(r.updatedAt).toLocaleDateString(LOCALE)}` : ''}</span></span><button class="btn" id="viewExit">${tr('К своему топу')}</button>`;
+    $('#viewBanner').innerHTML = `<span class="vb-who">${avatarHTML(r, 'a-avatar small', 'sm')}<span>${tr('Топ пользователя')} <b>${esc(who)}</b>${typeof badgesHTML === 'function' ? badgesHTML(r.badges, true) : ''} · <span class="vb-ach">${icon('trophy')}${Object.keys(r.data.ach || {}).filter((k) => ACH.some((x) => x.id === k)).length}</span>${r.updatedAt ? ` · ${tr('обновлён')} ${new Date(r.updatedAt).toLocaleDateString(LOCALE)}` : ''}</span></span><button class="btn" id="viewExit">${tr('К своему топу')}</button>`;
     $('#view-mine h1').textContent = tr('Топ {l}', { l: who });
     if (typeof renderCompare === 'function') renderCompare(own, who);
     if (typeof renderProfileCard === 'function') renderProfileCard(r);

@@ -207,7 +207,9 @@ const FRAMES = [
   ...ANIME_FR.map(([id, t]) => ({ id, t, need: id })),
 ];
 const frameById = (id) => FRAMES.find((f) => f.id === (id || '')) || FRAMES[0];
-const frameOpen = (f, ach) => !f.need || !!(ach || db.ach || {})[f.need];
+// рамка за промокод (promo.js): code — только промокодом; all — «все рамки» (код разработчика)
+const frameByCode = (id) => { const r = typeof acct !== 'undefined' && acct.user?.rewards; return !!r && (r.all || (r.frames || []).includes(id)); };
+const frameOpen = (f, ach) => (f.code ? frameByCode(f.id) : !f.need || !!(ach || db.ach || {})[f.need] || frameByCode(f.id));
 const frameCls = (f) => `fr-${f.id || 'none'}${f.fx ? ' ' + f.fx.split(' ').map((x) => 'fx-' + x).join(' ') : ''}`;
 
 /* ---------- подсчёт по топу ---------- */

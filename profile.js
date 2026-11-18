@@ -21,7 +21,7 @@ function profileHTML(u, d, own) {
   const ava = typeof avatarHTML === 'function' && u ? avatarHTML(u, 'a-avatar big', 'lg') : '';
   const top10 = rows.slice(0, 10), top5 = themes.sort((a, b) => b.s - a.s || a.at - b.at).slice(0, 5), top6 = chars.sort((a, b) => b.s - a.s || a.at - b.at).slice(0, 6);
   return `<section class="pf">
-    <div class="pf-head">${ava}<div class="pf-who"><h2>${esc(nick)}</h2>
+    <div class="pf-head">${ava}<div class="pf-who"><h2>${esc(nick)}</h2>${typeof badgesHTML === 'function' ? badgesHTML(u?.badges || u?.rewards?.badges) : ''}
       <div class="pf-nums">${num(rows.length, 'аниме')}${avgS != null ? num(avgS.toFixed(1), 'средняя') : ''}${num(tens, 'шедевров')}${themes.length ? num(themes.length, 'опенингов') : ''}${chars.length ? num(chars.length, 'персонажей') : ''}${num(ach.length, 'достижений')}</div>
       ${ach.length ? `<div class="pf-ach">${ach.slice(0, 10).map((a) => `<span title="${esc(tr(a.t))}">${achIcon(a)}</span>`).join('')}</div>` : ''}</div></div>
     ${top10.length ? `<h3 class="pf-h">${tr('Любимые аниме')}</h3><div class="pf-posters">${top10.map((s, i) => `<button type="button" class="pf-p" data-pfa="${esc(s.id)}" title="${esc(tn(s.anime))}"><img loading="lazy" src="${esc(s.anime.poster || '')}" alt=""><i>${i + 1}</i><b>${s.score}</b></button>`).join('')}</div>` : ''}

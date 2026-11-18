@@ -1,6 +1,7 @@
 import { type EmailPurpose, consumeEmailCode, emailEnabled, emailHash, emailMask, normalizeEmail, sendEmailCode } from "./email";
 import { verifyGoogleCredential } from "./google";
 import { HttpError, json, readJson } from "./http";
+import { isAdmin, parseRewards } from "./promo";
 
 // Аккаунты AniTier (2026-11-17) — тот же код, что у StalZone Calc AI: топ виден на всех
 // устройствах. Способов завести аккаунт три (просьба автора): без почты (логин, пароль и код
@@ -43,6 +44,7 @@ type UserRow = {
   nick?: string | null;
   avatar?: string | null;
   frame?: string | null;
+  rewards?: string | null;
 };
 type SessionVia = "password" | "recovery" | "email" | "google";
 export type SessionUser = { userId: string; login: string; createdAt: number; tokenHash: string; via: SessionVia; sessionCreatedAt: number };
@@ -242,7 +244,8 @@ export async function optionalUser(env: Env, request: Request): Promise<SessionU
 }
 
 /** Что сайт знает об аккаунте: логин, дата, маска почты, привязан ли Google, есть ли пароль, ссылка на топ. */
-export function publicUser(_env: Env, user: UserRow) {
+export function publicUser(env: Env, user: UserRow) {
+  const rw = parseRewards(user.rewards);
   return {
     login: user.login,
     createdAt: user.created_at,
@@ -253,6 +256,8 @@ export function publicUser(_env: Env, user: UserRow) {
     nick: user.nick ?? null,
     avatar: user.avatar ?? null,
     frame: user.frame ?? null,
+    rewards: rw.n || rw.all || rw.frames.length || rw.badges.length ? rw : null,
+    admin: isAdmin(env, user.login) || undefined,
   };
 }
 

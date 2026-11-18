@@ -11,7 +11,7 @@
   "workers_dev": false,
   "preview_urls": false,
   "routes": [{ "pattern": "anitier.stalzoneai.com", "custom_domain": true }],
-  "vars": { "EMAIL_FROM": "AniTier <no-reply@stalzoneai.com>" },
+  "vars": { "EMAIL_FROM": "AniTier <no-reply@stalzoneai.com>", "ADMIN_LOGINS": "roketax2" },
   "d1_databases": [
     {
       "binding": "DB",
