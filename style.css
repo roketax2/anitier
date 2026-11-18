@@ -1316,3 +1316,4 @@ body.viewing .ach { cursor: pointer; }
 .th-arr[disabled] { opacity: .35; pointer-events: none; }
 .th-arr .ic { width: 18px; height: 18px; }
 .th-nav { justify-content: center; }
+.th-cmp { margin-bottom: 16px; }

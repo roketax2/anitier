@@ -27,6 +27,11 @@ Object.assign(EN, {
   'Все аниме из топа': 'All anime in your top', 'С оценкой и без': 'Rated or not', 'Только оценённые аниме': 'Only rated anime',
   'Без тех, где ты ещё не поставил оценку': "Skips anime you haven't rated yet", 'Аниме на 10': 'Anime rated 10', 'Только то, чему ты поставил 10': 'Only what you gave a 10',
   'Аниме от 5 до 10': 'Anime rated 5–10', 'Без того, что тебе не понравилось': "Skips what you didn't like",
+  'Оцени несколько опенингов у себя — и здесь появится, насколько совпадает ваш музыкальный вкус.': 'Rate a few openings yourself — and you will see how close your music taste is.',
+  'У вас пока мало общих оценённых опенингов ({n}) — процент совпадения появится от трёх.': 'Only {n} openings rated by both of you so far — the match appears from three.',
+  'Совпадение музыкального вкуса с {w} по {n} общим опенингам и эндингам': 'Music taste match with {w} over {n} shared openings and endings',
+  'твоя: {n}': 'yours: {n}', 'Мои опенинги и эндинги': 'My openings & endings', 'на 10: {n}': 'rated 10: {n}', 'видео: animethemes.moe': 'videos: animethemes.moe',
+  'Картинка опенингов': 'Openings picture', 'Все оценённые опенинги и эндинги по тирам': 'All rated openings and endings by tier',
   'Качество': 'Quality', 'Только звук': 'Audio only', 'Опенинги {l}': '{l}’s openings', 'Оценка: {n}': 'Rating: {n}', 'нет оценки': 'no rating',
 });
 
@@ -35,6 +40,7 @@ $('.nav-btn[data-view="themes"] span').textContent = tr('Опенинги');
 $('#view-themes h1').textContent = tr('Опенинги и эндинги');
 $$('#thSeg [data-thmode] span').forEach((s) => { s.textContent = tr(s.textContent); });
 $('#thSearch').placeholder = tr('Найди любое аниме — оцени его опенинги');
+$('#thShareBtn span').textContent = tr('Поделиться');
 
 const TH_API = 'https://graphql.animethemes.moe/';
 const TH_CACHE_KEY = 'animetop.themes3';
@@ -223,6 +229,7 @@ function renderThemes() {
   const ro = thRO(), rated = TH();
   if (ro) th.mode = 'list';
   $('#thSeg').hidden = ro; $('#thTools').hidden = ro || th.mode !== 'anime';
+  $('#thShareBtn').hidden = ro || !Object.values(rated).some((r) => thScore(r) != null);
   $('#view-themes h1').textContent = ro ? tr('Опенинги {l}', { l: window.VIEWING.login }) : tr('Опенинги и эндинги');
   // все темы моих аниме (и найденных) — для плеера и тир-листа
   const seen = new Set(), srcs = thSources(), groups = srcs.map((s) => ({ s, items: thGroupThemes(s, seen) }));
@@ -271,13 +278,145 @@ function renderThemes() {
   const items = Object.entries(rated).map(([k, r]) => ({ ...(th.byKey.get(k) || r.t), score: thScore(r), at: r.updated || r.added }))
     .filter((t) => t.k && t.score != null && thKindOk(t));
   th.list = [];
-  if (!items.length) { body.innerHTML = prog + empty(tr('Тир-лист пока пуст'), ro ? '' : tr('Включи видео и поставь оценку — опенинг появится здесь.')); return; }
-  body.innerHTML = `<div class="th-board">${TIERS.map((x) => {
+  if (!items.length) { body.innerHTML = prog + (ro ? thCompareHTML() : '') + empty(tr('Тир-лист пока пуст'), ro ? '' : tr('Включи видео и поставь оценку — опенинг появится здесь.')); return; }
+  body.innerHTML = (ro ? thCompareHTML() : '') + `<div class="th-board">${TIERS.map((x) => {
     const row = items.filter((t) => thTierOf(t.score) === x.t).sort((a, b) => b.score - a.score || a.at - b.at);
     th.list.push(...row.map((t) => t.k));
     return `<div class="th-trow"><div class="th-tl" style="--c:${x.c}"><b>${esc((!ro && tierNames[x.t]?.name) || x.t)}</b></div><div class="th-items">${row.map((t) => `<button type="button" class="th-chip" data-play="${esc(t.k)}" title="${esc(`${thLabel(t)} · ${t.song} — ${t.artists}`)}">
       <img loading="lazy" src="${esc(t.anime?.poster || '')}" alt=""><span><b>${esc(t.song || thLabel(t))}</b><small>${esc(tn(t.part || t.anime))} · ${thLabel(t)}</small></span><i class="th-cs" style="--c:${x.c}">${t.score}</i></button>`).join('')}</div></div>`;
   }).join('')}</div>${credit}`;
+}
+
+/* ---------- сравнение с другом (чужой топ по ссылке) ---------- */
+// свой топ запоминаем, когда compare.js рисует сравнение аниме: там он ещё не подменён чужим
+{
+  const base = renderCompare;
+  renderCompare = function (mine, who) { th.mine = mine; return base.apply(this, arguments); };
+}
+function thCompareHTML() {
+  const who = window.VIEWING?.login || '', mine = th.mine?.themes || {}, theirs = TH();
+  const common = [];
+  for (const [k, r] of Object.entries(theirs)) { const a = thScore(mine[k]), b = thScore(r); if (a != null && b != null) common.push({ k, me: a, them: b, d: b - a }); }
+  const item = (k, line) => { const t = th.byKey.get(k); if (!t) return ''; return '<button type="button" class="cmp-item" data-play="' + esc(k) + '"><img loading="lazy" src="' + esc(t.anime?.poster || '') + '" alt=""><span><b>' + esc(t.song || thLabel(t)) + '</b><small>' + esc(tn(t.part || t.anime)) + ' · ' + thLabel(t) + ' · ' + line + '</small></span></button>'; };
+  const sc = (x) => tr('ты') + ' <b>' + x.me + '</b> · ' + esc(who) + ' <b>' + x.them + '</b>';
+  let head;
+  if (!Object.values(mine).some((r) => thScore(r) != null)) head = '<div class="cmp-empty">' + tr('Оцени несколько опенингов у себя — и здесь появится, насколько совпадает ваш музыкальный вкус.') + '</div>';
+  else if (common.length < 3) head = '<div class="cmp-empty">' + tr('У вас пока мало общих оценённых опенингов ({n}) — процент совпадения появится от трёх.', { n: common.length }) + '</div>';
+  else {
+    const mean = common.reduce((t, x) => t + Math.abs(x.d), 0) / common.length;
+    const pct = Math.max(0, Math.min(100, Math.round(100 - mean * 18)));
+    const level = CMP_LEVELS.find(([min]) => pct >= min)[1];
+    head = '<div class="cmp-head"><div class="cmp-ring" style="--p:' + pct + '"><b>' + pct + '%</b></div><div><h3>' + tr(level) + '</h3><p>' + tr('Совпадение музыкального вкуса с {w} по {n} общим опенингам и эндингам', { w: '<b>' + esc(who) + '</b>', n: common.length }) + '</p></div></div>';
+  }
+  const agree = common.filter((x) => Math.abs(x.d) <= 1).sort((x, y) => Math.abs(x.d) - Math.abs(y.d) || (y.me + y.them) - (x.me + x.them)).slice(0, 5);
+  const differ = common.filter((x) => Math.abs(x.d) >= 2).sort((x, y) => Math.abs(y.d) - Math.abs(x.d)).slice(0, 5);
+  const recs = Object.entries(theirs).map(([k, r]) => ({ k, s: thScore(r) })).filter((x) => x.s >= 9 && thScore(mine[x.k]) == null).sort((x, y) => y.s - x.s).slice(0, 8);
+  const col = (title, html) => (html ? '<div class="cmp-col"><h4>' + title + '</h4>' + html + '</div>' : '');
+  const cols = [
+    col(tr('Сходитесь'), agree.map((x) => item(x.k, sc(x))).join('')),
+    col(tr('Расходитесь'), differ.map((x) => item(x.k, sc(x))).join('')),
+    col(tr('Советует {w}', { w: esc(who) }), recs.map((x) => item(x.k, esc(who) + ' <b>' + x.s + '</b>')).join('')),
+  ].join('');
+  return '<section class="cmp th-cmp">' + head + (cols ? '<div class="cmp-cols">' + cols + '</div>' : '') + '</section>';
+}
+
+/* ---------- картинка тир-листа опенингов ---------- */
+async function thMakeImage(onProgress) {
+  const rated = TH();
+  const items = Object.entries(rated).map(([k, r]) => ({ ...(th.byKey.get(k) || r.t), score: thScore(r), at: r.updated || r.added })).filter((t) => t.k && t.score != null);
+  try { await Promise.all([document.fonts.load('700 40px Unbounded'), document.fonts.load('700 20px Onest'), document.fonts.load('500 20px Onest')]); } catch {}
+  const F = (w, px, disp) => w + ' ' + px + 'px ' + (disp ? 'Unbounded' : 'Onest') + ', system-ui, sans-serif';
+  const P = 48, HEAD = 176, FOOT = 92, LW = 150, GAP = 12, CH = 124, LIMIT = 90;
+  const bodyX = P + LW + 12, bodyW = SHARE_W - P - bodyX, per = 2, CW = Math.floor((bodyW - 24 - GAP) / per);
+  let left = LIMIT;
+  const groups = TIERS.map((x) => {
+    const all = items.filter((t) => thTierOf(t.score) === x.t).sort((a, b) => b.score - a.score || a.at - b.at);
+    const rows = all.slice(0, Math.max(0, left)); left -= rows.length;
+    return { ...x, rows, cut: all.length - rows.length };
+  });
+  groups.forEach((g) => { g.h = g.rows.length ? Math.ceil(g.rows.length / per) * (CH + GAP) - GAP + 24 + (g.cut ? 40 : 0) : 90; });
+  const H = HEAD + groups.reduce((t, g) => t + g.h + 12, 0) + FOOT;
+  const rows = groups.flatMap((g) => g.rows);
+  const imgs = await loadPosters(rows.map((t) => t.anime?.poster || ''), onProgress);
+  const img = new Map(rows.map((t, i) => [t, imgs[i]]));
+  const cv = document.createElement('canvas');
+  cv.width = SHARE_W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  const rr = (x, y, w, h, r) => { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); };
+  ctx.fillStyle = '#0e0d14'; ctx.fillRect(0, 0, SHARE_W, H);
+  for (const [x, c] of [[140, 'rgba(62,230,176,.16)'], [940, 'rgba(166,77,255,.20)']]) {
+    const g = ctx.createRadialGradient(x, -40, 0, x, -40, 620);
+    g.addColorStop(0, c); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, SHARE_W, 700);
+  }
+  ctx.fillStyle = '#f3f1f8'; ctx.font = F(700, 44, true);
+  ctx.fillText(tr('Мои опенинги и эндинги'), P, 96);
+  const ops = items.filter((t) => t.type === 'OP').length;
+  const sub = [tr('оценено {n}', { n: items.length }), ops ? 'OP ' + ops : '', items.length - ops ? 'ED ' + (items.length - ops) : '', items.filter((t) => t.score === 10).length ? tr('на 10: {n}', { n: items.filter((t) => t.score === 10).length }) : ''].filter(Boolean).join('   ·   ');
+  ctx.fillStyle = '#8a859b'; ctx.font = F(500, 24); ctx.fillText(sub, P, 140);
+  let y = HEAD;
+  for (const g of groups) {
+    rr(P, y, LW, g.h, 20); ctx.fillStyle = g.c; ctx.fill();
+    const name = tierName(g.t);
+    ctx.fillStyle = '#16131f'; ctx.textAlign = 'center';
+    ctx.font = name.length > 2 ? F(700, 22) : F(700, 54, true);
+    const nl = wrapText(ctx, name, LW - 20, 3), lh = name.length > 2 ? 26 : 54;
+    let ty = y + g.h / 2 - (nl.length * lh) / 2 + lh * 0.8;
+    nl.forEach((l) => { ctx.fillText(l, P + LW / 2, ty); ty += lh; });
+    ctx.textAlign = 'left';
+    rr(bodyX, y, bodyW, g.h, 20); ctx.fillStyle = '#17151f'; ctx.fill();
+    ctx.strokeStyle = '#292535'; ctx.lineWidth = 2; ctx.stroke();
+    if (!g.rows.length) { ctx.fillStyle = '#5d5870'; ctx.font = F(500, 20); ctx.fillText(tr('Пусто'), bodyX + 24, y + g.h / 2 + 7); }
+    g.rows.forEach((t, k) => {
+      const x = bodyX + 12 + (k % per) * (CW + GAP), cy = y + 12 + Math.floor(k / per) * (CH + GAP);
+      rr(x, cy, CW, CH, 14); ctx.fillStyle = '#1f1c29'; ctx.fill();
+      const pw = 72, ph = CH - 20;
+      ctx.save(); rr(x + 10, cy + 10, pw, ph, 9); ctx.clip();
+      const im = img.get(t);
+      if (im) ctx.drawImage(im, x + 10, cy + 10, pw, ph); else { ctx.fillStyle = '#2c283a'; ctx.fillRect(x + 10, cy + 10, pw, ph); }
+      ctx.restore();
+      // оценка
+      const bw = 44; rr(x + CW - bw - 10, cy + 10, bw, 36, 10); ctx.fillStyle = g.c; ctx.fill();
+      ctx.fillStyle = '#16131f'; ctx.font = F(700, 18, true); ctx.textAlign = 'center'; ctx.fillText(String(t.score), x + CW - bw / 2 - 10, cy + 35); ctx.textAlign = 'left';
+      const tx = x + pw + 22, tw = CW - pw - 22 - bw - 20;
+      ctx.fillStyle = t.type === 'ED' ? '#62c2ff' : '#ff4d78'; ctx.font = F(700, 14, true); ctx.fillText(thLabel(t), tx, cy + 30);
+      ctx.fillStyle = '#f3f1f8'; ctx.font = F(700, 20);
+      const sl = wrapText(ctx, t.song || '—', tw, 2);
+      sl.forEach((l, i) => ctx.fillText(l, tx, cy + 56 + i * 24));
+      ctx.fillStyle = '#8a859b'; ctx.font = F(500, 15);
+      const by = cy + 56 + sl.length * 24;
+      ctx.fillText(wrapText(ctx, tn(t.part || t.anime), CW - pw - 32, 1)[0] || '', tx, by);
+      if (sl.length < 2) ctx.fillText(wrapText(ctx, t.artists || '', CW - pw - 32, 1)[0] || '', tx, by + 20);
+    });
+    if (g.cut) { ctx.fillStyle = '#8a859b'; ctx.font = F(600, 18); ctx.fillText(tr('…и ещё {n}', { n: g.cut }), bodyX + 24, y + g.h - 18); }
+    y += g.h + 12;
+  }
+  ctx.fillStyle = '#5d5870'; ctx.font = F(500, 22);
+  ctx.fillText('AniTier · anitierapp.pages.dev', P, H - 40);
+  ctx.textAlign = 'right'; ctx.fillText(tr('видео: animethemes.moe'), SHARE_W - P, H - 40); ctx.textAlign = 'left';
+  return new Promise((res) => cv.toBlob(res, 'image/png'));
+}
+async function thShare() {
+  shareFile = null; if (shareUrl) URL.revokeObjectURL(shareUrl); shareUrl = '';
+  const h2 = $('#shareDlg h2'), title = h2.textContent;
+  h2.textContent = tr('Картинка опенингов');
+  shareDlg.addEventListener('close', () => { h2.textContent = title; }, { once: true });
+  $('#shareImg').innerHTML = '<div class="share-wait"><span class="spin"></span><span id="shareProg">' + tr('Рисую картинку…') + '</span></div>';
+  $('#shareInfo').textContent = tr('Все оценённые опенинги и эндинги по тирам');
+  $('#shareSave').disabled = true; $('#shareSend').disabled = true;
+  openModal(shareDlg);
+  try {
+    const blob = await thMakeImage((d, n) => { const p = $('#shareProg'); if (p) p.textContent = tr('Загружаю постеры… {d} из {n}', { d, n }); });
+    if (!blob) throw 0;
+    shareFile = new File([blob], 'anitier-openings-' + new Date().toISOString().slice(0, 10) + '.png', { type: 'image/png' });
+    shareUrl = URL.createObjectURL(blob);
+    $('#shareImg').innerHTML = '<img src="' + shareUrl + '" alt="' + tr('Картинка опенингов') + '">';
+    $('#shareSave').disabled = false;
+    const canSend = !!navigator.canShare?.({ files: [shareFile] });
+    $('#shareSend').hidden = !canSend; $('#shareSend').disabled = !canSend;
+  } catch {
+    $('#shareImg').innerHTML = '<p class="share-wait">' + tr('Не получилось нарисовать картинку. Проверь интернет и попробуй ещё раз.') + '</p>';
+  }
 }
 
 /* ---------- оценка ---------- */
@@ -329,7 +468,7 @@ function thOpen(k, keepTime) {
       <div class="th-arrows">${arrow(prev, false, 'Предыдущий')}<span>${i >= 0 ? `${i + 1} / ${L.length}` : ''}</span>${arrow(next, true, 'Следующий')}</div></div>
       <p>${[t.artists, tn(t.anime), t.part && tn(t.part) !== tn(t.anime) && tn(t.part), t.eps && tr('серии {e}', { e: t.eps })].filter(Boolean).map(esc).join(' · ')}</p>
       ${vids.length > 1 ? `<div class="th-q"><span>${tr('Качество')}</span>${vids.map((x) => `<button type="button" data-thq="${x.audio ? 'audio' : x.r + (x.nc ? 'nc' : '')}" class="${x === v ? 'on' : ''}">${esc(thQLabel(x))}</button>`).join('')}</div>` : ''}
-      <p class="th-now">${my ? tr(ro ? 'Оценка: {n}' : 'Моя оценка: {n}', { n: `${my} — ${LABEL[my]}` }) : ro ? tr('нет оценки') : tr('Ещё не оценён')}</p></div>
+      <p class="th-now">${my ? tr(ro ? 'Оценка: {n}' : 'Моя оценка: {n}', { n: `${my} — ${LABEL[my]}` }) : ro ? tr('нет оценки') : tr('Ещё не оценён')}${ro && thScore(th.mine?.themes?.[k]) != null ? ` · ${tr('твоя: {n}', { n: thScore(th.mine.themes[k]) })}` : ''}</p></div>
     ${ro ? '' : `<div class="th-big">${Array.from({ length: 10 }, (_, j) => 10 - j).map((n) => `<button type="button" data-rate="${n}" style="--c:${thColor(n)}" class="${my === n ? 'on' : ''}"><b>${n}</b><small>${esc(LABEL[n])}</small></button>`).join('')}</div>`}
     ${ro ? '' : `<div class="th-nav"><button type="button" class="link" data-unrate ${my ? '' : 'hidden'}>${tr('Убрать оценку')}</button></div>`}`;
   const vid = $('#thVid');
@@ -389,6 +528,7 @@ $('#view-themes').addEventListener('click', (e) => {
   const p = e.target.closest('[data-play]');
   if (p) thOpen(p.dataset.play);
 });
+$('#thShareBtn').addEventListener('click', thShare);
 $('#thSearch').addEventListener('input', (e) => {
   clearTimeout(thSearchT);
   const q = e.target.value.trim();

@@ -1,6 +1,6 @@
 'use strict';
 /* Настройки (2026-11-18): счётчик игроков, язык, анимация рамок.
-   Счётчик: раз в 2 минуты, пока вкладка открыта, сайт шлёт на сервер свой случайный номер (без IP и логина). */
+   Счётчик: раз в 5 минут, пока вкладка открыта, сайт шлёт на сервер свой случайный номер (без IP и логина). */
 Object.assign(EN, {
   'Настройки': 'Settings', 'Язык, анимация рамок, сколько нас': 'Language, frame animation, player count',
   'Игроки': 'Players', 'сейчас на сайте': 'online now', 'за сутки': 'last 24 hours', 'всего': 'all time', 'с аккаунтом': 'with an account',
@@ -22,12 +22,12 @@ const visitorId = (() => {
 })();
 let pingAt = 0;
 function sitePing() {
-  if (document.hidden || Date.now() - pingAt < 110000) return;
+  if (document.hidden || Date.now() - pingAt < 290000) return;
   pingAt = Date.now();
   fetch(API_BASE + '/api/ping', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: visitorId }), keepalive: true }).catch(() => {});
 }
 sitePing();
-setInterval(sitePing, 120000);
+setInterval(sitePing, 300000);
 document.addEventListener('visibilitychange', sitePing);
 
 /* ---------- анимация рамок ---------- */
