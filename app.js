@@ -95,6 +95,7 @@ const ICONS = {
   link: '<path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/>',
   globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
   ext: '<path d="M14 5h5v5M19 5l-8 8M11 6H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-4"/>',
+  music: '<path d="M9 18V5.5l11-2.5v12.5"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="15.5" r="2.5"/>',
   wifi: '<path d="M3 3l18 18M8.5 16.5a5 5 0 0 1 7 0M5 13a10 10 0 0 1 4-2.4M19 13a10 10 0 0 0-5-2.7M2 9.5A15 15 0 0 1 6.5 7M22 9.5A15 15 0 0 0 11 6"/><path d="M12 20h.01" stroke-width="3"/>',
 };
 const icon = (n, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ''}</svg>`;
@@ -236,10 +237,12 @@ function show(v) {
   $$('.nav-btn').forEach((t) => t.classList.toggle('on', t.dataset.view === v));
   $('#view-mine').hidden = v !== 'mine';
   $('#view-catalog').hidden = v !== 'catalog';
+  $('#view-themes').hidden = v !== 'themes';
   $('#trayBtn').hidden = v !== 'mine';
   if (v !== 'mine' && trayOpen) setTray(false);
   if (v === 'mine') renderMine();
   if (v === 'catalog') { if (!cat.loaded) loadCatalog(true); else renderCatalog(); }
+  if (v === 'themes' && typeof thShowView === 'function') thShowView();
   setPref('view', v);
   window.scrollTo(0, scrollPos[v] || 0);
 }
@@ -1900,7 +1903,7 @@ if (history.state?.modal) history.replaceState(null, ''); // страницу о
 updateCount();
 renderPills();
 loadGenres();
-view = pref('view', 'mine') === 'catalog' ? 'catalog' : 'mine';
+view = ['catalog', 'themes'].includes(pref('view', 'mine')) ? pref('view', 'mine') : 'mine';
 show(view);
 if (EN_ON) fillEnglishNames();
 try { localStorage.removeItem('animetop.series2'); localStorage.removeItem('animetop.series3'); localStorage.removeItem('animetop.genres'); } catch {} // старые кэши без английских названий

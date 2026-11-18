@@ -21,6 +21,7 @@
       <nav class="nav" aria-label="Разделы">
         <button class="nav-btn" data-view="mine" data-ic="trophy"><span>Мой топ</span><b id="mineCount" hidden>0</b></button>
         <button class="nav-btn" data-view="catalog" data-ic="compass"><span>Каталог</span></button>
+        <button class="nav-btn" data-view="themes" data-ic="music"><span>Опенинги</span></button>
       </nav>
       <button id="acctBtn" class="icon-btn acct-btn" title="Войти в аккаунт" aria-label="Аккаунт"></button>
       <button id="menuBtn" class="icon-btn" data-ic="dots" title="Ещё" aria-label="Ещё"></button>
@@ -71,6 +72,24 @@
   </main>
 
   <!-- ============ КАТАЛОГ ============ -->
+  <!-- ============ ОПЕНИНГИ (themes.js) ============ -->
+  <main id="view-themes" class="view" hidden>
+    <div class="view-head">
+      <div>
+        <h1>Опенинги и эндинги</h1>
+        <p class="stats" id="thStats"></p>
+      </div>
+      <div class="head-actions">
+        <div class="seg" id="thSeg" role="tablist" aria-label="Опенинги">
+          <button data-thmode="rate" data-ic="music" role="tab"><span>Оценить</span></button>
+          <button data-thmode="list" data-ic="tiers" role="tab"><span>Мой тир-лист</span></button>
+        </div>
+      </div>
+    </div>
+    <div class="pills" id="thKinds"></div>
+    <div id="thBody"></div>
+  </main>
+
   <main id="view-catalog" class="view" hidden>
     <div class="view-head">
       <div>
@@ -172,5 +191,6 @@
   <script src="account.js"></script>
   <script src="compare.js"></script>
   <script src="settings.js"></script>
+  <script src="themes.js"></script>
 </body>
 </html>
