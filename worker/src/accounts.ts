@@ -293,7 +293,7 @@ async function updateProfile(env: Env, request: Request): Promise<Response> {
   // рамку открывают достижения на сайте; сервер проверяет только вид id — это украшение
   let frame = user.frame ?? null;
   if ("frame" in body) {
-    if (body.frame !== null && body.frame !== "" && (typeof body.frame !== "string" || !/^[a-z]{1,12}$/.test(body.frame))) throw new HttpError(400, "Некорректная рамка");
+    if (body.frame !== null && body.frame !== "" && (typeof body.frame !== "string" || !/^[a-z][a-z0-9_]{0,31}$/.test(body.frame))) throw new HttpError(400, "Некорректная рамка");
     frame = (body.frame as string) || null;
   }
   await env.DB.prepare("UPDATE users SET nick = ?, avatar = ?, frame = ? WHERE id = ?").bind(nick, avatar, frame, user.id).run();

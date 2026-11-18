@@ -289,6 +289,14 @@ function framed(inner, frame, size = '') {
   if (frameHasArt(f)) return `<span class="ava-wrap fa fa-${f.id} ${size}">${inner}${frameArt(f.id)}</span>`;
   return `<span class="ava-wrap ${frameCls(f)} ${size}">${inner}${f.b ? `<i class="fr-badge">${glyphSvg(f.b)}</i>` : ''}</span>`;
 }
+// миниатюра для списка выбора: только рисунок, без слоя движения (анимации и размытие там выключены в CSS)
+const frameThumbCache = {};
+function framedThumb(inner, frame) {
+  const f = frameById(frame);
+  if (!f.id || !frameHasArt(f)) return framed(inner, frame, '');
+  frameThumbCache[f.id] ||= `<svg class="fr-art" viewBox="0 0 120 120" aria-hidden="true"><g class="fw fw-${f.id}">${FRAME_ART[f.id]()}</g>${f.id === 'glitch' ? '' : fRing(40.4, 1.4, '#000', 'opacity=".4"')}</svg>`;
+  return `<span class="ava-wrap fa fa-${f.id}">${inner}${frameThumbCache[f.id]}</span>`;
+}
 checkAch(true); achReady = true;
 
 /* ---------- витрина: все рамки и достижения открыты (?preview=all) ----------

@@ -300,9 +300,9 @@ function renderAcct() {
           </div>
           ${d.posters ? (posters.length ? `<div class="a-posters">${posters.map((p) => `<button type="button" class="${p === d.avatar ? 'on' : ''}" data-poster="${esc(p)}"><img loading="lazy" src="${esc(p)}" alt=""></button>`).join('')}</div>`
             : `<p class="a-hint">${tr('В твоём топе пока нет постеров — добавь аниме.')}</p>`) : ''}
-          <div class="a-frames-h"><span>${tr('Рамка')}</span><small>${tr('Новые рамки открываются достижениями')}</small></div>
+          <div class="a-frames-h"><span>${tr('Рамка')}</span><small id="frameSt">${tr('Новые рамки открываются достижениями')}</small></div>
           <div class="a-frames">${FRAMES.map((f) => { const open = frameOpen(f); const need = f.need && ACH.find((x) => x.id === f.need);
-            return `<button type="button" class="${(d.frame || '') === f.id ? 'on' : ''} ${open ? '' : 'locked'}" data-frame="${f.id}" ${open ? '' : 'aria-disabled="true"'} title="${esc(open ? tr(f.t) : tr('Откроется за «{a}»: {d}', { a: tr(need.t), d: need.g === 'secret' ? tr('секретное достижение') : tr(need.d) }))}">${framed(avatarInner({ ...u, nick: d.nick || u.nick, avatar: d.avatar }, 'a-avatar'), f.id, '')}<small>${open ? '' : `<span class="lk">${glyphSvg('lock')}</span>`}${esc(tr(f.t))}</small></button>`; }).join('')}</div>
+            return `<button type="button" class="${(d.frame || '') === f.id ? 'on' : ''} ${open ? '' : 'locked'}" data-frame="${f.id}" ${open ? '' : 'aria-disabled="true"'} title="${esc(open ? tr(f.t) : tr('Откроется за «{a}»: {d}', { a: tr(need.t), d: need.g === 'secret' ? tr('секретное достижение') : tr(need.d) }))}">${framedThumb(avatarInner({ ...u, nick: d.nick || u.nick, avatar: d.avatar }, 'a-avatar'), f.id)}<small>${open ? '' : `<span class="lk">${glyphSvg('lock')}</span>`}${esc(tr(f.t))}</small></button>`; }).join('')}</div>
           <label class="a-field"><span>${tr('Ник')}</span><input name="nick" maxlength="40" value="${esc(d.nick)}" placeholder="${esc(u.login)}"></label>
           <small class="a-hint">${tr('2–24 знака, можно по-русски и с эмодзи. Ник видят по ссылке на топ. Входить всё так же по логину {l}.', { l: u.login })}</small>
           ${msgHTML()}<button class="btn primary wide">${tr('Сохранить')}</button>
@@ -378,11 +378,23 @@ acctDlg.addEventListener('click', async (e) => {
   }
   if (t.dataset.send) { e.preventDefault(); await sendCode(t.dataset.send, t); return; }
   if (t.dataset.frame !== undefined) {
-    const nick = $('input[name="nick"]', acctDlg)?.value; if (nick !== undefined) acct.data.nick = nick;
-    const f = frameById(t.dataset.frame);
-    if (!frameOpen(f)) { const need = ACH.find((x) => x.id === f.need); acct.msg = { text: tr('Рамка «{f}» откроется за достижение «{a}»', { f: tr(f.t), a: need.g === 'secret' ? '???' : tr(need.t) }) }; }
-    else { acct.data.frame = f.id; acct.msg = null; }
-    renderAcct(); return;
+    // окно целиком не перерисовываем (в нём десятки рамок — это и тормозило): меняем подсветку и превью и сразу сохраняем
+    const f = frameById(t.dataset.frame), st = $('#frameSt', acctDlg), u = acct.user;
+    if (!frameOpen(f)) { const need = ACH.find((x) => x.id === f.need); if (st) st.textContent = tr('Рамка «{f}» откроется за достижение «{a}»', { f: tr(f.t), a: need.g === 'secret' ? '???' : tr(need.t) }); return; }
+    if ((acct.data.frame || '') === f.id) return;
+    acct.data.frame = f.id;
+    $$('.a-frames button', acctDlg).forEach((b) => b.classList.toggle('on', b === t));
+    const pv = $('.a-ava-edit', acctDlg)?.firstElementChild;
+    if (pv && u) pv.outerHTML = avatarHTML({ ...u, nick: acct.data.nick || u.nick, avatar: acct.data.avatar, frame: f.id }, 'a-avatar big', 'lg');
+    if (st) st.textContent = tr('Сохраняю…');
+    const token = (acct.frameSave = (acct.frameSave || 0) + 1);
+    try {
+      const r = await api('POST', '/api/auth/profile', { frame: f.id || null });
+      if (token !== acct.frameSave) return; // уже выбрали другую
+      setUser(r.user);
+      if (st) st.textContent = tr('Рамка «{f}» сохранена', { f: tr(f.t) });
+    } catch (err) { if (st && token === acct.frameSave) st.textContent = err.message || tr('Не удалось сохранить'); }
+    return;
   }
   if (t.dataset.ava || t.dataset.poster) {
     const nick = $('input[name="nick"]', acctDlg)?.value; if (nick !== undefined) acct.data.nick = nick;

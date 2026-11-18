@@ -1162,3 +1162,11 @@ body.viewing .ach { cursor: pointer; }
 .fa-ecg { stroke-dasharray: 100 100; animation: fa-ecg 4.5s linear infinite; }
 @keyframes fa-eyeopen { 0%, 30% { transform: scaleY(.08); } 38%, 84% { transform: scaleY(1); } 86% { transform: scaleY(.1); } 88%, 96% { transform: scaleY(1); } 100% { transform: scaleY(.08); } }
 .fa-eyeopen { transform-box: fill-box; transform-origin: center; animation: fa-eyeopen 6s ease-in-out infinite; }
+
+/* Колоссальный титан (frames13.js) */
+@keyframes fa-titan3 { 0%, 48% { transform: translateY(15px); } 66%, 86% { transform: translateY(-14px); } 98%, 100% { transform: translateY(15px); } }
+.fa-titan3 { animation: fa-titan3 12s ease-in-out infinite; }
+
+/* выбор рамки: миниатюры неподвижные и без размытия/свечения — иначе на телефоне и ноутбуке список тормозит */
+.a-frames .fr-art, .a-frames .fr-art * { animation: none !important; filter: none !important; }
+.a-frames button { content-visibility: auto; contain-intrinsic-size: 76px 96px; }
