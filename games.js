@@ -11,7 +11,7 @@ Object.assign(EN, {
   'Дальше': 'Next', 'Верно!': 'Correct!', 'Мимо': 'Wrong', 'Время вышло': 'Time is up', 'Это было: {t}': 'It was: {t}',
   'Игра окончена': 'Game over', 'Правильно {a} из {b}': '{a} of {b} correct', 'Новый рекорд!': 'New record!', 'Ещё раз': 'Play again', 'К играм': 'Back to games',
   'Готовлю игру…': 'Preparing the game…', 'Мало аниме для игры — нужно хотя бы 4 разных. Оцени больше аниме или выбери «Популярные».': 'Not enough anime — at least 4 are needed. Rate more anime or choose “Popular”.',
-  'Не получилось загрузить игру. Проверь интернет.': "Couldn't load the game. Check your connection.", 'Нажми, чтобы включить звук': 'Tap to play the sound',
+  'Не получилось загрузить игру. Проверь интернет.': "Couldn't load the game. Check your connection.", 'Нажми, чтобы включить звук': 'Tap to play the sound', 'Загружаю…': 'Loading…',
 });
 $('.nav-btn[data-view="games"] span').textContent = tr('Игры');
 
@@ -57,7 +57,7 @@ async function gmPrepare() {
   const pick = shuffle(list.slice()).slice(0, GM_ROUNDS + 4);
   const ids = pick.map((p) => p.parts[Math.floor(Math.random() * Math.min(p.parts.length, 3))] || p.id);
   const d = await gmGql(`{ animes(ids: ${JSON.stringify(ids.join(','))}, limit: 50) { id screenshots { originalUrl x332Url } } }`);
-  const shots = new Map(d.animes.map((a) => [String(a.id), shuffle((a.screenshots || []).map((s) => s.originalUrl || s.x332Url))]));
+  const shots = new Map(d.animes.map((a) => [String(a.id), shuffle((a.screenshots || []).map((s) => ({ big: s.originalUrl || s.x332Url, small: s.x332Url || s.originalUrl })))]));
   const rounds = pick.map((p, i) => ({ p, shots: (shots.get(String(ids[i])) || []).slice(0, 3), opts: gmOptions(list, p) })).filter((r) => r.shots.length).slice(0, GM_ROUNDS);
   if (rounds.length < 3) throw new Error('few');
   return rounds;
@@ -85,37 +85,72 @@ async function gmStart() {
   try { gm.rounds = await gmPrepare(); }
   catch (e) { $('#gmMsg').textContent = e.message === 'few' ? tr('Мало аниме для игры — нужно хотя бы 4 разных. Оцени больше аниме или выбери «Популярные».') : tr('Не получилось загрузить игру. Проверь интернет.'); $('[data-gmgo]').disabled = false; return; }
   gm.i = 0; gm.score = 0; gm.right = 0;
+  gmPreload(0); gmPreload(1);
   gmRound();
 }
 let gmAudio = null;
-function gmStopAudio() { if (gmAudio) { gmAudio.pause(); gmAudio.src = ''; gmAudio = null; } }
+function gmStopAudio() { if (gmAudio) { gmAudio.pause(); gmAudio.removeAttribute('src'); gmAudio.load(); gmAudio = null; } }
+// заранее загрузить раунд: песню (браузер качает начало файла) или кадры — чтобы раунд начинался сразу
+function gmPreload(i) {
+  const r = gm.rounds[i];
+  if (!r || r.pre) return;
+  r.pre = true;
+  if (gm.kind === 'op') { const a = new Audio(); a.preload = 'auto'; a.src = r.t.audio; a.load(); r.el = a; }
+  // только маленький первый кадр (~30 КБ): большие картинки разом забивают канал, и всё грузится медленно
+  else { const im = new Image(); im.src = r.shots[0].small; r.el = im; }
+}
+// кадр: сначала маленький, потом подменяется на большой (gmSharpen)
+const gmShot = (s) => `<img src="${esc(s.small)}" data-big="${esc(s.big)}" alt="">`;
+function gmSharpen(box) {
+  box?.querySelectorAll('img[data-big]').forEach((img) => {
+    const big = new Image();
+    big.onload = () => { if (img.isConnected) img.src = big.src; };
+    big.src = img.dataset.big; img.removeAttribute('data-big');
+  });
+}
+// таймер раунда стартует, когда реально пошёл звук или показался кадр, а не когда открылся раунд
+function gmGo() {
+  if (gm.t0 || gm.answered) return;
+  gm.t0 = Date.now();
+  $('#gmStage')?.classList.remove('wait');
+}
 function gmPlayClip() {
   const r = gm.rounds[gm.i];
-  gmStopAudio();
-  gmAudio = new Audio(r.t.audio);
+  if (gmAudio && gmAudio !== r.el) gmStopAudio();
+  gmAudio = r.el || (r.el = Object.assign(new Audio(), { preload: 'auto', src: r.t.audio }));
   gmAudio.volume = Math.min(1, Math.max(0, +pref('thVol', '0.8')));
   const begin = () => {
-    if (gm.start === 'random' && gmAudio.duration > gm.sec + 5) gmAudio.currentTime = r.from ??= Math.random() * (gmAudio.duration - gm.sec - 3);
-    else r.from = 0;
-    gmAudio.play().catch(() => { const b = $('#gmReplay'); if (b) b.textContent = tr('Нажми, чтобы включить звук'); });
-    const stopAt = (r.from || 0) + gm.sec;
+    if (r.from == null) r.from = gm.start === 'random' && gmAudio.duration > gm.sec + 5 ? Math.random() * (gmAudio.duration - gm.sec - 3) : 0;
+    try { gmAudio.currentTime = r.from; } catch {}
+    const stopAt = r.from + gm.sec;
     gmAudio.ontimeupdate = () => { if (!gm.answered && gmAudio.currentTime >= stopAt) gmAudio.pause(); };
+    gmAudio.addEventListener('playing', gmGo, { once: true });
+    gmAudio.play().catch(() => { gmGo(); const b = $('#gmReplay'); if (b) b.textContent = tr('Нажми, чтобы включить звук'); });
   };
-  gmAudio.addEventListener('loadedmetadata', begin, { once: true });
+  if (gmAudio.readyState >= 1) begin(); else gmAudio.addEventListener('loadedmetadata', begin, { once: true });
 }
 function gmRound() {
   const r = gm.rounds[gm.i];
-  gm.answered = false; gm.shots = 1; gm.t0 = Date.now();
+  gm.answered = false; gm.shots = 1; gm.t0 = 0;
+  gmPreload(gm.i); gmPreload(gm.i + 1); gmPreload(gm.i + 2);
   const head = `<div class="gm-top"><span>${tr('Раунд {a} из {b}', { a: gm.i + 1, b: gm.rounds.length })}</span><b>${tr('Очки: {n}', { n: gm.score })}</b></div><div class="gm-bar"><i id="gmBar"></i></div>`;
   const stage = gm.kind === 'op'
-    ? `<div class="gm-stage gm-audio"><div class="gm-eq">${Array.from({ length: 9 }, (_, i) => `<i style="animation-delay:${-i * 0.13}s"></i>`).join('')}</div><button type="button" class="btn" id="gmReplay">${icon('play')}<span>${tr('Слушать ещё раз')}</span></button></div>`
-    : `<div class="gm-stage gm-shots" id="gmShots"><img src="${esc(r.shots[0])}" alt=""></div>${r.shots.length > 1 ? `<button type="button" class="link gm-more" id="gmMore">${tr('Ещё кадр')}</button>` : ''}`;
+    ? `<div class="gm-stage gm-audio wait" id="gmStage"><span class="gm-wait"><span class="th-spin"></span>${tr('Загружаю…')}</span><div class="gm-eq">${Array.from({ length: 9 }, (_, i) => `<i style="animation-delay:${-i * 0.13}s"></i>`).join('')}</div><button type="button" class="btn" id="gmReplay">${icon('play')}<span>${tr('Слушать ещё раз')}</span></button></div>`
+    : `<div class="gm-stage gm-shots wait" id="gmStage"><span class="gm-wait"><span class="th-spin"></span>${tr('Загружаю…')}</span><div class="gm-shotbox" id="gmShots">${gmShot(r.shots[0])}</div></div>${r.shots.length > 1 ? `<button type="button" class="link gm-more" id="gmMore">${tr('Ещё кадр')}</button>` : ''}`;
   gmBox.innerHTML = `<div class="gm-play">${head}${stage}<div class="gm-opts">${r.opts.map((o, i) => `<button type="button" class="gm-opt" data-gmans="${i}"><img loading="lazy" src="${esc(o.anime.poster || '')}" alt=""><span>${esc(o.title)}</span></button>`).join('')}</div><div id="gmAfter"></div></div>`;
   if (gm.kind === 'op') gmPlayClip();
+  else {
+    // сначала маленький кадр (грузится мгновенно), потом подменяем на большой
+    const img = $('#gmShots img');
+    if (img.complete && img.naturalWidth) gmGo(); else { img.addEventListener('load', gmGo, { once: true }); img.addEventListener('error', gmGo, { once: true }); }
+    gmSharpen($('#gmShots'));
+  }
+  setTimeout(gmGo, 12000); // если совсем не грузится — всё равно запускаем время
   // время: в опенинге — пока играет кусок (+5 с на ответ), в «Угадай аниме» — на ответ
   const total = (gm.kind === 'op' ? gm.sec + 5 : gm.sec) * 1000;
   clearInterval(gm.timer);
   gm.timer = setInterval(() => {
+    if (!gm.t0) return;
     const left = Math.max(0, 1 - (Date.now() - gm.t0) / total);
     const bar = $('#gmBar'); if (bar) bar.style.width = left * 100 + '%';
     if (left <= 0) gmAnswer(-1);
@@ -127,18 +162,20 @@ function gmAnswer(i) {
   const r = gm.rounds[gm.i], right = r.opts.findIndex((o) => o.title === r.p.title);
   const ok = i === right;
   if (ok) {
-    const total = (gm.kind === 'op' ? gm.sec + 5 : gm.sec) * 1000, left = Math.max(0, 1 - (Date.now() - gm.t0) / total);
+    const total = (gm.kind === 'op' ? gm.sec + 5 : gm.sec) * 1000, left = gm.t0 ? Math.max(0, 1 - (Date.now() - gm.t0) / total) : 1;
     gm.score += Math.round(50 + 50 * left - (gm.shots - 1) * 15); gm.right++;
   }
   $$('.gm-opt').forEach((b, k) => { b.disabled = true; b.classList.toggle('right', k === right); b.classList.toggle('wrong', k === i && !ok); });
   if (gm.kind === 'op' && gmAudio) { gmAudio.ontimeupdate = null; gmAudio.play().catch(() => {}); } // после ответа — слушаем дальше
-  if (gm.kind === 'anime') { const box = $('#gmShots'); if (box) box.innerHTML = r.shots.map((s) => `<img src="${esc(s)}" alt="">`).join(''); $('#gmMore')?.remove(); }
+  $('#gmStage')?.classList.remove('wait');
+  if (gm.kind === 'anime') { const box = $('#gmShots'); if (box) { const have = box.querySelectorAll('img').length; box.insertAdjacentHTML('beforeend', r.shots.slice(have).map(gmShot).join('')); gmSharpen(box); } $('#gmMore')?.remove(); }
   const what = gm.kind === 'op' ? `${r.t.type}${r.t.seq} «${r.t.song}»${r.t.artists ? ' — ' + r.t.artists : ''}` : '';
   $('#gmAfter').innerHTML = `<div class="gm-res ${ok ? 'ok' : 'bad'}"><b>${ok ? tr('Верно!') : i < 0 ? tr('Время вышло') : tr('Мимо')}</b><span>${tr('Это было: {t}', { t: esc(r.p.title) })}${what ? ` · ${esc(what)}` : ''}</span></div>
     <button type="button" class="btn primary wide" data-gmnext>${tr('Дальше')}</button>`;
 }
 function gmEnd() {
   gmStopAudio();
+  gm.rounds.forEach((r) => { if (r.el?.load) { r.el.removeAttribute('src'); r.el.load(); } r.el = null; });
   const best = gmBest(gm.kind), rec = gm.score > best;
   if (rec) setPref('gmBest_' + gm.kind, String(gm.score));
   gmBox.innerHTML = `<div class="gm-play gm-end"><h2>${tr('Игра окончена')}</h2><div class="gm-big">${gm.score}</div><p>${tr('Правильно {a} из {b}', { a: gm.right, b: gm.rounds.length })}${rec ? ` · <b class="gm-rec">${tr('Новый рекорд!')}</b>` : ` · ${tr('Лучший счёт: {n}', { n: best })}`}</p>
@@ -153,11 +190,11 @@ gmBox.addEventListener('click', (e) => {
   if (e.target.closest('[data-gmmenu]')) { gmMenu(); return; }
   const a = e.target.closest('[data-gmans]');
   if (a) { gmAnswer(+a.dataset.gmans); return; }
-  if (e.target.closest('[data-gmnext]')) { gmStopAudio(); gm.i++; if (gm.i >= gm.rounds.length) gmEnd(); else gmRound(); return; }
+  if (e.target.closest('[data-gmnext]')) { gmStopAudio(); const done = gm.rounds[gm.i]; if (done) done.el = null; gm.i++; if (gm.i >= gm.rounds.length) gmEnd(); else gmRound(); return; }
   if (e.target.closest('#gmReplay')) { gm.rounds[gm.i].from = gm.rounds[gm.i].from ?? 0; gmPlayClip(); return; }
   if (e.target.closest('#gmMore')) {
     const r = gm.rounds[gm.i];
-    if (gm.shots < r.shots.length) { $('#gmShots').insertAdjacentHTML('beforeend', `<img src="${esc(r.shots[gm.shots])}" alt="">`); gm.shots++; }
+    if (gm.shots < r.shots.length) { $('#gmShots').insertAdjacentHTML('beforeend', gmShot(r.shots[gm.shots])); gmSharpen($('#gmShots')); gm.shots++; }
     if (gm.shots >= r.shots.length) $('#gmMore')?.remove();
   }
 });

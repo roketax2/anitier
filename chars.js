@@ -13,31 +13,46 @@ $('#view-chars h1').textContent = tr('Персонажи');
 $$('#chSeg [data-chmode] span').forEach((s) => { s.textContent = tr(s.textContent); });
 $('#chSearch').placeholder = tr('Найди персонажа или аниме');
 
-const CH_KEY = 'animetop.chars1', CH_TTL = 14 * 864e5, CH_SUP = 12; // второстепенных на аниме — не больше 12
+// 19.11: второстепенные — самые обсуждаемые (комментарии к персонажу на Shikimori), из всех сезонов серии; раньше брались первые 12 по алфавиту
+const CH_KEY = 'animetop.chars2', CH_TTL = 14 * 864e5, CH_SUP = 20; // второстепенных на аниме или серию — не больше 20
+try { localStorage.removeItem('animetop.chars1'); } catch {}
 const CHS = () => (db.chars ||= {});
 const ch = { mode: pref('chMode', 'anime') === 'list' ? 'list' : 'anime', role: 'all', af: pref('chAf', 'all'), unr: false, q: '', open: new Set(), loading: false, prog: '', byId: new Map(), cur: null };
 let chCache = {};
 try { chCache = JSON.parse(localStorage.getItem(CH_KEY) || '{}') || {}; } catch {}
 const chSaveCache = () => { try { localStorage.setItem(CH_KEY, JSON.stringify(Object.fromEntries(Object.entries(chCache).sort((a, b) => b[1].at - a[1].at).slice(0, 300)))); } catch {} };
-const chFresh = (id) => chCache[id] && Date.now() - chCache[id].at < CH_TTL;
+const chParts = (s) => s.parts.slice(0, 12); // у длинных серий — первые 12 частей
+const chSig = (s) => chParts(s).map((p) => p.id).join(',');
+const chFresh = (s) => chCache[s.id] && chCache[s.id].sig === chSig(s) && Date.now() - chCache[s.id].at < CH_TTL;
 const chScore = (r) => (r ? r.score ?? null : null);
 const chName = (c) => (EN_ON ? c.n || c.r : c.r || c.n) || '';
 
 async function chLoad(force) {
   if (ch.loading) return;
-  const ids = thSources().map((s) => s.id).filter((id) => force || !chFresh(id));
-  if (!ids.length) return;
+  const srcs = thSources().filter((s) => force || !chFresh(s));
+  if (!srcs.length) return;
   ch.loading = true;
-  for (let i = 0; i < ids.length; i += 20) {
-    ch.prog = tr('Загружаю персонажей… {d} из {n}', { d: i, n: ids.length }); chRender();
+  // персонажи всех сезонов серии; по 8 частей за запрос (у популярных аниме сотни ролей)
+  const parts = [...new Set(srcs.flatMap((s) => chParts(s).map((p) => String(p.id))))], roles = {};
+  for (let i = 0; i < parts.length; i += 8) {
+    ch.prog = tr('Загружаю персонажей… {d} из {n}', { d: Math.round((i / parts.length) * srcs.length), n: srcs.length }); chRender();
     try {
-      const d = await impGql(`{ animes(ids: ${JSON.stringify(ids.slice(i, i + 20).join(','))}, limit: 20) { id characterRoles { rolesEn character { id name russian poster { mainUrl previewUrl } } } } }`);
-      for (const a of d.animes) {
-        const roles = a.characterRoles || [];
-        const main = roles.filter((r) => r.rolesEn.includes('Main')), sup = roles.filter((r) => !r.rolesEn.includes('Main')).slice(0, CH_SUP);
-        chCache[a.id] = { at: Date.now(), list: [...main, ...sup].filter((r) => r.character).map((r) => ({ id: String(r.character.id), n: r.character.name, r: r.character.russian, p: r.character.poster?.previewUrl || '', big: r.character.poster?.mainUrl || '', m: r.rolesEn.includes('Main') })) };
-      }
+      const d = await impGql(`{ animes(ids: ${JSON.stringify(parts.slice(i, i + 8).join(','))}, limit: 8) { id characterRoles { rolesEn character { id name russian poster { mainUrl previewUrl } topic { commentsCount } } } } }`);
+      for (const a of d.animes) roles[String(a.id)] = a.characterRoles || [];
     } catch {}
+  }
+  for (const s of srcs) {
+    const got = chParts(s).map((p) => roles[String(p.id)]);
+    if (got.some((x) => !x)) continue; // часть не загрузилась — попробуем в следующий раз
+    const by = new Map();
+    for (const r of got.flat()) {
+      const c = r.character; if (!c) continue;
+      const id = String(c.id), cur = by.get(id), m = r.rolesEn.includes('Main');
+      if (cur) { cur.m ||= m; continue; }
+      by.set(id, { id, n: c.name, r: c.russian, p: c.poster?.previewUrl || '', big: c.poster?.mainUrl || '', m, k: c.topic?.commentsCount || 0 });
+    }
+    const all = [...by.values()].sort((a, b) => b.k - a.k);
+    chCache[s.id] = { at: Date.now(), sig: chSig(s), list: [...all.filter((c) => c.m), ...all.filter((c) => !c.m).slice(0, CH_SUP)] };
   }
   ch.loading = false; ch.prog = ''; chSaveCache(); chRender();
 }

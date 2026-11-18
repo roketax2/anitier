@@ -1410,11 +1410,16 @@ body.viewing .ach { cursor: pointer; }
 .gm-top b { color: var(--text); }
 .gm-bar { height: 6px; border-radius: 3px; background: var(--elev2); overflow: hidden; }
 .gm-bar i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #3ee6b0, #ff4d78); transition: width .1s linear; }
-.gm-stage { border-radius: 18px; overflow: hidden; background: var(--elev); }
+.gm-stage { position: relative; border-radius: 18px; overflow: hidden; background: var(--elev); }
+.gm-wait { display: none; }
+.gm-stage.wait .gm-wait { position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--muted); font-size: 14px; }
+.gm-shots.wait .gm-wait { background: rgba(0, 0, 0, .55); color: #ddd; }
+.gm-audio.wait .gm-eq, .gm-audio.wait #gmReplay { visibility: hidden; }
 .gm-audio { display: grid; justify-items: center; gap: 14px; padding: 30px 16px; }
 .gm-eq { display: flex; align-items: flex-end; gap: 5px; height: 70px; }
 .gm-eq i { width: 9px; height: 100%; border-radius: 5px; background: linear-gradient(#ff4d78, #a64dff); transform-origin: bottom; animation: fa-eqb .9s ease-in-out infinite; }
-.gm-shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 4px; background: #000; }
+.gm-shots { background: #000; }
+.gm-shotbox { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 4px; }
 .gm-shots img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; }
 .gm-more { justify-self: center; }
 .gm-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
