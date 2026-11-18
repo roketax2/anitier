@@ -19,6 +19,11 @@ Object.assign(EN, {
   'Развернуть все': 'Expand all', 'Свернуть все': 'Collapse all', 'моя {n}': 'mine {n}',
   'Найди любое аниме — оцени его опенинги': 'Find any anime to rate its openings', 'Поиск': 'Search', 'Ищу…': 'Searching…',
   'Ничего не нашлось': 'Nothing found', 'У этого аниме нет опенингов в базе': 'No openings for this anime in the database',
+  'Тип': 'Type', 'Только неоценённые': 'Only unrated', 'Фильтр по твоей оценке самого аниме': 'Filters by your rating of the anime itself',
+  'Аниме: все': 'Anime: all', 'Аниме: оценённые': 'Anime: rated', 'Аниме: 10/10': 'Anime: 10/10', 'Аниме: 5–10': 'Anime: 5–10',
+  'Все аниме из топа': 'All anime in your top', 'С оценкой и без': 'Rated or not', 'Только оценённые аниме': 'Only rated anime',
+  'Без тех, где ты ещё не поставил оценку': "Skips anime you haven't rated yet", 'Аниме на 10': 'Anime rated 10', 'Только то, чему ты поставил 10': 'Only what you gave a 10',
+  'Аниме от 5 до 10': 'Anime rated 5–10', 'Без того, что тебе не понравилось': "Skips what you didn't like",
   'Качество': 'Quality', 'Только звук': 'Audio only', 'Опенинги {l}': '{l}’s openings', 'Оценка: {n}': 'Rating: {n}', 'нет оценки': 'no rating',
 });
 
@@ -172,6 +177,12 @@ function thGroupThemes(s, seen) {
   return out;
 }
 const thKindOk = (t) => th.kind === 'all' || t.type === th.kind;
+const TH_AF = [
+  ['all', 'Аниме: все', 'Все аниме из топа', 'С оценкой и без'],
+  ['rated', 'Аниме: оценённые', 'Только оценённые аниме', 'Без тех, где ты ещё не поставил оценку'],
+  ['ten', 'Аниме: 10/10', 'Аниме на 10', 'Только то, чему ты поставил 10'],
+  ['five', 'Аниме: 5–10', 'Аниме от 5 до 10', 'Без того, что тебе не понравилось'],
+];
 const thAfOk = (score) => th.af === 'all' || (th.af === 'rated' ? score != null : th.af === 'ten' ? score === 10 : score != null && score >= 5);
 const thLabel = (t) => `${t.type}${t.seq}`;
 const thMeta = (t) => [t.artists, t.part && tn(t.part), t.eps && tr('серии {e}', { e: t.eps })].filter(Boolean);
@@ -220,10 +231,14 @@ function renderThemes() {
   const all = groups.flatMap((g) => g.items), nRated = Object.values(rated).filter((r) => thScore(r) != null).length;
   $('#thStats').textContent = [tr('оценено {n}', { n: nRated }), !ro && all.length ? tr('в твоих аниме — {n}', { n: all.length }) : ''].filter(Boolean).join(' · ');
   $$('#thSeg [data-thmode]').forEach((b) => b.classList.toggle('on', b.dataset.thmode === th.mode));
-  const pill = (attr, v, label, on) => `<button type="button" class="pill ${on ? 'on' : ''}" data-${attr}="${v}">${tr(label)}</button>`;
-  $('#thKinds').innerHTML = (th.mode === 'anime' && !ro ? `<div class="th-pills">${[['all', 'Все аниме'], ['rated', 'Оценённые аниме'], ['ten', 'Аниме 10/10'], ['five', 'Аниме 5–10']].map(([v, l]) => pill('thaf', v, l, th.af === v)).join('')}</div>` : '')
-    + `<div class="th-pills">${[['all', 'Все'], ['OP', 'Опенинги'], ['ED', 'Эндинги']].map(([v, l]) => pill('thkind', v, l, th.kind === v)).join('')}${th.mode === 'anime' && !ro ? pill('thunr', 1, 'Без оценки', th.unr) : ''}`
-    + (ro ? '' : `<button type="button" class="pill th-refresh" data-threfresh title="${tr('Обновить список')}">${icon('sort')}</button>`) + '</div>';
+  // фильтры одной строкой: тип песен, оценка аниме (меню), «только неоценённые», обновить
+  const af = TH_AF.find((x) => x[0] === th.af) || TH_AF[0];
+  $('#thKinds').innerHTML = `<div class="th-filters">
+    <div class="th-seg" role="group" aria-label="${tr('Тип')}">${[['all', 'Все'], ['OP', 'Опенинги'], ['ED', 'Эндинги']].map(([v, l]) => `<button type="button" class="${th.kind === v ? 'on' : ''}" data-thkind="${v}">${tr(l)}</button>`).join('')}</div>
+    ${th.mode === 'anime' && !ro ? `<button type="button" class="pill th-af ${th.af !== 'all' ? 'on' : ''}" data-thafmenu>${tr(af[1])}${icon('chev')}</button>
+      <button type="button" class="pill th-unr ${th.unr ? 'on' : ''}" data-thunr aria-pressed="${th.unr}"><span class="th-box">${th.unr ? icon('check') : ''}</span>${tr('Только неоценённые')}</button>` : ''}
+    ${ro ? '' : `<button type="button" class="pill th-refresh" data-threfresh title="${tr('Обновить список')}" aria-label="${tr('Обновить список')}">${icon('sort')}</button>`}
+  </div>`;
   const body = $('#thBody');
   const empty = (h, p, btn = '') => `<div class="empty-state small"><div class="empty-art">${icon('music')}</div><h2>${h}</h2><p>${p}</p>${btn}</div>`;
   const prog = th.loading ? `<p class="th-prog"><span class="th-spin"></span>${esc(th.prog)}</p>` : '';
@@ -349,8 +364,15 @@ $('#view-themes').addEventListener('click', (e) => {
   if (m) { th.mode = m.dataset.thmode; setPref('thMode', th.mode); renderThemes(); window.scrollTo(0, 0); return; }
   const kd = e.target.closest('[data-thkind]');
   if (kd) { th.kind = kd.dataset.thkind; renderThemes(); return; }
-  const af = e.target.closest('[data-thaf]');
-  if (af) { th.af = af.dataset.thaf; setPref('thAf', th.af); renderThemes(); return; }
+  const afm = e.target.closest('[data-thafmenu]');
+  if (afm) {
+    openPop(afm, {
+      items: TH_AF.map(([v, , label, hint]) => ({ v, label: tr(label), hint: tr(hint), on: th.af === v })),
+      note: tr('Фильтр по твоей оценке самого аниме'),
+      onPick: (it) => { th.af = it.v; setPref('thAf', th.af); renderThemes(); },
+    });
+    return;
+  }
   if (e.target.closest('[data-thunr]')) { th.unr = !th.unr; renderThemes(); return; }
   if (e.target.closest('[data-threfresh]')) { thLoad(true); return; }
   const all = e.target.closest('[data-thall]');

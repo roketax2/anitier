@@ -1290,3 +1290,21 @@ body.viewing .ach { cursor: pointer; }
 /* музыкальные рамки (frames14.js) */
 @keyframes fa-eqb { 0%, 100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }
 .fa-eqb { transform-box: fill-box; transform-origin: 50% 100%; animation: fa-eqb .8s ease-in-out infinite; }
+/* фильтры опенингов одной строкой */
+.th-kinds { display: block; }
+.th-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.th-seg { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 12px; background: var(--elev); }
+.th-seg button { padding: 7px 13px; border: 0; border-radius: 9px; background: none; color: var(--text2); font: inherit; font-size: 13.5px; cursor: pointer; }
+.th-seg button:hover { color: var(--text); }
+.th-seg button.on { background: var(--elev3); color: var(--text); box-shadow: 0 1px 0 rgba(255, 255, 255, .06) inset; }
+.th-af { display: inline-flex; align-items: center; gap: 6px; }
+.th-af .ic { width: 15px; height: 15px; opacity: .7; }
+.th-unr { display: inline-flex; align-items: center; gap: 8px; }
+.th-box { width: 16px; height: 16px; display: grid; place-items: center; border: 1.5px solid var(--line2); border-radius: 5px; }
+.th-unr.on .th-box { border-color: var(--accent); background: var(--accent); color: #fff; }
+.th-box .ic { width: 12px; height: 12px; stroke-width: 3; }
+.th-filters .th-refresh { margin-left: auto; }
+@media (max-width: 520px) {
+  .th-seg { flex: 1 1 100%; }
+  .th-seg button { flex: 1; }
+}
