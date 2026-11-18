@@ -131,7 +131,7 @@ const ANIME_FR = [
   ['an_toradora', 'Торадора!', 'Toradora!', /toradora|торадора/],
   ['an_violet', 'Вайолет Эвергарден', 'Violet Evergarden', /violet evergarden|вайолет эвергарден/],
   ['an_fate', 'Fate', 'Fate', /fate[/:]|судьба[/:]/],
-  ['an_alya', 'Аля', 'Alya', /alya-san|roshidere|аля иногда/],
+  ['an_alya', 'Аля иногда кокетничает со мной по-русски', 'Alya Sometimes Hides Her Feelings in Russian', /alya-san|alya sometimes|roshidere|аля иногда/],
   ['an_bisque', 'Эта фарфоровая кукла', 'My Dress-Up Darling', /bisque doll|dress-up darling|фарфоровая кукла/],
   ['an_edgerunners', 'Киберпанк: Бегущие по краю', 'Cyberpunk: Edgerunners', /edgerunners|бегущие по краю/],
 ];

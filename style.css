@@ -1104,3 +1104,17 @@ body.viewing .ach { cursor: pointer; }
 .fa-thread { stroke-dasharray: 60 60; animation: fa-thread 4s ease-in-out infinite; }
 .fa-trail { animation-duration: 1.6s; }
 @keyframes fa-trail { 0% { transform: translateX(0); opacity: 0; } 20% { opacity: .55; } 100% { transform: translateX(-10px); opacity: 0; } }
+
+/* аниме-рамки, правки (frames7.js) */
+@keyframes fa-creep { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(2.2px); } }
+.fa-creep { animation: fa-creep 3.4s ease-in-out infinite; }
+@keyframes fa-whisper { 0%, 40% { transform: scale(0); opacity: 0; } 48% { transform: scale(1.08); opacity: 1; } 52%, 88% { transform: scale(1); opacity: 1; } 100% { transform: scale(.9); opacity: 0; } }
+.fa-whisper { transform-box: fill-box; transform-origin: 10% 100%; animation: fa-whisper 6s ease-out infinite; }
+@keyframes fa-charge { 0%, 100% { opacity: .55; } 78% { opacity: 1; } 82% { opacity: 1; filter: brightness(1.9); } 90% { opacity: .45; } }
+.fa-charge { animation: fa-charge 4.5s ease-in infinite; }
+@keyframes fa-kaboom { 0%, 80% { opacity: 0; transform: scale(.75); } 84% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.3); } }
+.fa-kaboom { transform-box: view-box; transform-origin: 60px 60px; animation: fa-kaboom 4.5s ease-out infinite; opacity: 0; }
+@keyframes fa-kaboomtop { 0%, 79% { opacity: 0; transform: scale(.2); } 83% { opacity: 1; transform: scale(1.15); } 92% { opacity: .8; transform: scale(1); } 100% { opacity: 0; transform: scale(1.1); } }
+.fa-kaboomtop { transform-box: view-box; transform-origin: 60px 4px; animation: fa-kaboomtop 4.5s ease-out infinite; opacity: 0; }
+@keyframes fw-rewind { 0%, 86%, 100% { transform: rotate(0); filter: none; } 89% { transform: rotate(-12deg); filter: hue-rotate(40deg) brightness(1.4); } 93% { transform: rotate(3deg); filter: none; } }
+.fw-an_rezero { animation: fw-rewind 7s ease-in-out infinite; }
