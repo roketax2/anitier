@@ -22,9 +22,11 @@ const visitorId = (() => {
 })();
 let pingAt = 0;
 function sitePing() {
+  // считаем только основной адрес; браузер под управлением программы помечается «робот» (wd) и в счёт не идёт
+  if (location.hostname !== 'anitierapp.pages.dev') return;
   if (document.hidden || Date.now() - pingAt < 290000) return;
   pingAt = Date.now();
-  fetch(API_BASE + '/api/ping', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: visitorId }), keepalive: true }).catch(() => {});
+  fetch(API_BASE + '/api/ping', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: visitorId, wd: !!navigator.webdriver }), keepalive: true }).catch(() => {});
 }
 sitePing();
 setInterval(sitePing, 300000);
