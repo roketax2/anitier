@@ -1481,6 +1481,7 @@ function renderCard() {
         <h2>${esc(tn(a))}</h2>
         ${!EN_ON && a.russian && a.name ? `<div class="orig">${esc(a.name)}</div>` : EN_ON && a.english && a.name && a.english !== a.name ? `<div class="orig">${esc(a.name)}</div>` : ''}
         ${world ? `<div class="world"><span class="star">★</span><b>${fmtWorld(world)}</b><span>${title ? tr('в мире, в среднем по серии') : tr('в мире')}</span></div>` : ''}
+        ${typeof cmLine === 'function' ? cmLine(a, title, members) : ''}
         ${facts.length ? `<div class="facts">${facts.map(esc).join('<i>·</i>')}</div>` : ''}
       </div>
       <div class="hero-more">
@@ -1833,6 +1834,7 @@ $('#menuBtn').addEventListener('click', (e) => {
       { v: 'import', icon: 'upload', label: tr('Загрузить копию'), hint: tr('Вернуть оценки из сохранённого файла') },
       { v: 'import2', icon: 'download', label: tr('Импорт с Shikimori или MAL'), hint: tr('Перенести свои оценки по нику или файлу') },
       ...(installEvt ? [{ v: 'install', icon: 'phone', label: tr('Установить как приложение'), hint: tr('Значок на главном экране') }] : []),
+      { v: 'cmtop', icon: 'trophy', label: tr('Топ аниме AniTier'), hint: tr('Средние оценки игроков AniTier') },
       { v: 'settings', icon: 'sliders', label: tr('Настройки'), hint: tr('Язык, анимация рамок, сколько нас') },
       { v: 'lang', icon: 'globe', label: EN_ON ? 'Язык: русский' : 'Language: English', hint: EN_ON ? 'Переключить сайт на русский' : 'Switch the site to English' },
     ],
@@ -1848,6 +1850,7 @@ $('#menuBtn').addEventListener('click', (e) => {
       }
       if (it.v === 'import') $('#importFile').click();
       if (it.v === 'settings' && typeof openSettings === 'function') openSettings();
+      if (it.v === 'cmtop' && typeof openCmTop === 'function') openCmTop();
       if (it.v === 'import2' && typeof openImport === 'function') { if (window.VIEWING) toast(tr('Сначала вернись к своему топу')); else openImport(); }
       if (it.v === 'lang') { setPref('lang', EN_ON ? 'ru' : 'en'); location.reload(); }
       if (it.v === 'install' && installEvt) { installEvt.prompt(); installEvt = null; }

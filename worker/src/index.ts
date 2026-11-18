@@ -1,5 +1,6 @@
 import { handleAccounts } from "./accounts";
 import { HttpError, SITE_ORIGINS, corsHeaders, json } from "./http";
+import { handleCommunity } from "./community";
 import { handleStats } from "./stats";
 import { handleTop } from "./top";
 
@@ -24,6 +25,10 @@ export default {
       if (!SITE_ORIGINS.has(origin)) return json({ error: "Запрос не с сайта" }, 403);
       if (path.startsWith("/api/auth/")) {
         const response = await handleAccounts(request, env, path);
+        if (response) return withCors(response);
+      }
+      if (path === "/api/vote" || path.startsWith("/api/community/")) {
+        const response = await handleCommunity(request, env, path);
         if (response) return withCors(response);
       }
       if (path === "/api/ping" || path === "/api/stats") {

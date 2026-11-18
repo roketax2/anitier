@@ -38,7 +38,7 @@ Object.assign(EN, {
 // разметка раздела переведена в app.js раньше, чем добавились слова выше, — переводим её здесь
 $('.nav-btn[data-view="themes"] span').textContent = tr('Опенинги');
 $('#view-themes h1').textContent = tr('Опенинги и эндинги');
-$$('#thSeg [data-thmode] span').forEach((s) => { s.textContent = tr(s.textContent); });
+$$('#thSeg [data-thmode] span').forEach((s) => { s.textContent = tr(s.textContent); }); // «Топ игроков» переводится в community.js — он подключён позже
 $('#thSearch').placeholder = tr('Найди любое аниме — оцени его опенинги');
 $('#thShareBtn span').textContent = tr('Поделиться');
 
@@ -48,7 +48,7 @@ const TH_TTL = 7 * 864e5;
 const TH_Q = 'slug animethemes { type sequence slug song { title { romaji native } performances { as artist { ... on Artist { name { main } } } } } animethemeentries { version episodes spoiler videos { nodes { resolution nc link audio { link } } } } }';
 const TH = () => (db.themes ||= {});
 const th = {
-  mode: pref('thMode', 'anime') === 'list' ? 'list' : 'anime', kind: 'all', af: pref('thAf', 'all'), unr: false,
+  mode: ['list', 'top'].includes(pref('thMode', 'anime')) ? pref('thMode', 'anime') : 'anime', kind: 'all', af: pref('thAf', 'all'), unr: false,
   open: new Set(), plist: [], q: '', found: null, searching: false, loading: false, prog: '', err: false, list: [], byKey: new Map(), cur: null,
 };
 try { localStorage.removeItem('animetop.themes1'); localStorage.removeItem('animetop.themes2'); } catch {} // старые кэши без сезонов, качества и звука
@@ -254,6 +254,7 @@ function renderThemes() {
   const prog = th.loading ? `<p class="th-prog"><span class="th-spin"></span>${esc(th.prog)}</p>` : '';
   const credit = `<p class="th-credit">${tr('Видео и данные — animethemes.moe')}</p>`;
 
+  if (th.mode === 'top') { $('#thKinds').innerHTML = ''; body.innerHTML = typeof cmThemesHTML === 'function' ? cmThemesHTML() : ''; return; }
   if (th.mode === 'anime') {
     const okT = (t) => thKindOk(t) && (!th.unr || thScore(rated[t.k]) == null);
     // поиск: найденные аниме сверху, развёрнуты
@@ -490,7 +491,7 @@ thDlg.addEventListener('close', () => { thStop(); th.cur = null; if (history.sta
 thDlg.addEventListener('click', (e) => {
   if (e.target === thDlg || e.target.closest('[data-close]')) { thDlg.close(); return; }
   const go = e.target.closest('[data-thgo]');
-  if (go && go.dataset.thgo) { thStop(); thOpen(go.dataset.thgo); return; }
+  if (go && go.dataset.thgo) { const k = go.dataset.thgo; thStop(); (typeof cmEnsureVideo === 'function' ? cmEnsureVideo(k) : Promise.resolve()).then(() => thOpen(k)); return; }
   const q = e.target.closest('[data-thq]');
   if (q) { const v = $('#thVid'), at = v?.currentTime || 0; setPref('thQ', q.dataset.thq); thStop(); thOpen(th.cur, at); return; }
   if (e.target.closest('[data-unrate]')) { thUnrate(th.cur); thMarkRating(); renderThemes(); return; }
@@ -526,7 +527,7 @@ $('#view-themes').addEventListener('click', (e) => {
   const r = e.target.closest('.th-row [data-rate]');
   if (r) { const k = r.closest('.th-row').dataset.k; if (thScore(TH()[k]) === +r.dataset.rate) thUnrate(k); else thRate(k, +r.dataset.rate); renderThemes(); return; }
   const p = e.target.closest('[data-play]');
-  if (p) thOpen(p.dataset.play);
+  if (p) { const k = p.dataset.play; (typeof cmEnsureVideo === 'function' ? cmEnsureVideo(k) : Promise.resolve()).then(() => thOpen(k)); }
 });
 $('#thShareBtn').addEventListener('click', thShare);
 $('#thSearch').addEventListener('input', (e) => {

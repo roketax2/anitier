@@ -54,6 +54,10 @@ function renderSettings(st) {
     <section class="set-sec"><h3>${icon('globe')}${tr('Язык')}</h3>
       <div class="set-seg"><button type="button" data-lang="ru" class="${EN_ON ? '' : 'on'}">Русский</button><button type="button" data-lang="en" class="${EN_ON ? 'on' : ''}">English</button></div>
     </section>
+    <section class="set-sec"><h3>${icon('trophy')}${tr('Рейтинг AniTier')}</h3>
+      <div class="set-seg"><button type="button" data-cm="1" class="${pref('cmOn', '1') === '1' ? 'on' : ''}">${tr('Участвую')}</button><button type="button" data-cm="0" class="${pref('cmOn', '1') === '1' ? '' : 'on'}">${tr('Не участвую')}</button></div>
+      <p class="set-note">${tr('Твои оценки без имени добавляются в общий рейтинг игроков.')}</p>
+    </section>
     <section class="set-sec"><h3>${icon('layers')}${tr('Анимация рамок')}</h3>
       <div class="set-seg"><button type="button" data-anim="1" class="${still ? '' : 'on'}">${tr('Рамки двигаются')}</button><button type="button" data-anim="0" class="${still ? 'on' : ''}">${tr('Рамки стоят — если телефон или ноутбук тормозит')}</button></div>
     </section>`;
@@ -75,6 +79,8 @@ setDlg.addEventListener('click', (e) => {
   if (e.target === setDlg || e.target.closest('[data-close]')) { setDlg.close(); return; }
   const l = e.target.closest('[data-lang]');
   if (l) { if ((l.dataset.lang === 'en') !== EN_ON) { setPref('lang', l.dataset.lang); location.reload(); } return; }
+  const c = e.target.closest('[data-cm]');
+  if (c) { setPref('cmOn', c.dataset.cm); $$('[data-cm]', setDlg).forEach((b) => b.classList.toggle('on', b === c)); if (typeof cmSend === 'function') cmSend(true); return; }
   const a = e.target.closest('[data-anim]');
   if (a) {
     setPref('frameAnim', a.dataset.anim);

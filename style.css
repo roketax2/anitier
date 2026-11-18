@@ -1370,3 +1370,19 @@ body.viewing .ach { cursor: pointer; }
 .imp-check { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--text2); }
 .imp-status { min-height: 20px; font-size: 14px; color: var(--text2); }
 .imp-status.err { color: #ff8f8f; }
+/* рейтинг сообщества (community.js) */
+.cm-world { margin-top: 4px; }
+.cm-world b { font-size: 20px; }
+.cm-dot { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; background: linear-gradient(135deg, #3ee6b0, #a64dff); color: #0e0d14; font: 800 11px var(--display); }
+.cm-dlg { width: min(640px, calc(100vw - 32px)); }
+.cm-list { display: grid; gap: 6px; }
+.cm-row { display: grid; grid-template-columns: 28px auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--elev2); color: var(--text); font: inherit; text-align: left; cursor: pointer; width: 100%; }
+.cm-row:hover { border-color: var(--line2); }
+.cm-row img { width: 34px; height: 48px; object-fit: cover; border-radius: 6px; }
+.cm-rk { text-align: center; font: 700 15px var(--display); color: var(--muted); }
+.cm-t { min-width: 0; display: grid; gap: 3px; cursor: pointer; }
+.cm-t b { font-size: 14.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cm-t small { font-size: 12.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cm-sc { min-width: 42px; padding: 6px 8px; border-radius: 10px; background: var(--c, var(--accent)); color: #16121f; text-align: center; font: 700 15px var(--display); }
+.th-cmrow { cursor: default; }
+.cm-note { margin-bottom: 10px; }
