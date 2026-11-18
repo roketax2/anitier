@@ -78,7 +78,7 @@ function chRender() {
   const q = ch.q.toLowerCase();
   const qOk = (c, a) => !q || `${c.r} ${c.n} ${a ? tn(a) : ''}`.toLowerCase().includes(q);
   const body = $('#chBody');
-  const empty = (h, p) => `<div class="empty-state small"><div class="empty-art">${icon('user')}</div><h2>${h}</h2><p>${p}</p></div>`;
+  const empty = (h, p) => `<div class="empty-state small"><div class="empty-art">${icon('mask')}</div><h2>${h}</h2><p>${p}</p></div>`;
   const prog = ch.loading ? `<p class="th-prog"><span class="th-spin"></span>${esc(ch.prog)}</p>` : '';
   if (ch.mode === 'anime') {
     if (!srcs.length) { body.innerHTML = empty(tr('Сначала оцени аниме'), tr('Здесь появятся персонажи аниме из твоего топа.')); return; }
