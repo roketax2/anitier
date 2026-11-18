@@ -95,6 +95,7 @@ const ICONS = {
   link: '<path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/>',
   globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
   ext: '<path d="M14 5h5v5M19 5l-8 8M11 6H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-4"/>',
+  play: '<path d="M8 5.5v13l11-6.5z" fill="currentColor" stroke="none"/>',
   music: '<path d="M9 18V5.5l11-2.5v12.5"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="15.5" r="2.5"/>',
   wifi: '<path d="M3 3l18 18M8.5 16.5a5 5 0 0 1 7 0M5 13a10 10 0 0 1 4-2.4M19 13a10 10 0 0 0-5-2.7M2 9.5A15 15 0 0 1 6.5 7M22 9.5A15 15 0 0 0 11 6"/><path d="M12 20h.01" stroke-width="3"/>',
 };
@@ -1387,7 +1388,7 @@ async function openCard(anime, level = 'season') {
   openModal(card);
   $('#cardBody').scrollTop = 0;
   try {
-    const d = await gql(`{ animes(ids: ${JSON.stringify(String(anime.id))}, limit: 1) { ${FIELDS} description studios{name} } }`);
+    const d = await gql(`{ animes(ids: ${JSON.stringify(String(anime.id))}, limit: 1) { ${FIELDS} description studios{name} ${typeof MEDIA_Q === 'string' ? MEDIA_Q : ''} } }`);
     if (cs !== st) return;
     if (d.animes[0]) { st.full = d.animes[0]; st.anime = st.full; refreshSnap(st.full); }
     if (st.anime.franchise) {
@@ -1400,7 +1401,7 @@ async function openCard(anime, level = 'season') {
     if (isTitle(st)) {
       if (st.rep.id === st.anime.id) st.repFull = st.full;
       else {
-        const r = await gql(`{ animes(ids: ${JSON.stringify(String(st.rep.id))}, limit: 1) { ${FIELDS} description studios{name} } }`);
+        const r = await gql(`{ animes(ids: ${JSON.stringify(String(st.rep.id))}, limit: 1) { ${FIELDS} description studios{name} ${typeof MEDIA_Q === 'string' ? MEDIA_Q : ''} } }`);
         if (cs !== st) return;
         st.repFull = r.animes[0] || st.rep;
       }
@@ -1411,6 +1412,7 @@ async function openCard(anime, level = 'season') {
   }
   if (cs !== st) return;
   st.loading = false;
+  if (typeof mediaLoad === 'function') mediaLoad(st); // клип у музыкального видео (media.js)
   // у оценённой серии обновим сохранённый снимок: обложка, число частей, средняя мировая
   const fr = isTitle(st) && db.franchises[fKey(st.anime)];
   if (fr && st.repFull) { fr.anime = titleSnap(st); save(); }
@@ -1550,7 +1552,8 @@ function renderCard() {
       }).join('')}</div>
     </section>` : '';
 
-  $('#cardBody').innerHTML = hero + rate + partsBlock;
+  const mTop = typeof mediaTop === 'function' ? mediaTop(st, full) : '', mBottom = typeof mediaBottom === 'function' ? mediaBottom(st, full) : '';
+  $('#cardBody').innerHTML = hero + mTop + rate + mBottom + partsBlock;
   if (!st.loading) showAnixart(a);
 
   /* --- действия --- */
