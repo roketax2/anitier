@@ -1,6 +1,6 @@
 // Офлайн-кэш: оболочка сайта и постеры. Данные API — всегда из сети.
-const CACHE = 'animetop-v48';
-const SHELL = ['./', 'index.html', 'style.css', 'i18n.js', 'app.js', 'achievements.js', 'frames.js', 'frames2.js', 'frames3.js', 'frames4.js', 'frames5.js', 'frames6.js', 'frames7.js', 'frames8.js', 'frames9.js', 'frames10.js', 'account.js', 'compare.js', 'manifest.webmanifest', 'icon.svg', 'logo.svg', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png'];
+const CACHE = 'animetop-v49';
+const SHELL = ['./', 'index.html', 'style.css', 'i18n.js', 'app.js', 'achievements.js', 'frames.js', 'frames2.js', 'frames3.js', 'frames4.js', 'frames5.js', 'frames6.js', 'frames7.js', 'frames8.js', 'frames9.js', 'frames10.js', 'frames11.js', 'account.js', 'compare.js', 'manifest.webmanifest', 'icon.svg', 'logo.svg', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
