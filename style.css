@@ -1156,3 +1156,9 @@ body.viewing .ach { cursor: pointer; }
 .fa-car { animation: fa-car 7s linear infinite; opacity: 0; }
 @keyframes fw-cyglitch { 0%, 91%, 100% { transform: none; filter: none; } 92% { transform: translate(-2px, 0); filter: hue-rotate(90deg); } 94% { transform: translate(2px, .5px); filter: hue-rotate(-60deg) saturate(2); } 96% { transform: translate(-1px, 0); filter: none; } }
 .fw-an_edgerunners { animation: fw-cyglitch 6s steps(1) infinite; }
+
+/* аниме-рамки, правки 5 (frames12.js) */
+@keyframes fa-ecg { 0% { stroke-dashoffset: 100; opacity: 1; } 70% { stroke-dashoffset: 0; } 88% { opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 0; } }
+.fa-ecg { stroke-dasharray: 100 100; animation: fa-ecg 4.5s linear infinite; }
+@keyframes fa-eyeopen { 0%, 30% { transform: scaleY(.08); } 38%, 84% { transform: scaleY(1); } 86% { transform: scaleY(.1); } 88%, 96% { transform: scaleY(1); } 100% { transform: scaleY(.08); } }
+.fa-eyeopen { transform-box: fill-box; transform-origin: center; animation: fa-eyeopen 6s ease-in-out infinite; }
