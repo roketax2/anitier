@@ -1530,7 +1530,10 @@ body.viewing .ach { cursor: pointer; }
 .pr-adm { width: min(680px, calc(100vw - 32px)); }
 .pr-adm h2 { display: flex; align-items: center; gap: 8px; }
 .pa-form { display: grid; gap: 10px; margin-bottom: 18px; }
-.pa-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.pa-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; align-items: end; }
+.pa-row .a-field { min-width: 0; }
+.pa-row .a-field input { width: 100%; min-width: 0; box-sizing: border-box; }
+.pa-form > .th-seg { justify-self: start; }
 .pa-h { margin: 6px 0 2px; font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
 .pa-sub { font-size: 12px; color: var(--muted); }
 .pa-chips { display: flex; flex-wrap: wrap; gap: 6px; }

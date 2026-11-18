@@ -17,6 +17,7 @@ Object.assign(EN, {
   'Срок, дней (пусто — бессрочно)': 'Valid for days (empty — forever)', 'Что даёт промокод': 'What the code gives', 'Все рамки сразу': 'All frames at once',
   'Рамки за промокоды': 'Promo frames', 'Готовые рамки': 'Existing frames', 'Значки': 'Badges', 'Заметка для себя': 'Note to self', 'Создать': 'Create',
   'Готово — промокоды:': 'Done — codes:', 'Скопировать все': 'Copy all', 'Скопировано': 'Copied', 'Все промокоды': 'All promo codes', 'Промокодов пока нет': 'No promo codes yet',
+  'Свой промокод': 'Custom code', 'случайный': 'random', 'Сколько людей': 'How many people', 'без лимита': 'no limit', 'Срок, дней': 'Valid, days', 'бессрочно': 'forever',
   'ввели': 'redeemed', 'до {d}': 'until {d}', 'Удалить промокод {c}? Награды у тех, кто его ввёл, останутся.': 'Delete code {c}? People who redeemed it keep the reward.',
   'все рамки': 'all frames', 'рамки': 'frames', 'значки': 'badges',
 });
@@ -135,9 +136,9 @@ function renderAdmin() {
       <p class="set-note">${tr(pa.kind === 'personal' ? 'Каждый промокод срабатывает один раз — раздавай по одному человеку.' : 'Один промокод на всех, каждый вводит его один раз.')}</p>
       <div class="pa-row">${pa.kind === 'personal'
         ? `<label class="a-field"><span>${tr('Сколько промокодов')}</span><input name="count" type="number" min="1" max="100" value="${val('count') || 1}"></label>`
-        : `<label class="a-field"><span>${tr('Свой промокод (пусто — случайный)')}</span><input name="code" maxlength="24" autocapitalize="characters" spellcheck="false" placeholder="ANITIER2026" value="${val('code')}"></label>
-           <label class="a-field"><span>${tr('Сколько людей (пусто — без лимита)')}</span><input name="maxUses" type="number" min="1" value="${val('maxUses')}"></label>`}
-        <label class="a-field"><span>${tr('Срок, дней (пусто — бессрочно)')}</span><input name="days" type="number" min="1" value="${val('days')}"></label></div>
+        : `<label class="a-field"><span>${tr('Свой промокод')}</span><input name="code" maxlength="24" autocapitalize="characters" spellcheck="false" placeholder="${tr('случайный')}" value="${val('code')}"></label>
+           <label class="a-field"><span>${tr('Сколько людей')}</span><input name="maxUses" type="number" min="1" placeholder="${tr('без лимита')}" value="${val('maxUses')}"></label>`}
+        <label class="a-field"><span>${tr('Срок, дней')}</span><input name="days" type="number" min="1" placeholder="${tr('бессрочно')}" value="${val('days')}"></label></div>
       <h3 class="pa-h">${tr('Что даёт промокод')}</h3>
       <div class="pa-chips">${paChip(pa.all, 'data-paall', `${icon('sparkle') || ''}<span>${tr('Все рамки сразу')}</span>`)}${paChip(pa.all && pa.badges.has('dev') && pa.frames.has('pr_dev'), 'data-padev', `<span>${tr('Код разработчика')}</span>`)}</div>
       <small class="pa-sub">${tr('Рамки за промокоды')}</small><div class="pa-chips">${codeFrames.map((x) => paChip(pa.frames.has(x.id), `data-pafr="${x.id}"`, ring(x))).join('')}</div>
