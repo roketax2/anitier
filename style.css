@@ -1450,3 +1450,10 @@ body.viewing .ach { cursor: pointer; }
   .ch-row { grid-template-columns: 44px 1fr; }
   .nav-btn { font-size: 10.5px; }
 }
+/* сезон (season.js) */
+.sz-dlg .th-filters { margin-bottom: 12px; }
+.sz-row { grid-template-columns: auto minmax(0, 1fr) auto; cursor: default; }
+.sz-mark { padding: 5px 9px; border-radius: 9px; background: var(--accent-soft); color: var(--text2); font-size: 12.5px; white-space: nowrap; }
+.sz-plan { display: inline-flex; align-items: center; gap: 4px; height: 34px; padding: 0 10px; font-size: 13px; white-space: nowrap; }
+.sz-plan .ic { width: 15px; height: 15px; }
+@media (max-width: 520px) { .sz-plan span { display: none; } }
