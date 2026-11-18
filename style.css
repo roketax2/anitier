@@ -462,7 +462,7 @@ textarea::placeholder { color: var(--muted); }
   /* навигация уезжает вниз, под большой палец */
   .nav {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; margin: 0; gap: 0;
-    display: grid; grid-template-columns: repeat(4, 1fr); padding: 6px 6px calc(6px + env(safe-area-inset-bottom));
+    display: grid; grid-template-columns: repeat(5, 1fr); padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
     background: rgba(18, 16, 25, .93); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
     border-top: 1px solid var(--line);
   }
@@ -1428,3 +1428,25 @@ body.viewing .ach { cursor: pointer; }
 .gm-rec { color: #ffd75e; }
 .gm-end-btns { display: flex; gap: 10px; }
 @media (max-width: 520px) { .gm-opts { grid-template-columns: 1fr; } }
+/* ---------- персонажи (chars.js) ---------- */
+.ch-row { grid-template-columns: 44px 1fr auto; }
+.ch-ava { width: 44px; height: 58px; object-fit: cover; border-radius: 9px; background: var(--elev2); cursor: pointer; }
+.ch-items { gap: 8px; }
+.ch-chip { position: relative; width: 84px; display: grid; gap: 4px; padding: 0; border: 0; background: none; color: var(--text); font: inherit; text-align: center; cursor: pointer; }
+.ch-chip img { width: 84px; height: 116px; object-fit: cover; border-radius: 10px; background: var(--elev2); }
+.ch-chip span { font-size: 12px; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.ch-chip .th-cs { position: absolute; top: 4px; right: 4px; }
+.ch-dlg { width: min(640px, calc(100vw - 32px)); }
+.ch-card { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 20px; padding: 24px; }
+.ch-big { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 14px; background: var(--elev2); }
+.ch-meta { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.ch-meta h2 { font: 700 22px var(--display); padding-right: 36px; }
+.ch-meta p { font-size: 13.5px; color: var(--muted); }
+.ch-meta .ch-orig { margin-top: -6px; }
+.ch-meta .th-big { grid-template-columns: repeat(5, 1fr); }
+@media (max-width: 560px) {
+  .ch-card { grid-template-columns: 1fr; padding: calc(16px + env(safe-area-inset-top)) 14px 18px; }
+  .ch-big { width: 150px; justify-self: center; }
+  .ch-row { grid-template-columns: 44px 1fr; }
+  .nav-btn { font-size: 10.5px; }
+}

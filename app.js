@@ -241,12 +241,14 @@ function show(v) {
   $('#view-catalog').hidden = v !== 'catalog';
   $('#view-themes').hidden = v !== 'themes';
   $('#view-games').hidden = v !== 'games';
+  $('#view-chars').hidden = v !== 'chars';
   $('#trayBtn').hidden = v !== 'mine';
   if (v !== 'mine' && trayOpen) setTray(false);
   if (v === 'mine') renderMine();
   if (v === 'catalog') { if (!cat.loaded) loadCatalog(true); else renderCatalog(); }
   if (v === 'themes' && typeof thShowView === 'function') thShowView();
   if (v === 'games' && typeof gmShowView === 'function') gmShowView();
+  if (v === 'chars' && typeof chShowView === 'function') chShowView();
   setPref('view', v);
   window.scrollTo(0, scrollPos[v] || 0);
 }
@@ -1914,7 +1916,7 @@ if (history.state?.modal) history.replaceState(null, ''); // страницу о
 updateCount();
 renderPills();
 loadGenres();
-view = ['catalog', 'themes', 'games'].includes(pref('view', 'mine')) ? pref('view', 'mine') : 'mine';
+view = ['catalog', 'themes', 'games', 'chars'].includes(pref('view', 'mine')) ? pref('view', 'mine') : 'mine';
 show(view);
 if (EN_ON) fillEnglishNames();
 try { localStorage.removeItem('animetop.series2'); localStorage.removeItem('animetop.series3'); localStorage.removeItem('animetop.genres'); } catch {} // старые кэши без английских названий

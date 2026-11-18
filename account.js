@@ -64,7 +64,7 @@ function setUser(u) { acct.user = u; setPref('user', JSON.stringify(u)); updateA
 /* ---------- синхронизация ---------- */
 const recTime = (r) => r?.updated || r?.added || 0;
 function syncData() {
-  return { v: 1, items: db.items, franchises: db.franchises, themes: db.themes || {}, deleted: db.deleted || {}, ach: db.ach || {}, settings: { tierNames, tierNamesAt: +pref('tierNamesAt', '0') || 0 } };
+  return { v: 1, items: db.items, franchises: db.franchises, themes: db.themes || {}, chars: db.chars || {}, deleted: db.deleted || {}, ach: db.ach || {}, settings: { tierNames, tierNamesAt: +pref('tierNamesAt', '0') || 0 } };
 }
 function mergeTop(a, b) {
   const now = Date.now(), KEEP = 120 * 864e5, del = {};
@@ -82,15 +82,15 @@ function mergeTop(a, b) {
   // достижения: объединяем, дата — самая ранняя
   const ach = { ...(b.ach || {}) };
   for (const [k, t] of Object.entries(a.ach || {})) if (!ach[k] || t < ach[k]) ach[k] = t;
-  return { v: 1, ach, items: side('i:', a.items, b.items), franchises: side('f:', a.franchises, b.franchises), themes: side('o:', a.themes, b.themes), deleted: del, settings: (sb.tierNamesAt || 0) > (sa.tierNamesAt || 0) ? sb : sa };
+  return { v: 1, ach, items: side('i:', a.items, b.items), franchises: side('f:', a.franchises, b.franchises), themes: side('o:', a.themes, b.themes), chars: side('h:', a.chars, b.chars), deleted: del, settings: (sb.tierNamesAt || 0) > (sa.tierNamesAt || 0) ? sb : sa };
 }
 // одинаковы ли два топа по составу и датам — тогда не нужно отправлять обратно
 function sameTop(a, b) {
-  const sig = (t) => ['items', 'franchises', 'themes'].map((p) => Object.entries(t[p] || {}).map(([k, r]) => k + ':' + recTime(r)).sort().join(',')).join('|') + '|' + Object.keys(t.deleted || {}).length + '|' + (t.settings?.tierNamesAt || 0) + '|' + Object.keys(t.ach || {}).length;
+  const sig = (t) => ['items', 'franchises', 'themes', 'chars'].map((p) => Object.entries(t[p] || {}).map(([k, r]) => k + ':' + recTime(r)).sort().join(',')).join('|') + '|' + Object.keys(t.deleted || {}).length + '|' + (t.settings?.tierNamesAt || 0) + '|' + Object.keys(t.ach || {}).length;
   return sig(a) === sig(b);
 }
 function applyTop(m) {
-  db.items = m.items || {}; db.franchises = m.franchises || {}; db.themes = m.themes || {}; db.deleted = m.deleted || {}; db.ach = m.ach || db.ach || {};
+  db.items = m.items || {}; db.franchises = m.franchises || {}; db.themes = m.themes || {}; db.chars = m.chars || {}; db.deleted = m.deleted || {}; db.ach = m.ach || db.ach || {};
   const st = m.settings || {};
   if ((st.tierNamesAt || 0) > (+pref('tierNamesAt', '0') || 0)) {
     tierNames = st.tierNames || {};
@@ -534,7 +534,7 @@ async function openShared(id) {
     const r = await api('GET', '/api/shared/' + encodeURIComponent(id));
     const who = dname(r);
     window.VIEWING = { login: who, updatedAt: r.updatedAt };
-    db = { version: 1, items: r.data.items || {}, franchises: r.data.franchises || {}, themes: r.data.themes || {}, deleted: {}, ach: r.data.ach || {} };
+    db = { version: 1, items: r.data.items || {}, franchises: r.data.franchises || {}, themes: r.data.themes || {}, chars: r.data.chars || {}, deleted: {}, ach: r.data.ach || {} };
     tierNames = r.data.settings?.tierNames || {};
     $('#viewBanner').innerHTML = `<span class="vb-who">${avatarHTML(r, 'a-avatar small', 'sm')}<span>${tr('Топ пользователя')} <b>${esc(who)}</b> · <span class="vb-ach">${icon('trophy')}${Object.keys(r.data.ach || {}).filter((k) => ACH.some((x) => x.id === k)).length}</span>${r.updatedAt ? ` · ${tr('обновлён')} ${new Date(r.updatedAt).toLocaleDateString(LOCALE)}` : ''}</span></span><button class="btn" id="viewExit">${tr('К своему топу')}</button>`;
     $('#view-mine h1').textContent = tr('Топ {l}', { l: who });

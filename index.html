@@ -23,6 +23,7 @@
         <button class="nav-btn" data-view="mine" data-ic="trophy"><span>Мой топ</span><b id="mineCount" hidden>0</b></button>
         <button class="nav-btn" data-view="catalog" data-ic="compass"><span>Каталог</span></button>
         <button class="nav-btn" data-view="themes" data-ic="music"><span>Опенинги</span></button>
+        <button class="nav-btn" data-view="chars" data-ic="user"><span>Персонажи</span></button>
         <button class="nav-btn" data-view="games" data-ic="game"><span>Игры</span></button>
       </nav>
       <button id="acctBtn" class="icon-btn acct-btn" title="Войти в аккаунт" aria-label="Аккаунт"></button>
@@ -98,6 +99,30 @@
     </div>
     <div class="pills th-kinds" id="thKinds"></div>
     <div id="thBody"></div>
+  </main>
+
+  <!-- ============ ПЕРСОНАЖИ (chars.js) ============ -->
+  <main id="view-chars" class="view" hidden>
+    <div class="view-head">
+      <div>
+        <h1>Персонажи</h1>
+        <p class="stats" id="chStats"></p>
+      </div>
+      <div class="head-actions">
+        <div class="seg" id="chSeg" role="tablist" aria-label="Персонажи">
+          <button data-chmode="anime" data-ic="list" role="tab"><span>По аниме</span></button>
+          <button data-chmode="list" data-ic="tiers" role="tab"><span>Мой тир-лист</span></button>
+        </div>
+      </div>
+    </div>
+    <div class="tools" id="chTools">
+      <label class="search" data-ic="search">
+        <input id="chSearch" type="search" placeholder="Найди персонажа или аниме" autocomplete="off" enterkeyhint="search">
+        <button class="clear" type="button" data-ic="x" aria-label="Очистить" hidden></button>
+      </label>
+    </div>
+    <div class="pills th-kinds" id="chKinds"></div>
+    <div id="chBody"></div>
   </main>
 
   <!-- ============ ИГРЫ (games.js) ============ -->
@@ -209,6 +234,7 @@
   <script src="media.js"></script>
   <script src="import.js"></script>
   <script src="community.js"></script>
+  <script src="chars.js"></script>
   <script src="games.js"></script>
 </body>
 </html>
