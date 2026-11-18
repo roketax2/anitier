@@ -1168,7 +1168,7 @@ body.viewing .ach { cursor: pointer; }
 .fa-titan3 { animation: fa-titan3 12s ease-in-out infinite; }
 
 /* выбор рамки: миниатюры неподвижные и без размытия/свечения — иначе на телефоне и ноутбуке список тормозит */
-.fr-still, .fr-still *, .a-frames .fr-art, .a-frames .fr-art * { animation: none !important; filter: none !important; }
+.fr-still, .fr-still * { animation: none !important; filter: none !important; }
 .a-frames { contain: layout paint; }
 /* кто просил в системе меньше движения — рамки стоят */
 @media (prefers-reduced-motion: reduce) { .fr-art, .fr-art * { animation: none !important; } }

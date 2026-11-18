@@ -62,7 +62,7 @@ document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="
 // значок достижения; hidden — секретное, ещё не полученное
 function achIcon(a, hidden) {
   const shape = ACH_SHAPE[a.g], grad = hidden ? 'hidden' : a.g;
-  if (a.g === 'anime' && typeof FRAME_ART !== 'undefined' && FRAME_ART[a.id]) return `<svg class="ach-svg" viewBox="0 0 48 48" aria-hidden="true"><g fill="url(#ag-anime)" stroke="url(#ag-anime)" stroke-width="3" stroke-linejoin="round">${shape}</g><circle cx="24" cy="24" r="10" fill="#1b1726"/><svg class="fr-still" x="6" y="6" width="36" height="36" viewBox="0 0 120 120" overflow="visible">${noSmil(FRAME_ART[a.id]())}</svg></svg>`;
+  if (a.g === 'anime' && typeof FRAME_ART !== 'undefined' && FRAME_ART[a.id]) return `<svg class="ach-svg" viewBox="0 0 48 48" aria-hidden="true"><g fill="url(#ag-anime)" stroke="url(#ag-anime)" stroke-width="3" stroke-linejoin="round">${shape}</g><circle cx="24" cy="24" r="10" fill="#1b1726"/><svg class="fr-still" data-fr="${a.id}" x="6" y="6" width="36" height="36" viewBox="0 0 120 120" overflow="visible">${noSmil(FRAME_ART[a.id]())}</svg></svg>`;
   return `<svg class="ach-svg" viewBox="0 0 48 48" aria-hidden="true">
     <g fill="url(#ag-${grad})" stroke="url(#ag-${grad})" stroke-width="3" stroke-linejoin="round">${shape}</g>
     <g transform="translate(24 24) scale(.830) translate(-24 -24)" fill="none" stroke="#fff" stroke-opacity=".380" stroke-width="1.500" stroke-linejoin="round">${shape}</g>
@@ -284,7 +284,7 @@ const frameHasArt = (f) => typeof FRAME_ART !== 'undefined' && !!FRAME_ART[f.id]
 // неподвижный рисунок: без слоя движения, без SMIL; анимации и размытие выключены классом fr-still (style.css)
 const frameStillCache = {};
 const noSmil = (h) => h.replace(/<animate[A-Za-z]*\b[^>]*\/>/g, '').replace(/<animate[A-Za-z]*\b[^>]*>[\s\S]*?<\/animate[A-Za-z]*>/g, '');
-const frameStill = (id) => (frameStillCache[id] ||= `<svg class="fr-art fr-still" viewBox="0 0 120 120" aria-hidden="true"><g class="fw fw-${id}">${noSmil(FRAME_ART[id]())}</g>${id === 'glitch' ? '' : fRing(40.4, 1.4, '#000', 'opacity=".4"')}</svg>`);
+const frameStill = (id) => (frameStillCache[id] ||= `<svg class="fr-art fr-still" data-fr="${id}" viewBox="0 0 120 120" aria-hidden="true"><g class="fw fw-${id}">${noSmil(FRAME_ART[id]())}</g>${id === 'glitch' ? '' : fRing(40.4, 1.4, '#000', 'opacity=".4"')}</svg>`);
 const frameRing = (f) => (frameHasArt(f) ? `<span class="ava-wrap fa xs"><span class="ring-dot"></span>${frameStill(f.id)}</span>` : `<span class="ava-wrap ${frameCls(f)} xs"><span class="ring-dot"></span></span>`);
 // обернуть аватарку в рамку
 function framed(inner, frame, size = '') {
@@ -292,6 +292,32 @@ function framed(inner, frame, size = '') {
   if (!f.id) return inner;
   if (frameHasArt(f)) return `<span class="ava-wrap fa fa-${f.id} ${size}">${inner}${frameArt(f.id)}</span>`;
   return `<span class="ava-wrap ${frameCls(f)} ${size}">${inner}${f.b ? `<i class="fr-badge">${glyphSvg(f.b)}</i>` : ''}</span>`;
+}
+// навёл мышку на рамку в списке — она оживает (полный рисунок со слоем движения), увёл — снова неподвижная
+{
+  const HOLD = '.a-frames button, .pv-frame, .ach, .ach-toast';
+  let cur = null;
+  const wake = (box) => box.querySelectorAll('svg.fr-still[data-fr]').forEach((sv) => {
+    const id = sv.dataset.fr;
+    if (!FRAME_ART[id]) return;
+    if (sv.classList.contains('fr-art')) { sv.insertAdjacentHTML('afterend', frameArt(id).replace('<svg class="fr-art"', '<svg class="fr-art fr-live" data-fr="' + id + '"')); sv.remove(); }
+    else { sv.innerHTML = FRAME_ART[id](); sv.classList.replace('fr-still', 'fr-live'); }
+  });
+  const calm = (box) => box.querySelectorAll('svg.fr-live[data-fr]').forEach((sv) => {
+    const id = sv.dataset.fr;
+    if (sv.classList.contains('fr-art')) { sv.insertAdjacentHTML('afterend', frameStill(id)); sv.remove(); }
+    else { sv.innerHTML = noSmil(FRAME_ART[id]()); sv.classList.replace('fr-live', 'fr-still'); }
+  });
+  if (window.matchMedia?.('(hover: hover)').matches) {
+    document.addEventListener('mouseover', (e) => {
+      const box = e.target.closest?.(HOLD);
+      if (box === cur) return;
+      if (cur) calm(cur);
+      cur = box && box.querySelector('svg.fr-still[data-fr]') ? box : null;
+      if (cur) wake(cur);
+    });
+    document.addEventListener('mouseleave', () => { if (cur) { calm(cur); cur = null; } });
+  }
 }
 // миниатюра для списков: тот же рисунок, но неподвижный
 function framedThumb(inner, frame, size = '') {
