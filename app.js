@@ -1831,6 +1831,7 @@ $('#menuBtn').addEventListener('click', (e) => {
     items: [
       { v: 'export', icon: 'download', label: tr('Сохранить копию топа'), hint: tr('Файл с твоими оценками — на всякий случай') },
       { v: 'import', icon: 'upload', label: tr('Загрузить копию'), hint: tr('Вернуть оценки из сохранённого файла') },
+      { v: 'import2', icon: 'download', label: tr('Импорт с Shikimori или MAL'), hint: tr('Перенести свои оценки по нику или файлу') },
       ...(installEvt ? [{ v: 'install', icon: 'phone', label: tr('Установить как приложение'), hint: tr('Значок на главном экране') }] : []),
       { v: 'settings', icon: 'sliders', label: tr('Настройки'), hint: tr('Язык, анимация рамок, сколько нас') },
       { v: 'lang', icon: 'globe', label: EN_ON ? 'Язык: русский' : 'Language: English', hint: EN_ON ? 'Переключить сайт на русский' : 'Switch the site to English' },
@@ -1847,6 +1848,7 @@ $('#menuBtn').addEventListener('click', (e) => {
       }
       if (it.v === 'import') $('#importFile').click();
       if (it.v === 'settings' && typeof openSettings === 'function') openSettings();
+      if (it.v === 'import2' && typeof openImport === 'function') { if (window.VIEWING) toast(tr('Сначала вернись к своему топу')); else openImport(); }
       if (it.v === 'lang') { setPref('lang', EN_ON ? 'ru' : 'en'); location.reload(); }
       if (it.v === 'install' && installEvt) { installEvt.prompt(); installEvt = null; }
     },

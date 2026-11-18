@@ -1362,3 +1362,11 @@ body.viewing .ach { cursor: pointer; }
 /* полоски кадров и видео не должны раздвигать карточку */
 .media-top { grid-template-columns: minmax(0, 1fr); }
 .shots, .vids { min-width: 0; max-width: 100%; }
+/* импорт (import.js) */
+.imp-dlg { width: min(520px, calc(100vw - 32px)); }
+.imp-row { display: flex; gap: 8px; }
+.imp-row input { flex: 1; min-width: 0; height: 42px; padding: 0 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--elev2); color: var(--text); font: inherit; }
+.imp-file { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; justify-self: start; }
+.imp-check { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--text2); }
+.imp-status { min-height: 20px; font-size: 14px; color: var(--text2); }
+.imp-status.err { color: #ff8f8f; }
