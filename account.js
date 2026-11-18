@@ -534,7 +534,7 @@ async function openShared(id) {
     const r = await api('GET', '/api/shared/' + encodeURIComponent(id));
     const who = dname(r);
     window.VIEWING = { login: who, updatedAt: r.updatedAt };
-    db = { version: 1, items: r.data.items || {}, franchises: r.data.franchises || {}, deleted: {}, ach: r.data.ach || {} };
+    db = { version: 1, items: r.data.items || {}, franchises: r.data.franchises || {}, themes: r.data.themes || {}, deleted: {}, ach: r.data.ach || {} };
     tierNames = r.data.settings?.tierNames || {};
     $('#viewBanner').innerHTML = `<span class="vb-who">${avatarHTML(r, 'a-avatar small', 'sm')}<span>${tr('Топ пользователя')} <b>${esc(who)}</b> · <span class="vb-ach">${icon('trophy')}${Object.keys(r.data.ach || {}).filter((k) => ACH.some((x) => x.id === k)).length}</span>${r.updatedAt ? ` · ${tr('обновлён')} ${new Date(r.updatedAt).toLocaleDateString(LOCALE)}` : ''}</span></span><button class="btn" id="viewExit">${tr('К своему топу')}</button>`;
     $('#view-mine h1').textContent = tr('Топ {l}', { l: who });

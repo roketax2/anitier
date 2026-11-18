@@ -81,12 +81,18 @@
       </div>
       <div class="head-actions">
         <div class="seg" id="thSeg" role="tablist" aria-label="Опенинги">
-          <button data-thmode="rate" data-ic="music" role="tab"><span>Оценить</span></button>
+          <button data-thmode="anime" data-ic="music" role="tab"><span>По аниме</span></button>
           <button data-thmode="list" data-ic="tiers" role="tab"><span>Мой тир-лист</span></button>
         </div>
       </div>
     </div>
-    <div class="pills" id="thKinds"></div>
+    <div class="tools" id="thTools">
+      <label class="search" data-ic="search">
+        <input id="thSearch" type="search" placeholder="Найди любое аниме — оцени его опенинги" autocomplete="off" enterkeyhint="search">
+        <button class="clear" type="button" data-ic="x" aria-label="Очистить" hidden></button>
+      </label>
+    </div>
+    <div class="pills th-kinds" id="thKinds"></div>
     <div id="thBody"></div>
   </main>
 
@@ -188,6 +194,7 @@
   <script src="frames11.js"></script>
   <script src="frames12.js"></script>
   <script src="frames13.js"></script>
+  <script src="frames14.js"></script>
   <script src="account.js"></script>
   <script src="compare.js"></script>
   <script src="settings.js"></script>

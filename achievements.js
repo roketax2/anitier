@@ -42,6 +42,11 @@ const GLYPH = {
   flower: [0, 72, 144, 216, 288].map((r) => `<ellipse cx="12" cy="6.800" rx="2.700" ry="4.100" fill="currentColor" stroke="none" transform="rotate(${r} 12 12)"/>`).join('') + '<circle cx="12" cy="12" r="1.600" fill="#ff7aa6" stroke="none"/>',
   s: NUM('S', 15),
   q: NUM('?', 15),
+  note: '<path d="M9 18V5.500l10-2.500v12.500"/><circle cx="6.500" cy="18" r="2.500"/><circle cx="16.500" cy="15.500" r="2.500"/>',
+  eq: '<path d="M5 20v-6M9.700 20V8M14.300 20v-9M19 20V4"/>',
+  disc: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.200"/><path d="M12 6.300a5.700 5.700 0 0 1 5.700 5.700"/>',
+  phones: '<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4.500" height="7" rx="1.800"/><rect x="16.500" y="14" width="4.500" height="7" rx="1.800"/>',
+  credits: '<path d="M6 4h12M8 8h8M6 12h12M9 16h6M7 20h10"/>',
   lock: '<rect x="5.500" y="10.500" width="13" height="9.500" rx="2"/><path d="M8.500 10.500V8a3.500 3.500 0 0 1 7 0v2.500"/>',
 };
 const glyphSvg = (name) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.400" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${GLYPH[name] || ''}</svg>`;
@@ -54,8 +59,9 @@ const ACH_SHAPE = {
   secret: '<path d="M24 2.500 45.500 24 24 45.500 2.500 24Z"/>',
   elem: '<rect x="4" y="4" width="40" height="40" rx="12"/>',
   anime: '<path d="M17 3H31L45 17V31L31 45H17L3 31V17Z"/>',
+  music: '<path d="M24 3C36 3 45 12 45 24S36 45 24 45 3 36 3 24 12 3 24 3Z"/><path d="M24 9 39 24 24 39 9 24Z" fill="none"/>',
 };
-const ACH_COLORS = { count: ['#ffb347', '#ff4d78'], taste: ['#ff7ab8', '#8b5cf6'], era: ['#4dd2ff', '#5b5bf0'], secret: ['#3ee6b0', '#1f6f8b'], elem: ['#ffd75e', '#e8572a'], anime: ['#ff4d78', '#4dd2ff'], hidden: ['#4a4560', '#2c283a'] };
+const ACH_COLORS = { count: ['#ffb347', '#ff4d78'], taste: ['#ff7ab8', '#8b5cf6'], era: ['#4dd2ff', '#5b5bf0'], secret: ['#3ee6b0', '#1f6f8b'], elem: ['#ffd75e', '#e8572a'], anime: ['#ff4d78', '#4dd2ff'], music: ['#3ee6b0', '#a64dff'], hidden: ['#4a4560', '#2c283a'] };
 document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>${
   Object.entries(ACH_COLORS).map(([k, [a, b]]) => `<linearGradient id="ag-${k}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>`).join('')
 }</defs></svg>`);
@@ -106,7 +112,21 @@ const ACH = [
   { id: 'el_water', g: 'elem', i: 'drop', t: 'Вода', d: 'Оцени 10 романтических аниме', ok: (s) => s.gc.romance >= 10, p: (s) => [s.gc.romance, 10] },
   { id: 'el_energy', g: 'elem', i: 'atom', t: 'Энергия', d: 'Оцени 10 экшенов', ok: (s) => s.gc.action >= 10, p: (s) => [s.gc.action, 10] },
   { id: 'burst', g: 'count', i: 'boom', t: 'Взрыв', d: 'Оцени 20 аниме за одни сутки', ok: (s) => s.today >= 20, p: (s) => [s.today, 20] },
+  // музыка аниме (2026-11-18): оценки опенингов и эндингов (themes.js)
+  { id: 'th_first', g: 'music', i: 'note', t: 'Первая нота', d: 'Оцени первый опенинг или эндинг', ok: (s) => s.thN >= 1 },
+  { id: 'th_25', g: 'music', i: 'eq', t: 'Меломан', d: 'Оцени 25 опенингов и эндингов', ok: (s) => s.thN >= 25, p: (s) => [s.thN, 25] },
+  { id: 'th_tens', g: 'music', i: 'disc', t: 'Мурашки по коже', d: 'Поставь 10 из 10 пяти опенингам или эндингам', ok: (s) => s.thTen >= 5, p: (s) => [s.thTen, 5] },
+  { id: 'th_full', g: 'music', i: 'phones', t: 'Полный альбом', d: 'Оцени все опенинги и эндинги одного аниме (от 4 песен)', ok: (s) => s.thFull >= 1 },
+  { id: 'th_ed', g: 'music', i: 'credits', t: 'До последних титров', d: 'Оцени 10 эндингов', ok: (s) => s.thEd >= 10, p: (s) => [s.thEd, 10] },
 ];
+if (typeof EN !== 'undefined') Object.assign(EN, {
+  'Музыка аниме': 'Anime music', 'Первая нота': 'First note', 'Оцени первый опенинг или эндинг': 'Rate your first opening or ending',
+  'Меломан': 'Music lover', 'Оцени 25 опенингов и эндингов': 'Rate 25 openings and endings',
+  'Мурашки по коже': 'Goosebumps', 'Поставь 10 из 10 пяти опенингам или эндингам': 'Give 10/10 to five openings or endings',
+  'Полный альбом': 'Full album', 'Оцени все опенинги и эндинги одного аниме (от 4 песен)': 'Rate every opening and ending of one anime (4+ songs)',
+  'До последних титров': 'Until the last credits', 'Оцени 10 эндингов': 'Rate 10 endings',
+  'Нотный стан': 'Music staff', 'Эквалайзер': 'Equalizer', 'Пластинка': 'Vinyl', 'Наушники': 'Headphones',
+});
 // аниме-рамки (2026-11-18): оцени тайтл — получи рамку по его мотивам (без логотипов и персонажей)
 const ANIME_FR = [
   ['an_aot', 'Атака титанов', 'Attack on Titan', /shingeki no kyo|attack on titan|атака титанов/],
@@ -137,7 +157,7 @@ const ANIME_FR = [
 ];
 ACH.push(...ANIME_FR.map(([id, t]) => ({ id, g: 'anime', t, d: `Оцени «${t}»`, ok: (s) => !!s.an[id] })));
 if (typeof EN !== 'undefined') ANIME_FR.forEach(([, t, en]) => { EN[t] = en; EN[`Оцени «${t}»`] = `Rate “${en}”`; });
-const ACH_GROUPS = [['count', 'За количество'], ['taste', 'За вкус'], ['era', 'Эпохи и типы'], ['elem', 'Стихии жанров'], ['anime', 'Любимые тайтлы'], ['secret', 'Секретные']];
+const ACH_GROUPS = [['count', 'За количество'], ['taste', 'За вкус'], ['era', 'Эпохи и типы'], ['elem', 'Стихии жанров'], ['anime', 'Любимые тайтлы'], ['music', 'Музыка аниме'], ['secret', 'Секретные']];
 
 // Рамки: need — какое достижение открывает (нет — доступна сразу); b — знак в углу;
 // fx — эффекты (классы fx-* в style.css): spin, slow, glow, orbit, orbit3, beat, flicker, hue, dash, dots, glitch, stars, ember
@@ -180,6 +200,10 @@ const FRAMES = [
   { id: 'earth', t: 'Земля', need: 'el_earth' },
   { id: 'water', t: 'Вода', need: 'el_water' },
   { id: 'energy', t: 'Энергия', need: 'el_energy' },
+  { id: 'th_notes', t: 'Нотный стан', need: 'th_first' },
+  { id: 'th_eq', t: 'Эквалайзер', need: 'th_25' },
+  { id: 'th_vinyl', t: 'Пластинка', need: 'th_tens' },
+  { id: 'th_phones', t: 'Наушники', need: 'th_full' },
   ...ANIME_FR.map(([id, t]) => ({ id, t, need: id })),
 ];
 const frameById = (id) => FRAMES.find((f) => f.id === (id || '')) || FRAMES[0];
@@ -217,6 +241,10 @@ function achStats(d = db) {
     achCount: Object.keys(d.ach || {}).filter((k) => k !== 'collector' && ACH.some((a) => a.id === k && a.g !== 'anime')).length,
     an: Object.fromEntries(ANIME_FR.map(([id, , , re]) => [id, rated.some((r) => re.test(`${r.anime?.name || ''} ${r.anime?.english || ''} ${r.anime?.russian || ''} ${r.anime?.franchise || ''}`.toLowerCase().replace(/_/g, ' ')))])),
     renamed: d === db && Object.keys(tierNames || {}).length > 0,
+    ...(() => {
+      const th = Object.values(d.themes || {}).map((r) => ({ s: r.score ?? { S: 10, A: 9, B: 8, C: 7, D: 5, F: 3 }[r.tier], type: r.t?.type })).filter((r) => r.s != null);
+      return { thN: th.length, thTen: th.filter((r) => r.s === 10).length, thEd: th.filter((r) => r.type === 'ED').length, thFull: typeof thFullAlbums === 'function' ? thFullAlbums(d) : 0 };
+    })(),
     ones: rated.filter((r) => r.score === 1).length,
     today: rated.filter((r) => Date.now() - (r.added || 0) < 864e5).length,
     // сколько оценённых в жанре (по английскому или русскому названию жанра)

@@ -103,7 +103,7 @@ async function getShared(env: Env, id: string): Promise<Response> {
     avatar: row.avatar ?? null,
     frame: row.frame ?? null,
     updatedAt: row.updated_at ?? 0,
-    data: { items: strip(data.items), franchises: strip(data.franchises), settings: { tierNames: settings.tierNames ?? {} }, ach: data.ach && typeof data.ach === "object" ? data.ach : {} },
+    data: { items: strip(data.items), franchises: strip(data.franchises), themes: strip(data.themes), settings: { tierNames: settings.tierNames ?? {} }, ach: data.ach && typeof data.ach === "object" ? data.ach : {} },
   });
 }
 
