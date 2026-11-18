@@ -53,14 +53,16 @@ const ACH_SHAPE = {
   era: '<circle cx="24" cy="24" r="21"/>',
   secret: '<path d="M24 2.500 45.500 24 24 45.500 2.500 24Z"/>',
   elem: '<rect x="4" y="4" width="40" height="40" rx="12"/>',
+  anime: '<path d="M17 3H31L45 17V31L31 45H17L3 31V17Z"/>',
 };
-const ACH_COLORS = { count: ['#ffb347', '#ff4d78'], taste: ['#ff7ab8', '#8b5cf6'], era: ['#4dd2ff', '#5b5bf0'], secret: ['#3ee6b0', '#1f6f8b'], elem: ['#ffd75e', '#e8572a'], hidden: ['#4a4560', '#2c283a'] };
+const ACH_COLORS = { count: ['#ffb347', '#ff4d78'], taste: ['#ff7ab8', '#8b5cf6'], era: ['#4dd2ff', '#5b5bf0'], secret: ['#3ee6b0', '#1f6f8b'], elem: ['#ffd75e', '#e8572a'], anime: ['#ff4d78', '#4dd2ff'], hidden: ['#4a4560', '#2c283a'] };
 document.body.insertAdjacentHTML('beforeend', `<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>${
   Object.entries(ACH_COLORS).map(([k, [a, b]]) => `<linearGradient id="ag-${k}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>`).join('')
 }</defs></svg>`);
 // значок достижения; hidden — секретное, ещё не полученное
 function achIcon(a, hidden) {
   const shape = ACH_SHAPE[a.g], grad = hidden ? 'hidden' : a.g;
+  if (a.g === 'anime' && typeof FRAME_ART !== 'undefined' && FRAME_ART[a.id]) return `<svg class="ach-svg" viewBox="0 0 48 48" aria-hidden="true"><g fill="url(#ag-anime)" stroke="url(#ag-anime)" stroke-width="3" stroke-linejoin="round">${shape}</g><circle cx="24" cy="24" r="10" fill="#1b1726"/><svg x="6" y="6" width="36" height="36" viewBox="0 0 120 120" overflow="visible">${FRAME_ART[a.id]()}</svg></svg>`;
   return `<svg class="ach-svg" viewBox="0 0 48 48" aria-hidden="true">
     <g fill="url(#ag-${grad})" stroke="url(#ag-${grad})" stroke-width="3" stroke-linejoin="round">${shape}</g>
     <g transform="translate(24 24) scale(.830) translate(-24 -24)" fill="none" stroke="#fff" stroke-opacity=".380" stroke-width="1.500" stroke-linejoin="round">${shape}</g>
@@ -105,7 +107,37 @@ const ACH = [
   { id: 'el_energy', g: 'elem', i: 'atom', t: 'Энергия', d: 'Оцени 10 экшенов', ok: (s) => s.gc.action >= 10, p: (s) => [s.gc.action, 10] },
   { id: 'burst', g: 'count', i: 'boom', t: 'Взрыв', d: 'Оцени 20 аниме за одни сутки', ok: (s) => s.today >= 20, p: (s) => [s.today, 20] },
 ];
-const ACH_GROUPS = [['count', 'За количество'], ['taste', 'За вкус'], ['era', 'Эпохи и типы'], ['elem', 'Стихии жанров'], ['secret', 'Секретные']];
+// аниме-рамки (2026-11-18): оцени тайтл — получи рамку по его мотивам (без логотипов и персонажей)
+const ANIME_FR = [
+  ['an_aot', 'Атака титанов', 'Attack on Titan', /shingeki no kyo|attack on titan|атака титанов/],
+  ['an_jjk', 'Магическая битва', 'Jujutsu Kaisen', /jujutsu kaisen|магическая битва/],
+  ['an_kny', 'Клинок, рассекающий демонов', 'Demon Slayer', /kimetsu no yaiba|demon slayer|рассекающий демонов/],
+  ['an_naruto', 'Наруто', 'Naruto', /naruto|наруто/],
+  ['an_onepiece', 'Ван-Пис', 'One Piece', /one piece|ван[- ]пис/],
+  ['an_deathnote', 'Тетрадь смерти', 'Death Note', /death note|тетрадь смерти/],
+  ['an_csm', 'Человек-бензопила', 'Chainsaw Man', /chainsaw man|человек-бензопила/],
+  ['an_frieren', 'Провожающая в последний путь Фрирен', 'Frieren', /frieren|фрирен/],
+  ['an_fma', 'Стальной алхимик', 'Fullmetal Alchemist', /fullmetal alchemist|hagane no renkinjutsushi|стальной алхимик/],
+  ['an_rezero', 'Re:Zero', 'Re:Zero', /re: ?zero|ре: ?зеро|жизнь с нуля в альтернативном мире/],
+  ['an_yourname', 'Твоё имя', 'Your Name', /kimi no na wa|your name|тво[её] имя/],
+  ['an_eva', 'Евангелион', 'Evangelion', /evangelion|евангелион/],
+  ['an_bebop', 'Ковбой Бибоп', 'Cowboy Bebop', /cowboy bebop|ковбой бибоп/],
+  ['an_ghoul', 'Токийский гуль', 'Tokyo Ghoul', /tokyo ghoul|токийский гуль/],
+  ['an_opm', 'Ванпанчмен', 'One Punch Man', /one[- ]punch man|ванпанчмен/],
+  ['an_sololvl', 'Поднятие уровня в одиночку', 'Solo Leveling', /ore dake level up|solo leveling|поднятие уровня/],
+  ['an_konosuba', 'Коносуба', 'KonoSuba', /kono subarashii|konosuba|коносуба|богиня благословляет/],
+  ['an_silentvoice', 'Форма голоса', 'A Silent Voice', /koe no katachi|silent voice|форма голоса/],
+  ['an_kaguya', 'Госпожа Кагуя', 'Kaguya-sama', /kaguya-sama|госпожа кагуя/],
+  ['an_toradora', 'Торадора!', 'Toradora!', /toradora|торадора/],
+  ['an_violet', 'Вайолет Эвергарден', 'Violet Evergarden', /violet evergarden|вайолет эвергарден/],
+  ['an_fate', 'Fate', 'Fate', /fate[/:]|судьба[/:]/],
+  ['an_alya', 'Аля', 'Alya', /alya-san|roshidere|аля иногда/],
+  ['an_bisque', 'Эта фарфоровая кукла', 'My Dress-Up Darling', /bisque doll|dress-up darling|фарфоровая кукла/],
+  ['an_edgerunners', 'Киберпанк: Бегущие по краю', 'Cyberpunk: Edgerunners', /edgerunners|бегущие по краю/],
+];
+ACH.push(...ANIME_FR.map(([id, t]) => ({ id, g: 'anime', t, d: `Оцени «${t}»`, ok: (s) => !!s.an[id] })));
+if (typeof EN !== 'undefined') ANIME_FR.forEach(([, t, en]) => { EN[t] = en; EN[`Оцени «${t}»`] = `Rate “${en}”`; });
+const ACH_GROUPS = [['count', 'За количество'], ['taste', 'За вкус'], ['era', 'Эпохи и типы'], ['elem', 'Стихии жанров'], ['anime', 'Любимые тайтлы'], ['secret', 'Секретные']];
 
 // Рамки: need — какое достижение открывает (нет — доступна сразу); b — знак в углу;
 // fx — эффекты (классы fx-* в style.css): spin, slow, glow, orbit, orbit3, beat, flicker, hue, dash, dots, glitch, stars, ember
@@ -148,6 +180,7 @@ const FRAMES = [
   { id: 'earth', t: 'Земля', need: 'el_earth' },
   { id: 'water', t: 'Вода', need: 'el_water' },
   { id: 'energy', t: 'Энергия', need: 'el_energy' },
+  ...ANIME_FR.map(([id, t]) => ({ id, t, need: id })),
 ];
 const frameById = (id) => FRAMES.find((f) => f.id === (id || '')) || FRAMES[0];
 const frameOpen = (f, ach) => !f.need || !!(ach || db.ach || {})[f.need];
@@ -181,7 +214,8 @@ function achStats(d = db) {
     eps: Object.values(d.items || {}).filter((r) => r.status === 'completed').reduce((s, r) => s + (r.anime?.episodes || 0), 0),
     dropped: recs.filter((r) => r.status === 'dropped').length,
     planned: recs.filter((r) => r.status === 'planned').length,
-    achCount: Object.keys(d.ach || {}).filter((k) => k !== 'collector' && ACH.some((a) => a.id === k)).length,
+    achCount: Object.keys(d.ach || {}).filter((k) => k !== 'collector' && ACH.some((a) => a.id === k && a.g !== 'anime')).length,
+    an: Object.fromEntries(ANIME_FR.map(([id, , , re]) => [id, rated.some((r) => re.test(`${r.anime?.name || ''} ${r.anime?.english || ''} ${r.anime?.russian || ''} ${r.anime?.franchise || ''}`.toLowerCase().replace(/_/g, ' ')))])),
     renamed: d === db && Object.keys(tierNames || {}).length > 0,
     ones: rated.filter((r) => r.score === 1).length,
     today: rated.filter((r) => Date.now() - (r.added || 0) < 864e5).length,

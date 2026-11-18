@@ -1059,3 +1059,48 @@ body.viewing .ach { cursor: pointer; }
 
 @keyframes fa-cloud { 0% { transform: translateX(-8px); opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } 100% { transform: translateX(10px); opacity: 0; } }
 .fa-cloud { animation: fa-cloud 12s linear infinite; }
+
+/* пятая пачка рамок (frames5.js) */
+@keyframes fa-strike { 0% { stroke-dashoffset: 100; opacity: 0; } 1% { opacity: 1; } 6% { stroke-dashoffset: 0; opacity: 1; } 9% { opacity: .25; } 11% { opacity: 1; } 14% { opacity: .5; } 17% { opacity: 1; } 24%, 100% { stroke-dashoffset: 0; opacity: 0; } }
+.fa-strike { stroke-dasharray: 100 100; animation: fa-strike 3.6s linear infinite; opacity: 0; }
+@keyframes fa-zap { 0%, 5% { opacity: 0; transform: scale(.4); } 7% { opacity: 1; transform: scale(1.3); } 12% { opacity: .6; } 22%, 100% { opacity: 0; transform: scale(.6); } }
+.fa-zap { transform-box: fill-box; transform-origin: center; animation: fa-zap 3.6s linear infinite; opacity: 0; }
+@keyframes fa-arc { 0%, 32% { opacity: 1; } 34%, 100% { opacity: 0; } }
+.fa-arc { animation: fa-arc .36s linear infinite; }
+@keyframes fa-shim { 0%, 100% { opacity: .75; } 30% { opacity: 1; } 55% { opacity: .55; } 80% { opacity: .95; } }
+.fa-shim { animation: fa-shim 4.2s ease-in-out infinite; }
+@keyframes fa-ink { 0% { opacity: 0; } 12% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
+.fa-ink { animation: fa-ink 7s ease-out infinite; }
+@keyframes fa-boil { 0%, 100% { transform: scale(.88); } 50% { transform: scale(1.12); } }
+.fa-boil { transform-box: fill-box; transform-origin: center; animation: fa-boil 1.6s ease-in-out infinite; }
+.fw-crown, .fw-moon, .fw-paper { animation: none; }
+
+/* аниме-рамки (frames6.js) */
+@keyframes fa-swing { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
+.fa-swing { transform-box: fill-box; transform-origin: 50% 0; animation: fa-swing 3s ease-in-out infinite; }
+.fa-twirl { transform-box: fill-box; transform-origin: center; animation: fr-spin .9s linear infinite; }
+.fa-saw { transform-box: view-box; transform-origin: 60px 60px; animation: fr-spin 1.1s linear infinite; }
+@keyframes fa-drip { 0% { transform: translateY(0) scaleY(.6); opacity: 0; } 15% { opacity: 1; transform: translateY(0) scaleY(1); } 100% { transform: translateY(12px); opacity: 0; } }
+.fa-drip { transform-box: fill-box; transform-origin: 50% 0; animation: fa-drip 2.6s ease-in infinite; }
+@keyframes fa-note { 0% { transform: translate(0, 0); opacity: 0; } 15% { opacity: 1; } 50% { transform: translate(2px, -9px); } 100% { transform: translate(-1px, -18px); opacity: 0; } }
+.fa-note { animation: fa-note 4s ease-out infinite; }
+@keyframes fa-ripple { 0% { transform: scale(.3); opacity: .9; } 100% { transform: scale(1.8); opacity: 0; } }
+.fa-ripple { transform-box: fill-box; transform-origin: center; animation: fa-ripple 3.2s ease-out infinite; }
+@keyframes fa-press { 0%, 8%, 100% { transform: scale(1); } 4% { transform: scale(.86); } }
+.fa-press { transform-box: fill-box; transform-origin: center; animation: fa-press 5.2s ease-in-out infinite; }
+@keyframes fa-blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
+.fa-blink { transform-box: fill-box; transform-origin: center; animation: fa-blink 3.4s infinite; }
+@keyframes fa-trail { 0% { transform: translateX(0); opacity: 0; } 20% { opacity: .8; } 100% { transform: translateX(-10px); opacity: 0; } }
+.fa-trail { animation: fa-trail 1.2s ease-out infinite; }
+@keyframes fa-scan { 0% { transform: translateY(0); opacity: 0; } 10% { opacity: .6; } 90% { opacity: .6; } 100% { transform: translateY(102px); opacity: 0; } }
+.fa-scan { animation: fa-scan 3.2s linear infinite; }
+@keyframes fa-fill { 0% { transform: scaleX(0); } 80%, 100% { transform: scaleX(1); } }
+.fa-fill { transform-box: fill-box; transform-origin: 0 50%; animation: fa-fill 4s ease-out infinite; }
+@keyframes fa-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(1.5px); } }
+.fa-bob { animation: fa-bob 2.4s ease-in-out infinite; }
+@keyframes fa-wing { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(.4); } }
+.fa-wing { transform-box: fill-box; transform-origin: 50% 100%; animation: fa-wing .35s ease-in-out infinite; }
+@keyframes fa-thread { 0% { stroke-dashoffset: 60; } 60%, 100% { stroke-dashoffset: 0; } }
+.fa-thread { stroke-dasharray: 60 60; animation: fa-thread 4s ease-in-out infinite; }
+.fa-trail { animation-duration: 1.6s; }
+@keyframes fa-trail { 0% { transform: translateX(0); opacity: 0; } 20% { opacity: .55; } 100% { transform: translateX(-10px); opacity: 0; } }
