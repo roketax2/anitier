@@ -1770,7 +1770,7 @@ async function makeShareImage(onProgress) {
   }
   // подвал
   ctx.fillStyle = '#5d5870'; ctx.font = F(500, 22);
-  ctx.fillText('AniTier · roketax2.github.io/anitier', P, H - 40);
+  ctx.fillText('AniTier · anitierapp.pages.dev', P, H - 40);
   ctx.textAlign = 'right'; ctx.fillText(tr('данные: Shikimori'), SHARE_W - P, H - 40); ctx.textAlign = 'left';
   return new Promise((res) => cv.toBlob(res, 'image/png'));
 }

@@ -19,7 +19,10 @@ Object.assign(EN, {
   'Развернуть все': 'Expand all', 'Свернуть все': 'Collapse all', 'моя {n}': 'mine {n}',
   'Найди любое аниме — оцени его опенинги': 'Find any anime to rate its openings', 'Поиск': 'Search', 'Ищу…': 'Searching…',
   'Ничего не нашлось': 'Nothing found', 'У этого аниме нет опенингов в базе': 'No openings for this anime in the database',
-  'Тип': 'Type', 'Только неоценённые': 'Only unrated', 'Фильтр по твоей оценке самого аниме': 'Filters by your rating of the anime itself',
+  'Тип': 'Type', 'Только неоценённые': 'Only unrated', 'Смотрит на твою оценку самого аниме, а не опенинга': 'Uses your rating of the anime itself, not the opening',
+  'Аниме: любое': 'Anime: any', 'Аниме: 1–10': 'Anime: 1–10', 'Аниме: 10': 'Anime: 10', 'Любая оценка аниме': 'Any anime rating', 'Все аниме из топа, даже без оценки': 'All anime in your top, even unrated',
+  'Аниме с оценкой 1–10': 'Anime rated 1–10', 'Скрыть аниме, которым ты ещё не поставил оценку': "Hide anime you haven't rated yet", 'Аниме с оценкой 10': 'Anime rated 10', 'Только самые любимые': 'Only your favorites',
+  'Аниме с оценкой 5–10': 'Anime rated 5–10', 'Скрыть аниме, которым ты поставил меньше 5': 'Hide anime you rated below 5',
   'Аниме: все': 'Anime: all', 'Аниме: оценённые': 'Anime: rated', 'Аниме: 10/10': 'Anime: 10/10', 'Аниме: 5–10': 'Anime: 5–10',
   'Все аниме из топа': 'All anime in your top', 'С оценкой и без': 'Rated or not', 'Только оценённые аниме': 'Only rated anime',
   'Без тех, где ты ещё не поставил оценку': "Skips anime you haven't rated yet", 'Аниме на 10': 'Anime rated 10', 'Только то, чему ты поставил 10': 'Only what you gave a 10',
@@ -40,7 +43,7 @@ const TH_Q = 'slug animethemes { type sequence slug song { title { romaji native
 const TH = () => (db.themes ||= {});
 const th = {
   mode: pref('thMode', 'anime') === 'list' ? 'list' : 'anime', kind: 'all', af: pref('thAf', 'all'), unr: false,
-  open: new Set(), q: '', found: null, searching: false, loading: false, prog: '', err: false, list: [], byKey: new Map(), cur: null,
+  open: new Set(), plist: [], q: '', found: null, searching: false, loading: false, prog: '', err: false, list: [], byKey: new Map(), cur: null,
 };
 try { localStorage.removeItem('animetop.themes1'); localStorage.removeItem('animetop.themes2'); } catch {} // старые кэши без сезонов, качества и звука
 let thCache = {};
@@ -178,10 +181,10 @@ function thGroupThemes(s, seen) {
 }
 const thKindOk = (t) => th.kind === 'all' || t.type === th.kind;
 const TH_AF = [
-  ['all', 'Аниме: все', 'Все аниме из топа', 'С оценкой и без'],
-  ['rated', 'Аниме: оценённые', 'Только оценённые аниме', 'Без тех, где ты ещё не поставил оценку'],
-  ['ten', 'Аниме: 10/10', 'Аниме на 10', 'Только то, чему ты поставил 10'],
-  ['five', 'Аниме: 5–10', 'Аниме от 5 до 10', 'Без того, что тебе не понравилось'],
+  ['all', 'Аниме: любое', 'Любая оценка аниме', 'Все аниме из топа, даже без оценки'],
+  ['rated', 'Аниме: 1–10', 'Аниме с оценкой 1–10', 'Скрыть аниме, которым ты ещё не поставил оценку'],
+  ['ten', 'Аниме: 10', 'Аниме с оценкой 10', 'Только самые любимые'],
+  ['five', 'Аниме: 5–10', 'Аниме с оценкой 5–10', 'Скрыть аниме, которым ты поставил меньше 5'],
 ];
 const thAfOk = (score) => th.af === 'all' || (th.af === 'rated' ? score != null : th.af === 'ten' ? score === 10 : score != null && score >= 5);
 const thLabel = (t) => `${t.type}${t.seq}`;
@@ -316,26 +319,32 @@ function thOpen(k, keepTime) {
   const vids = [...(t.vids || (t.video ? [{ r: 0, nc: !!t.nc, l: t.video }] : [])), ...(t.audio ? [{ r: 0, nc: false, l: t.audio, audio: true }] : [])];
   const v = thPick(vids), ro = thRO();
   th.cur = k;
-  const my = thScore(TH()[k]), i = th.list.indexOf(k);
-  const prev = i > 0 ? th.list[i - 1] : null, next = i >= 0 && i < th.list.length - 1 ? th.list[i + 1] : null;
+  if (!thDlg.open || !th.plist.includes(k)) th.plist = th.list.includes(k) ? th.list.slice() : [k];
+  const my = thScore(TH()[k]), L = th.plist, i = L.indexOf(k);
+  const prev = i > 0 ? L[i - 1] : null, next = i >= 0 && i < L.length - 1 ? L[i + 1] : null;
+  const arrow = (to, flip, label) => `<button type="button" class="th-arr" data-thgo="${esc(to || '')}" ${to ? '' : 'disabled'} title="${tr(label)}" aria-label="${tr(label)}">${icon('back', flip ? 'flip' : '')}</button>`;
   $('#thPl').innerHTML = `<div class="th-video"><video id="thVid" class="${v?.audio ? 'audio' : ''}" src="${esc(v?.l || '')}" ${v?.audio ? `poster="${esc(t.anime?.poster || '')}"` : ''} controls autoplay playsinline preload="auto"></video>
       <div class="th-verr" hidden>${tr('Видео не загрузилось')}<a href="https://animethemes.moe/anime/${esc(t.slug)}/${esc(t.tslug)}" target="_blank" rel="noopener">${tr('Открыть на animethemes.moe')}</a></div></div>
-    <div class="th-meta"><h2><span class="th-tag ${t.type === 'ED' ? 'ed' : ''}">${thLabel(t)}</span>${esc(t.song || '—')}</h2>
+    <div class="th-meta"><div class="th-top"><h2><span class="th-tag ${t.type === 'ED' ? 'ed' : ''}">${thLabel(t)}</span>${esc(t.song || '—')}</h2>
+      <div class="th-arrows">${arrow(prev, false, 'Предыдущий')}<span>${i >= 0 ? `${i + 1} / ${L.length}` : ''}</span>${arrow(next, true, 'Следующий')}</div></div>
       <p>${[t.artists, tn(t.anime), t.part && tn(t.part) !== tn(t.anime) && tn(t.part), t.eps && tr('серии {e}', { e: t.eps })].filter(Boolean).map(esc).join(' · ')}</p>
       ${vids.length > 1 ? `<div class="th-q"><span>${tr('Качество')}</span>${vids.map((x) => `<button type="button" data-thq="${x.audio ? 'audio' : x.r + (x.nc ? 'nc' : '')}" class="${x === v ? 'on' : ''}">${esc(thQLabel(x))}</button>`).join('')}</div>` : ''}
       <p class="th-now">${my ? tr(ro ? 'Оценка: {n}' : 'Моя оценка: {n}', { n: `${my} — ${LABEL[my]}` }) : ro ? tr('нет оценки') : tr('Ещё не оценён')}</p></div>
     ${ro ? '' : `<div class="th-big">${Array.from({ length: 10 }, (_, j) => 10 - j).map((n) => `<button type="button" data-rate="${n}" style="--c:${thColor(n)}" class="${my === n ? 'on' : ''}"><b>${n}</b><small>${esc(LABEL[n])}</small></button>`).join('')}</div>`}
-    <div class="th-nav">
-      <button type="button" class="btn" data-thgo="${esc(prev || '')}" ${prev ? '' : 'disabled'}>${icon('back')}<span>${tr('Предыдущий')}</span></button>
-      ${my && !ro ? `<button type="button" class="link" data-unrate>${tr('Убрать оценку')}</button>` : '<span></span>'}
-      <button type="button" class="btn" data-thgo="${esc(next || '')}" ${next ? '' : 'disabled'}><span>${tr('Следующий')}</span>${icon('back', 'flip')}</button>
-    </div>`;
+    ${ro ? '' : `<div class="th-nav"><button type="button" class="link" data-unrate ${my ? '' : 'hidden'}>${tr('Убрать оценку')}</button></div>`}`;
   const vid = $('#thVid');
   vid.volume = Math.min(1, Math.max(0, +pref('thVol', '0.8')));
   if (keepTime) vid.addEventListener('loadedmetadata', () => { vid.currentTime = keepTime; }, { once: true });
   vid.addEventListener('volumechange', () => setPref('thVol', String(vid.muted ? 0 : vid.volume)));
   vid.addEventListener('error', () => { $('.th-verr', thDlg).hidden = false; });
   if (!thDlg.open) openModal(thDlg);
+}
+// после оценки — только подсветка и подпись, видео играет дальше
+function thMarkRating() {
+  const my = thScore(TH()[th.cur]);
+  $$('.th-big [data-rate]', thDlg).forEach((b) => b.classList.toggle('on', +b.dataset.rate === my));
+  const now = $('.th-now', thDlg); if (now) now.textContent = my ? tr('Моя оценка: {n}', { n: `${my} — ${LABEL[my]}` }) : tr('Ещё не оценён');
+  const un = $('[data-unrate]', thDlg); if (un) un.hidden = !my;
 }
 function thStop() { const v = $('#thVid'); if (v) { v.pause(); v.removeAttribute('src'); v.load(); } }
 thDlg.addEventListener('close', () => { thStop(); th.cur = null; if (history.state?.modal === 'thDlg') history.back(); renderThemes(); });
@@ -345,16 +354,12 @@ thDlg.addEventListener('click', (e) => {
   if (go && go.dataset.thgo) { thStop(); thOpen(go.dataset.thgo); return; }
   const q = e.target.closest('[data-thq]');
   if (q) { const v = $('#thVid'), at = v?.currentTime || 0; setPref('thQ', q.dataset.thq); thStop(); thOpen(th.cur, at); return; }
-  if (e.target.closest('[data-unrate]')) { thUnrate(th.cur); thOpen(th.cur); return; }
+  if (e.target.closest('[data-unrate]')) { thUnrate(th.cur); thMarkRating(); renderThemes(); return; }
   const r = e.target.closest('[data-rate]');
   if (r && th.cur) {
-    const k = th.cur, wasNew = thScore(TH()[k]) == null;
-    thRate(k, +r.dataset.rate);
+    thRate(th.cur, +r.dataset.rate);
+    thMarkRating();
     renderThemes();
-    // первая оценка — сразу следующий неоценённый; пересмотр оценки — остаёмся на этом
-    const i = th.list.indexOf(k);
-    const nk = wasNew ? [...th.list.slice(i + 1), ...th.list.slice(0, Math.max(0, i))].find((x) => thScore(TH()[x]) == null) : null;
-    thStop(); thOpen(nk || k);
   }
 });
 
@@ -368,7 +373,7 @@ $('#view-themes').addEventListener('click', (e) => {
   if (afm) {
     openPop(afm, {
       items: TH_AF.map(([v, , label, hint]) => ({ v, label: tr(label), hint: tr(hint), on: th.af === v })),
-      note: tr('Фильтр по твоей оценке самого аниме'),
+      note: tr('Смотрит на твою оценку самого аниме, а не опенинга'),
       onPick: (it) => { th.af = it.v; setPref('thAf', th.af); renderThemes(); },
     });
     return;

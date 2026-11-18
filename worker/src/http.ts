@@ -1,7 +1,7 @@
 // Общее для обработчиков: откуда пускаем запросы, ответы JSON и ошибки.
 
 /** Сайт на GitHub Pages и локальная проверка. */
-export const SITE_ORIGINS = new Set(["https://roketax2.github.io", "http://127.0.0.1:5190", "http://localhost:5190"]);
+export const SITE_ORIGINS = new Set(["https://anitierapp.pages.dev", "https://roketax2.github.io", "http://127.0.0.1:5190", "http://localhost:5190"]);
 
 export function corsHeaders(origin: string): Record<string, string> {
   if (!SITE_ORIGINS.has(origin)) return {};

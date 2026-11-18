@@ -4,7 +4,7 @@ import { handleStats } from "./stats";
 import { handleTop } from "./top";
 
 // API AniTier на anitier.stalzoneai.com (2026-11-17): аккаунты, топ на всех устройствах и
-// ссылка на свой топ. Сайт — roketax2.github.io/anitier.
+// ссылка на свой топ. Сайт — anitierapp.pages.dev (до 18.11.2026 — roketax2.github.io/anitier).
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -17,7 +17,7 @@ export default {
     };
 
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
-    if (path === "/" || path === "/api") return json({ ok: true, site: "https://roketax2.github.io/anitier/" });
+    if (path === "/" || path === "/api") return json({ ok: true, site: "https://anitierapp.pages.dev/" });
 
     try {
       // Пользуются только со своего сайта: чужая страница не должна дёргать API от имени человека.

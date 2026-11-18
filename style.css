@@ -1308,3 +1308,11 @@ body.viewing .ach { cursor: pointer; }
   .th-seg { flex: 1 1 100%; }
   .th-seg button { flex: 1; }
 }
+/* плеер опенингов: стрелки рядом с названием */
+.th-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.th-arrows { flex: none; display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.th-arr { width: 38px; height: 38px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 12px; background: var(--elev2); color: var(--text); cursor: pointer; }
+.th-arr:hover { border-color: var(--line2); background: var(--elev3); }
+.th-arr[disabled] { opacity: .35; pointer-events: none; }
+.th-arr .ic { width: 18px; height: 18px; }
+.th-nav { justify-content: center; }

@@ -18,7 +18,7 @@ const RESEND_COOLDOWN_MS = 60_000;
 const MAX_CODE_ATTEMPTS = 5;
 const DEFAULT_DAILY_LIMIT = 90;
 const DEFAULT_FROM = "AniTier <no-reply@stalzoneai.com>";
-const SITE = "https://roketax2.github.io/anitier/";
+const SITE = "https://anitierapp.pages.dev/";
 
 type EmailEnv = Env & {
   RESEND_API_KEY?: string;
@@ -115,7 +115,7 @@ function letter(code: string, purpose: EmailPurpose, locale: string): { subject:
 <p>${lines[0]}</p>
 <p style="font-size:28px;font-weight:bold;letter-spacing:4px;margin:16px 0">${lines[1]}</p>
 <p>${lines[2]}<br>${lines[3]}</p>
-<p style="color:#888;font-size:13px"><a href="${SITE}" style="color:#e0336a">roketax2.github.io/anitier</a></p>
+<p style="color:#888;font-size:13px"><a href="${SITE}" style="color:#e0336a">anitierapp.pages.dev</a></p>
 </div>`;
   return { subject, text, html };
 }
