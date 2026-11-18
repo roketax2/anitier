@@ -1,5 +1,6 @@
 import { handleAccounts } from "./accounts";
 import { HttpError, SITE_ORIGINS, corsHeaders, json } from "./http";
+import { handleStats } from "./stats";
 import { handleTop } from "./top";
 
 // API AniTier на anitier.stalzoneai.com (2026-11-17): аккаунты, топ на всех устройствах и
@@ -23,6 +24,10 @@ export default {
       if (!SITE_ORIGINS.has(origin)) return json({ error: "Запрос не с сайта" }, 403);
       if (path.startsWith("/api/auth/")) {
         const response = await handleAccounts(request, env, path);
+        if (response) return withCors(response);
+      }
+      if (path === "/api/ping" || path === "/api/stats") {
+        const response = await handleStats(request, env, path);
         if (response) return withCors(response);
       }
       if (path.startsWith("/api/top") || path.startsWith("/api/shared/")) {
