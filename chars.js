@@ -8,6 +8,7 @@ Object.assign(EN, {
   'Смотрит на твою оценку самого аниме': 'Uses your rating of the anime itself',
   'Здесь появятся персонажи аниме из твоего топа.': 'Characters of the anime in your top will show up here.',
   'Все сезоны': 'All seasons', 'Сезон {n}': 'Season {n}', 'По сезонам': 'By season', 'Общая': 'Overall', 'Общая оценка': 'Overall rating',
+  'Общая оценка — за всё аниме целиком.': 'Overall rating is for the whole anime.', 'Оценки по сезонам — отдельный список для каждого сезона. Общая оценка от них не меняется.': 'Season ratings are a separate list for each season. They don’t change the overall rating.',
   'общая {n}': 'overall {n}', 'Как менялся': 'How they changed', 'Оценка за сезон': 'Season rating', 'Оцени персонажа за этот сезон': 'Rate the character for this season',
 });
 $('.nav-btn[data-view="chars"] span').textContent = tr('Персонажи');
@@ -19,12 +20,12 @@ $('#chSearch').placeholder = tr('Найди персонажа или аниме
 const CH_KEY = 'animetop.chars2', CH_TTL = 14 * 864e5, CH_SUP = 20; // второстепенных на аниме или серию — не больше 20
 try { localStorage.removeItem('animetop.chars1'); } catch {}
 const CHS = () => (db.chars ||= {});
-const ch = { mode: pref('chMode', 'anime') === 'list' ? 'list' : 'anime', role: 'all', af: pref('chAf', 'all'), unr: false, q: '', open: new Set(), sea: {}, lm: pref('chLm', 'all') === 'sea' ? 'sea' : 'all', loading: false, prog: '', byId: new Map(), cur: null };
+const ch = { mode: pref('chMode', 'anime') === 'list' ? 'list' : 'anime', role: 'all', af: pref('chAf', 'all'), unr: false, q: '', open: new Set(), sea: {}, sm: {}, lm: pref('chLm', 'all') === 'sea' ? 'sea' : 'all', loading: false, prog: '', byId: new Map(), cur: null };
 let chCache = {};
 try { chCache = JSON.parse(localStorage.getItem(CH_KEY) || '{}') || {}; } catch {}
 const chSaveCache = () => { try { localStorage.setItem(CH_KEY, JSON.stringify(Object.fromEntries(Object.entries(chCache).sort((a, b) => b[1].at - a[1].at).slice(0, 300)))); } catch {} };
 const chParts = (s) => s.parts.slice(0, 12); // у длинных серий — первые 12 частей
-const chSig = (s) => 'v3:' + chParts(s).map((p) => p.id).join(','); // v3 — с сезонами персонажа (19.11)
+const chSig = (s) => 'v4:' + chParts(s).map((p) => p.id).join(','); // v3 — с сезонами персонажа (19.11)
 const chFresh = (s) => chCache[s.id] && chCache[s.id].sig === chSig(s) && Date.now() - chCache[s.id].at < CH_TTL;
 const chScore = (r) => (r ? r.score ?? null : null);
 const chName = (c) => (EN_ON ? c.n || c.r : c.r || c.n) || '';
@@ -35,12 +36,12 @@ async function chLoad(force) {
   if (!srcs.length) return;
   ch.loading = true;
   // персонажи всех сезонов серии; по 8 частей за запрос (у популярных аниме сотни ролей)
-  const parts = [...new Set(srcs.flatMap((s) => chParts(s).map((p) => String(p.id))))], roles = {};
+  const parts = [...new Set(srcs.flatMap((s) => chParts(s).map((p) => String(p.id))))], roles = {}, meta = {};
   for (let i = 0; i < parts.length; i += 8) {
     ch.prog = tr('Загружаю персонажей… {d} из {n}', { d: Math.round((i / parts.length) * srcs.length), n: srcs.length }); chRender();
     try {
-      const d = await impGql(`{ animes(ids: ${JSON.stringify(parts.slice(i, i + 8).join(','))}, limit: 8) { id characterRoles { rolesEn character { id name russian poster { mainUrl previewUrl } topic { commentsCount } } } } }`);
-      for (const a of d.animes) roles[String(a.id)] = a.characterRoles || [];
+      const d = await impGql(`{ animes(ids: ${JSON.stringify(parts.slice(i, i + 8).join(','))}, limit: 8) { id kind poster { previewUrl } characterRoles { rolesEn character { id name russian poster { mainUrl previewUrl } topic { commentsCount } } } } }`);
+      for (const a of d.animes) { roles[String(a.id)] = a.characterRoles || []; meta[String(a.id)] = { kind: a.kind, poster: a.poster?.previewUrl || '' }; }
     } catch {}
   }
   for (const s of srcs) {
@@ -60,7 +61,9 @@ async function chLoad(force) {
       }
     });
     const all = [...by.values()].sort((a, b) => b.k - a.k);
-    const sea = ps.filter((p, j) => got[j].length).map((p) => ({ id: String(p.id), name: p.name, russian: p.russian, english: p.english }));
+    // сезоны — только TV-части (фильмы, OVA и пересказы идут в общую оценку); если TV меньше двух — все части
+    const withChars = ps.filter((p, j) => got[j].length).map((p) => ({ id: String(p.id), name: p.name, russian: p.russian, english: p.english, kind: meta[String(p.id)]?.kind || p.kind || '', poster: meta[String(p.id)]?.poster || '' }));
+    const tv = withChars.filter((p) => p.kind === 'tv'), sea = tv.length >= 2 ? tv : withChars;
     chCache[s.id] = { at: Date.now(), sig: chSig(s), sea, list: [...all.filter((c) => c.m), ...all.filter((c) => !c.m).slice(0, CH_SUP)] };
   }
   ch.loading = false; ch.prog = ''; chSaveCache(); chRender();
@@ -80,7 +83,7 @@ function chSeaLabels(parts) {
     let l = words[i].slice(k).join(' ').replace(/^[:.,\-–—\s]+/, '');
     if (!l) l = i === 0 && k ? tr('Сезон {n}', { n: 1 }) : full; // первая часть — само название серии
     if (/^\d+$/.test(l)) l = tr('Сезон {n}', { n: l });
-    return { id: String(p.id), l: l.length > 30 ? l.slice(0, 29) + '…' : l, full };
+    return { id: String(p.id), l: l.length > 30 ? l.slice(0, 29) + '…' : l, full, poster: p.poster || '' };
   });
 }
 const chSeaOf = (c) => (c.sea || []).filter((x) => !c.sp || c.sp.includes(x.id)); // сезоны, где есть персонаж
@@ -102,8 +105,9 @@ const chAfOk = (score) => ch.af === 'all' || (ch.af === 'rated' ? score != null 
 function chRowHTML(c, anime, pid) {
   if (pid && !chRO()) {
     const my = chSea(c.id, pid), all = chScore(CHS()[c.id]), m = c.mp ? c.mp.includes(pid) : c.m;
+    const sp = (ch.byId.get(c.id)?.sea || c.sea || []).find((x) => x.id === pid)?.poster;
     return `<div class="th-row ch-row" data-cid="${esc(c.id)}" data-pid="${esc(pid)}">
-    <img class="ch-ava" loading="lazy" src="${esc(c.p)}" alt="" data-chopen="${esc(c.id)}">
+    <span class="ch-avw" data-chopen="${esc(c.id)}"><img class="ch-ava" loading="lazy" src="${esc(c.p)}" alt="">${sp ? `<img class="ch-avs" loading="lazy" src="${esc(sp)}" alt="">` : ''}</span>
     <div class="th-info" data-chopen="${esc(c.id)}"><b>${esc(chName(c))}</b><span>${tr(m ? 'главный' : 'второстепенный')}${all ? ' · ' + tr('общая {n}', { n: all }) : ''}</span></div>
     ${chScoreRow(my, 'data-chsea')}
   </div>`;
@@ -146,7 +150,7 @@ function chRender() {
   if (ch.mode === 'anime') {
     if (!srcs.length) { body.innerHTML = empty(tr('Сначала оцени аниме'), tr('Здесь появятся персонажи аниме из твоего топа.')); return; }
     const vis = groups.filter((g) => chAfOk(g.s.score)).map((g) => {
-      const pid = g.sea.length > 1 && g.sea.some((x) => x.id === ch.sea[g.s.id]) ? ch.sea[g.s.id] : null;
+      const pid = ch.sm[g.s.id] === 'sea' && g.sea.length > 1 ? (g.sea.some((x) => x.id === ch.sea[g.s.id]) ? ch.sea[g.s.id] : g.sea[0].id) : null;
       const inSea = (c) => !pid || !c.sp || c.sp.includes(pid);
       const roleSea = (c) => !pid || ch.role === 'all' || (ch.role === 'main' ? (c.mp || []).includes(pid) : !(c.mp || []).includes(pid));
       const unr = (c) => !ch.unr || (pid ? chSea(c.id, pid) == null : chScore(rated[c.id]) == null);
@@ -157,17 +161,17 @@ function chRender() {
     body.innerHTML = prog + `<div class="th-bar"><button type="button" class="link" data-chall="${allOpen ? 0 : 1}">${tr(allOpen ? 'Свернуть все' : 'Развернуть все')}</button></div>` + vis.map((g) => {
       const open = ch.open.has(g.s.id) || !!q, r = g.full.filter((c) => chScore(rated[c.id]) != null).length;
       return `<section class="th-group ${open ? 'open' : ''}"><button type="button" class="th-ghead" data-chg="${esc(g.s.id)}"><img loading="lazy" src="${esc(g.s.anime.poster || '')}" alt=""><span class="th-gt"><b>${esc(tn(g.s.anime))}</b><small>${tr('персонажей — {n}', { n: g.full.length })} · ${tr('оценено {a} из {b}', { a: r, b: g.full.length })}</small></span>${g.s.score != null ? `<span class="th-gs">${tr('моя {n}', { n: g.s.score })}</span>` : ''}<span class="th-chev">${icon('chev')}</span></button>
-        ${open ? `<div class="th-gbody">${g.sea.length > 1 ? `<div class="ch-sea" role="tablist">${[{ id: '', l: tr('Все сезоны'), full: '' }, ...g.sea].map((x) => `<button type="button" role="tab" class="pill ${(g.pid || '') === x.id ? 'on' : ''}" data-chsg="${esc(g.s.id)}" data-pid="${esc(x.id)}" title="${esc(x.full)}">${esc(x.l)}</button>`).join('')}</div>${g.pid ? `<p class="ch-seahint">${tr('Оцени персонажа за этот сезон')}</p>` : ''}` : ''}${g.items.map((c) => chRowHTML(c, null, g.pid)).join('')}</div>` : ''}</section>`;
+        ${open ? `<div class="th-gbody">${g.sea.length > 1 ? `<div class="ch-sm"><div class="th-seg" role="tablist"><button type="button" role="tab" class="${g.pid ? '' : 'on'}" data-chsm="all" data-g="${esc(g.s.id)}">${tr('Общая оценка')}</button><button type="button" role="tab" class="${g.pid ? 'on' : ''}" data-chsm="sea" data-g="${esc(g.s.id)}">${tr('По сезонам')}</button></div><p class="ch-seahint">${tr(g.pid ? 'Оценки по сезонам — отдельный список для каждого сезона. Общая оценка от них не меняется.' : 'Общая оценка — за всё аниме целиком.')}</p></div>${g.pid ? `<div class="ch-sea" role="tablist">${g.sea.map((x) => `<button type="button" role="tab" class="ch-sp ${g.pid === x.id ? 'on' : ''}" data-chsg="${esc(g.s.id)}" data-pid="${esc(x.id)}" title="${esc(x.full)}">${x.poster ? `<img src="${esc(x.poster)}" alt="" loading="lazy">` : ''}<span>${esc(x.l)}</span></button>`).join('')}</div>` : ''}` : ''}${g.items.map((c) => chRowHTML(c, null, g.pid)).join('')}</div>` : ''}</section>`;
     }).join('');
     return;
   }
   const items = ch.lm === 'sea'
-    ? Object.entries(rated).flatMap(([id, r]) => { const c = { ...(r.c || {}), ...(ch.byId.get(id) || {}) }; const lab = new Map((c.sea || []).map((x) => [x.id, x])); return Object.entries(r.s || {}).map(([pid, v]) => ({ ...c, id, score: v, at: r.updated || r.added, m: c.mp ? c.mp.includes(pid) : c.m, sl: lab.get(pid)?.l || '', sf: lab.get(pid)?.full || '' })); }).filter((c) => c.score != null && roleOk(c))
+    ? Object.entries(rated).flatMap(([id, r]) => { const c = { ...(r.c || {}), ...(ch.byId.get(id) || {}) }; const lab = new Map((c.sea || []).map((x) => [x.id, x])); return Object.entries(r.s || {}).map(([pid, v]) => ({ ...c, id, score: v, at: r.updated || r.added, m: c.mp ? c.mp.includes(pid) : c.m, sl: lab.get(pid)?.l || '', sf: lab.get(pid)?.full || '', spp: lab.get(pid)?.poster || '' })); }).filter((c) => c.score != null && roleOk(c))
     : Object.entries(rated).map(([id, r]) => ({ ...(ch.byId.get(id) || r.c), id, score: chScore(r), at: r.updated || r.added })).filter((c) => c.score != null && roleOk(c));
   if (!items.length) { body.innerHTML = empty(tr('Тир-лист пока пуст'), ro ? '' : tr('Оцени персонажа — он появится здесь.')); return; }
   body.innerHTML = `<div class="th-board">${TIERS.map((x) => {
     const row = items.filter((c) => thTierOf(c.score) === x.t).sort((a, b) => b.score - a.score || a.at - b.at);
-    return `<div class="th-trow"><div class="th-tl" style="--c:${x.c}"><b>${esc((!ro && tierNames[x.t]?.name) || x.t)}</b></div><div class="th-items ch-items">${row.map((c) => `<button type="button" class="ch-chip" data-chopen="${esc(c.id)}" title="${esc(chName(c) + (c.sf ? ' · ' + c.sf : ''))}"><img loading="lazy" src="${esc(c.p)}" alt=""><span>${esc(chName(c))}</span>${c.sl ? `<small class="ch-sl">${esc(c.sl)}</small>` : ''}<i class="th-cs" style="--c:${x.c}">${c.score}</i></button>`).join('')}</div></div>`;
+    return `<div class="th-trow"><div class="th-tl" style="--c:${x.c}"><b>${esc((!ro && tierNames[x.t]?.name) || x.t)}</b></div><div class="th-items ch-items">${row.map((c) => `<button type="button" class="ch-chip" data-chopen="${esc(c.id)}" title="${esc(chName(c) + (c.sf ? ' · ' + c.sf : ''))}"><img loading="lazy" src="${esc(c.p)}" alt="">${c.spp ? `<img class="ch-chs" loading="lazy" src="${esc(c.spp)}" alt="">` : ''}<span>${esc(chName(c))}</span>${c.sl ? `<small class="ch-sl">${esc(c.sl)}</small>` : ''}<i class="th-cs" style="--c:${x.c}">${c.score}</i></button>`).join('')}</div></div>`;
   }).join('')}</div>`;
 }
 
@@ -190,8 +194,8 @@ function chSeaCard(c, ro) {
   if (sea.length < 2) return '';
   const got = sea.map((x) => ({ ...x, v: chSea(c.id, x.id) })), done = got.filter((x) => x.v != null);
   const trend = done.length > 1 ? `<div class="ch-trend"><span>${tr('Как менялся')}</span>${done.map((x, i) => `${i ? '<i>→</i>' : ''}<b style="--c:${chColor(x.v)}" title="${esc(x.full)}">${x.v}</b>`).join('')}</div>` : '';
-  if (ro) return done.length ? `<h3 class="ch-h">${tr('По сезонам')}</h3>${trend}<div class="ch-seas">${done.map((x) => `<div class="ch-sr"><span title="${esc(x.full)}">${esc(x.l)}</span><b class="th-my" style="--c:${chColor(x.v)}">${x.v}</b></div>`).join('')}</div>` : '';
-  return `<h3 class="ch-h">${tr('По сезонам')}</h3>${trend}<div class="ch-seas">${got.map((x) => `<div class="ch-sr" data-pid="${esc(x.id)}"><span title="${esc(x.full)}">${esc(x.l)}</span>${chScoreRow(x.v, 'data-chsea')}</div>`).join('')}</div>`;
+  if (ro) return done.length ? `<h3 class="ch-h">${tr('По сезонам')}</h3>${trend}<div class="ch-seas">${done.map((x) => `<div class="ch-sr"><span title="${esc(x.full)}">${x.poster ? `<img src="${esc(x.poster)}" alt="" loading="lazy">` : ''}${esc(x.l)}</span><b class="th-my" style="--c:${chColor(x.v)}">${x.v}</b></div>`).join('')}</div>` : '';
+  return `<h3 class="ch-h">${tr('По сезонам')}</h3>${trend}<div class="ch-seas">${got.map((x) => `<div class="ch-sr" data-pid="${esc(x.id)}"><span title="${esc(x.full)}">${x.poster ? `<img src="${esc(x.poster)}" alt="" loading="lazy">` : ''}${esc(x.l)}</span>${chScoreRow(x.v, 'data-chsea')}</div>`).join('')}</div>`;
 }
 function chOpen(id) {
   const c = ch.byId.get(id);
@@ -224,6 +228,8 @@ $('#view-chars').addEventListener('click', (e) => {
   if (e.target.closest('[data-chunr]')) { ch.unr = !ch.unr; chRender(); return; }
   const lm = e.target.closest('[data-chlm]');
   if (lm) { ch.lm = lm.dataset.chlm; setPref('chLm', ch.lm); chRender(); return; }
+  const sm = e.target.closest('[data-chsm]');
+  if (sm) { ch.sm[sm.dataset.g] = sm.dataset.chsm; chRender(); return; }
   const sg = e.target.closest('[data-chsg]');
   if (sg) { ch.sea[sg.dataset.chsg] = sg.dataset.pid; chRender(); return; }
   const sv = e.target.closest('.ch-row [data-chsea]');

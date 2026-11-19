@@ -1480,6 +1480,16 @@ body.viewing .ach { cursor: pointer; }
 .ch-sea .pill { height: 32px; font-size: 13px; }
 .ch-sea .pill.on { background: var(--accent-soft); border-color: var(--accent); color: var(--text); }
 .ch-seahint { margin: 0 2px 4px; font-size: 12.5px; color: var(--muted); }
+.ch-sm { display: grid; justify-items: start; gap: 6px; padding-top: 10px; }
+.ch-sm .th-seg button { white-space: nowrap; }
+.ch-sp { display: inline-flex; align-items: center; gap: 8px; flex: none; height: 40px; padding: 0 12px 0 4px; border: 1px solid var(--line); border-radius: 12px; background: var(--elev); color: var(--text2); font: 500 13px var(--font, inherit); cursor: pointer; }
+.ch-sp img { width: 24px; height: 32px; object-fit: cover; border-radius: 6px; }
+.ch-sp:hover { border-color: var(--line2); color: var(--text); }
+.ch-sp.on { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+.ch-avw { position: relative; display: block; width: 44px; cursor: pointer; }
+.ch-avs { position: absolute; right: -6px; bottom: -4px; width: 20px; height: 28px; object-fit: cover; border-radius: 5px; border: 2px solid var(--elev); }
+.ch-chip img.ch-chs { position: absolute; left: 4px; top: 86px; width: 22px; height: 30px; border-radius: 5px; border: 2px solid var(--bg, #0c0b11); }
+.ch-sr > span img { width: 16px; height: 22px; object-fit: cover; border-radius: 4px; margin-right: 6px; vertical-align: middle; }
 .ch-sl { display: block; margin-top: -2px; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ch-h { margin-top: 6px; font: 700 14px var(--display); color: var(--text2); }
 .ch-seas { display: grid; gap: 8px; }
