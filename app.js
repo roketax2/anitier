@@ -1840,27 +1840,16 @@ window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); inst
 $('#menuBtn').addEventListener('click', (e) => {
   openPop(e.currentTarget, {
     align: 'right',
+    // 20.11: меню короче — копия топа и импорт в одном окне «Перенос оценок», язык — в настройках
     items: [
-      { v: 'export', icon: 'download', label: tr('Сохранить копию топа'), hint: tr('Файл с твоими оценками — на всякий случай') },
-      { v: 'import', icon: 'upload', label: tr('Загрузить копию'), hint: tr('Вернуть оценки из сохранённого файла') },
-      { v: 'import2', icon: 'download', label: tr('Импорт с Shikimori или MAL'), hint: tr('Перенести свои оценки по нику или файлу') },
-      ...(installEvt ? [{ v: 'install', icon: 'phone', label: tr('Установить как приложение'), hint: tr('Значок на главном экране') }] : []),
       { v: 'profile', icon: 'user', label: tr('Моя визитка'), hint: tr('Как тебя видят друзья по ссылке на топ') },
       { v: 'cmtop', icon: 'trophy', label: tr('Топ аниме AniTier'), hint: tr('Средние оценки игроков AniTier') },
-      { v: 'settings', icon: 'sliders', label: tr('Настройки'), hint: tr('Язык, анимация рамок, сколько нас') },
-      { v: 'lang', icon: 'globe', label: EN_ON ? 'Язык: русский' : 'Language: English', hint: EN_ON ? 'Переключить сайт на русский' : 'Switch the site to English' },
+      { v: 'import2', icon: 'upload', label: tr('Перенос оценок'), hint: tr('Импорт с Shikimori, MAL, AniXart и копия в файл') },
+      { v: 'settings', icon: 'sliders', label: tr('Настройки'), hint: tr('Язык, промокод, анимация рамок') },
+      ...(installEvt ? [{ v: 'install', icon: 'phone', label: tr('Установить как приложение'), hint: tr('Значок на главном экране') }] : []),
     ],
-    note: tr('Оценки хранятся только на этом устройстве. Данные об аниме — Shikimori.'),
+    note: typeof acct !== 'undefined' && acct.user ? tr('Оценки сохраняются в твоём аккаунте. Данные об аниме — Shikimori.') : tr('Без аккаунта оценки хранятся только на этом устройстве. Данные об аниме — Shikimori.'),
     onPick: (it) => {
-      if (it.v === 'export') {
-        const blob = new Blob([JSON.stringify(db, null, 1)], { type: 'application/json' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `anitier-${new Date().toISOString().slice(0, 10)}.json`;
-        a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-        toast(tr('Копия сохранена в файл'));
-      }
-      if (it.v === 'import') $('#importFile').click();
       if (it.v === 'settings' && typeof openSettings === 'function') openSettings();
       if (it.v === 'cmtop' && typeof openCmTop === 'function') openCmTop();
       if (it.v === 'profile' && typeof openProfileCard === 'function') { if (window.VIEWING) toast(tr('Сначала вернись к своему топу')); else openProfileCard(); }
@@ -1870,6 +1859,14 @@ $('#menuBtn').addEventListener('click', (e) => {
     },
   });
 });
+function exportTop() {
+  const blob = new Blob([JSON.stringify(db, null, 1)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `anitier-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast(tr('Копия сохранена в файл'));
+}
 $('#importFile').addEventListener('change', async (e) => {
   const f = e.target.files[0]; if (!f) return;
   try {
