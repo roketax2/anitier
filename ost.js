@@ -10,7 +10,7 @@ Object.assign(EN, {
   'Показать все ({n})': 'Show all ({n})', 'Не получилось загрузить. Попробуй чуть позже.': "Couldn't load. Try a bit later.",
   'Оцени трек — он появится здесь.': 'Rate a track — it will show up here.', 'Найди трек или аниме': 'Find a track or anime',
   'Здесь появится музыка аниме из твоего топа.': 'Music of the anime in your top will show up here.', 'Саундтреки {l}': '{l}’s soundtracks',
-  'Отрывки и альбомы — iTunes': 'Clips and albums — iTunes', 'Отрывок 30 секунд — iTunes': '30-second clip — iTunes', 'Отрывок не загрузился': "The clip didn't load", 'Абсолютный пик': 'Absolute peak', 'Пик': 'Peak', 'Лучшее из лучшего — выше S': 'The best of the best — above S', 'Слушать': 'Listen', 'Пауза': 'Pause',
+  'Отрывки и альбомы — iTunes': 'Clips and albums — iTunes', 'Отрывок 30 секунд — iTunes': '30-second clip — iTunes', 'Слушать полностью': 'Full track', 'Отрывок не загрузился': "The clip didn't load", 'Абсолютный пик': 'Absolute peak', 'Пик': 'Peak', 'Лучшее из лучшего — выше S': 'The best of the best — above S', 'Слушать': 'Listen', 'Пауза': 'Pause',
 });
 $('.nav-btn[data-view="themes"] span').textContent = tr('Музыка');
 document.body.querySelector('#view-themes .view-head').insertAdjacentHTML('afterend', `<div class="th-seg mu-sw"><button type="button" class="on" data-musw="themes">${tr('Опенинги')}</button><button type="button" data-musw="ost">${tr('Саундтреки')}</button></div>`);
@@ -122,6 +122,12 @@ document.body.insertAdjacentHTML('beforeend', `<dialog id="osDlg" class="sheet c
 </dialog>`);
 const osDlg = $('#osDlg');
 let osList = []; // треки в порядке показа — для стрелок
+// 20.11: полный трек — в музыкальных сервисах (iTunes даёт только 30 секунд). Позже — YouTube прямо в плеере
+function osFullHTML(t) {
+  const q = encodeURIComponent([t.n, t.ar].filter(Boolean).join(' '));
+  const L = [['YouTube Music', `https://music.youtube.com/search?q=${q}`], ['Spotify', `https://open.spotify.com/search/${q}`], ['Apple Music', `https://music.apple.com/song/${encodeURIComponent(t.id)}`]];
+  return `<div class="os-full"><span>${tr('Слушать полностью')}:</span>${L.map(([n, u]) => `<a class="pill" href="${esc(u)}" target="_blank" rel="noopener">${n}</a>`).join('')}</div>`;
+}
 function osOpen(id) {
   const x = osTracks.get(id);
   if (!x) return;
@@ -135,7 +141,7 @@ function osOpen(id) {
     <div class="th-meta"><div class="th-top"><h2>${esc(t.n || '—')}</h2>
       <div class="th-arrows">${arrow(prev, false, 'Предыдущий')}<span>${i >= 0 ? `${i + 1} / ${L.length}` : ''}</span>${arrow(next, true, 'Следующий')}</div></div>
       <p>${[t.ar, t.aln, x.anime && tn(x.anime)].filter(Boolean).map(esc).join(' · ')}</p>
-      <p class="th-now"></p><p class="os-clip">${tr('Отрывок 30 секунд — iTunes')}</p></div>
+      <p class="th-now"></p><p class="os-clip">${tr('Отрывок 30 секунд — iTunes')}</p>${osFullHTML(t)}</div>
     ${ro ? '' : `<div class="th-big">${Array.from({ length: 10 }, (_, j) => 10 - j).map((n) => `<button type="button" data-osbig="${n}" style="--c:${thColor(n)}"><b>${n}</b><small>${esc(LABEL[n])}</small></button>`).join('')}</div>`}
     <div class="peak-w os-peakw"></div>
     ${ro ? '' : `<div class="th-nav"><button type="button" class="link" data-osunrate>${tr('Убрать оценку')}</button></div>`}`;
