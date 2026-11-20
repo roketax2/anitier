@@ -10,7 +10,7 @@ Object.assign(EN, {
   'Показать все ({n})': 'Show all ({n})', 'Не получилось загрузить. Попробуй чуть позже.': "Couldn't load. Try a bit later.",
   'Оцени трек — он появится здесь.': 'Rate a track — it will show up here.', 'Найди трек или аниме': 'Find a track or anime',
   'Здесь появится музыка аниме из твоего топа.': 'Music of the anime in your top will show up here.', 'Саундтреки {l}': '{l}’s soundtracks',
-  'Отрывки и альбомы — iTunes': 'Clips and albums — iTunes', 'Абсолютный пик': 'Absolute peak', 'Пик': 'Peak', 'Лучшее из лучшего — выше S': 'The best of the best — above S', 'Слушать': 'Listen', 'Пауза': 'Pause',
+  'Отрывки и альбомы — iTunes': 'Clips and albums — iTunes', 'Отрывок 30 секунд — iTunes': '30-second clip — iTunes', 'Отрывок не загрузился': "The clip didn't load", 'Абсолютный пик': 'Absolute peak', 'Пик': 'Peak', 'Лучшее из лучшего — выше S': 'The best of the best — above S', 'Слушать': 'Listen', 'Пауза': 'Pause',
 });
 $('.nav-btn[data-view="themes"] span').textContent = tr('Музыка');
 document.body.querySelector('#view-themes .view-head').insertAdjacentHTML('afterend', `<div class="th-seg mu-sw"><button type="button" class="on" data-musw="themes">${tr('Опенинги')}</button><button type="button" data-musw="ost">${tr('Саундтреки')}</button></div>`);
@@ -115,27 +115,58 @@ async function osLoadAlbum(alId) {
   os.busy[k] = false; osRender();
 }
 
-/* ---------- плеер: один отрывок за раз ---------- */
-const osAudio = new Audio();
-osAudio.preload = 'none';
-const OS_PAUSE = '<svg viewBox="0 0 24 24" class="ic"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" fill="currentColor"/></svg>';
-function osSync() {
-  $$('[data-osplay]').forEach((b) => {
-    const on = b.dataset.osplay === os.cur && !osAudio.paused;
-    b.classList.toggle('on', on);
-    const ic = b.querySelector('.os-pi');
-    if (ic) ic.innerHTML = on ? OS_PAUSE : thPlayIcon;
-  });
+/* ---------- плеер (20.11): окно как у опенингов — звук с громкостью и перемоткой, крупная оценка, стрелки по списку ---------- */
+document.body.insertAdjacentHTML('beforeend', `<dialog id="osDlg" class="sheet card th-dlg" aria-label="${tr('Саундтреки')}">
+  <button class="icon-btn card-close" data-close aria-label="${tr('Закрыть')}">${icon('x')}</button>
+  <div class="card-scroll"><div class="th-pl" id="osPl"></div></div>
+</dialog>`);
+const osDlg = $('#osDlg');
+let osList = []; // треки в порядке показа — для стрелок
+function osOpen(id) {
+  const x = osTracks.get(id);
+  if (!x) return;
+  const t = x.t, ro = osRO();
+  if (!osDlg.open || !os.plist?.includes(id)) os.plist = osList.includes(id) ? osList.slice() : [id];
+  os.cur = id;
+  const L = os.plist, i = L.indexOf(id), prev = i > 0 ? L[i - 1] : null, next = i >= 0 && i < L.length - 1 ? L[i + 1] : null;
+  const arrow = (to, flip, label) => `<button type="button" class="th-arr" data-osgo="${esc(to || '')}" ${to ? '' : 'disabled'} title="${tr(label)}" aria-label="${tr(label)}">${icon('back', flip ? 'flip' : '')}</button>`;
+  $('#osPl').innerHTML = `<div class="th-video"><video id="osVid" class="audio" src="${esc(t.prev || '')}" poster="${esc(osArt(t.img, 600))}" controls autoplay playsinline preload="auto"></video>
+      <div class="th-verr" hidden>${tr('Отрывок не загрузился')}</div></div>
+    <div class="th-meta"><div class="th-top"><h2>${esc(t.n || '—')}</h2>
+      <div class="th-arrows">${arrow(prev, false, 'Предыдущий')}<span>${i >= 0 ? `${i + 1} / ${L.length}` : ''}</span>${arrow(next, true, 'Следующий')}</div></div>
+      <p>${[t.ar, t.aln, x.anime && tn(x.anime)].filter(Boolean).map(esc).join(' · ')}</p>
+      <p class="th-now"></p><p class="os-clip">${tr('Отрывок 30 секунд — iTunes')}</p></div>
+    ${ro ? '' : `<div class="th-big">${Array.from({ length: 10 }, (_, j) => 10 - j).map((n) => `<button type="button" data-osbig="${n}" style="--c:${thColor(n)}"><b>${n}</b><small>${esc(LABEL[n])}</small></button>`).join('')}</div>`}
+    <div class="peak-w os-peakw"></div>
+    ${ro ? '' : `<div class="th-nav"><button type="button" class="link" data-osunrate>${tr('Убрать оценку')}</button></div>`}`;
+  osMark();
+  const vid = $('#osVid');
+  vid.volume = Math.min(1, Math.max(0, +pref('thVol', '0.8')));
+  vid.addEventListener('volumechange', () => setPref('thVol', String(vid.muted ? 0 : vid.volume)));
+  vid.addEventListener('error', () => { $('.th-verr', osDlg).hidden = false; });
+  if (!osDlg.open) openModal(osDlg);
 }
-function osPlay(t) {
-  if (!t?.prev) return;
-  if (os.cur === t.id && !osAudio.paused) { osAudio.pause(); return; }
-  if (os.cur !== t.id) { os.cur = t.id; osAudio.src = t.prev; }
-  osAudio.volume = Math.min(1, Math.max(0, +pref('thVol', '0.8')));
-  osAudio.play().catch(() => {});
+// после оценки — только подсветка и подписи, звук играет дальше
+function osMark() {
+  const r = OSS()[os.cur], my = osScore(r), ro = osRO();
+  $$('.th-big [data-osbig]', osDlg).forEach((b) => b.classList.toggle('on', +b.dataset.osbig === my));
+  const now = $('.th-now', osDlg); if (now) now.textContent = my ? tr(ro ? 'Оценка: {n}' : 'Моя оценка: {n}', { n: `${my} — ${LABEL[my]}` }) : ro ? tr('нет оценки') : tr('Ещё не оценён');
+  const un = $('[data-osunrate]', osDlg); if (un) un.hidden = !my;
+  const pw = $('.os-peakw', osDlg); if (pw) pw.innerHTML = my === 10 ? (ro ? (r?.peak ? peakTagHTML() : '') : osPeakBtn(os.cur, r?.peak)) : '';
 }
-['play', 'pause', 'ended'].forEach((ev) => osAudio.addEventListener(ev, osSync));
-function osStop() { osAudio.pause(); }
+function osStop() { const v = $('#osVid'); if (v) { v.pause(); v.removeAttribute('src'); v.load(); } }
+osDlg.addEventListener('close', () => { osStop(); os.cur = null; if (history.state?.modal === 'osDlg') history.back(); osRender(); });
+osDlg.addEventListener('click', (e) => {
+  if (e.target === osDlg || e.target.closest('[data-close]')) { osDlg.close(); return; }
+  const go = e.target.closest('[data-osgo]');
+  if (go && go.dataset.osgo) { osStop(); osOpen(go.dataset.osgo); return; }
+  const x = osTracks.get(os.cur);
+  if (!x) return;
+  const b = e.target.closest('[data-osbig]');
+  if (b) { if (osScore(OSS()[os.cur]) !== +b.dataset.osbig) osRate(x.t, x.anime, +b.dataset.osbig); osMark(); osRender(); return; }
+  if (e.target.closest('[data-osunrate]')) { if (osScore(OSS()[os.cur]) != null) osRate(x.t, x.anime, osScore(OSS()[os.cur])); osMark(); osRender(); return; }
+  if (e.target.closest('[data-ospeak]')) { osPeak(os.cur); osMark(); osRender(); }
+});
 
 /* ---------- оценки ---------- */
 const osSnap = (t, anime) => ({ id: t.id, n: t.n, ar: t.ar, prev: t.prev, al: t.al, aln: t.aln, img: t.img, anime });
@@ -172,7 +203,7 @@ function osRender() {
   $('#osStats').textContent = [tr('оценено {n}', { n: nRated }), tr('Отрывки и альбомы — iTunes')].join(' · ');
   const body = $('#osBody'), q = os.q.toLowerCase();
   const empty = (h, p) => `<div class="empty-state small"><div class="empty-art">${icon('music')}</div><h2>${h}</h2><p>${p}</p></div>`;
-  osTracks = new Map();
+  osTracks = new Map(); osList = [];
   for (const [id, r] of Object.entries(rated)) if (r.t) osTracks.set(id, { t: r.t, anime: r.t.anime });
   if (os.mode === 'anime') {
     const srcs = thSources().filter((s) => !q || tn(s.anime).toLowerCase().includes(q) || (osCache[s.id]?.albums || []).some((a) => a.n.toLowerCase().includes(q)));
@@ -201,6 +232,7 @@ function osRender() {
             for (const t of tc.tracks) osTracks.set(t.id, { t, anime });
             list = shown.map((t) => {
               const my = osScore(rated[t.id]);
+              osList.push(t.id);
               return `<div class="th-row os-row" data-tid="${esc(t.id)}">${osPlayBtn(t)}<div class="th-info" data-osplay="${esc(t.id)}"><b>${esc(t.n)}</b><span>${t.no ? t.no + '. ' : ''}${esc(t.ar)}${t.ms ? ' · ' + osTime(t.ms) : ''}</span></div>${chScoreRow(my, 'data-osrate')}${my === 10 ? osPeakBtn(t.id, rated[t.id]?.peak) : ''}</div>`;
             }).join('') + (shown.length < tr_.length ? `<button type="button" class="btn os-more" data-osall="${esc(k)}">${tr('Показать все ({n})', { n: tr_.length })}</button>` : '');
           }
@@ -209,7 +241,6 @@ function osRender() {
       }
       return `<section class="th-group ${open ? 'open' : ''}"><button type="button" class="th-ghead" data-osg="${esc(s.id)}"><img loading="lazy" src="${esc(s.anime.poster || '')}" alt=""><span class="th-gt"><b>${esc(tn(s.anime))}</b><small>${sub}${nr ? ' · ' + tr('оценено {n}', { n: nr }) : ''}</small></span>${s.score != null ? `<span class="th-gs">${tr('моя {n}', { n: s.score })}</span>` : ''}<span class="th-chev">${icon('chev')}</span></button>${open ? `<div class="th-gbody">${inner}</div>` : ''}</section>`;
     }).join('');
-    osSync();
     return;
   }
   const items = Object.entries(rated).map(([id, r]) => ({ id, score: osScore(r), peak: !!r.peak && osScore(r) === 10, at: r.updated || r.added, t: r.t || {} }))
@@ -218,9 +249,9 @@ function osRender() {
   const rows = items.some((c) => c.peak) ? [{ ...PEAK, peak: true }, ...TIERS] : TIERS;
   body.innerHTML = `<div class="th-board">${rows.map((x) => {
     const row = items.filter((c) => (x.peak ? c.peak : !c.peak && thTierOf(c.score) === x.t)).sort((a, b) => b.score - a.score || a.at - b.at);
+    osList.push(...row.map((c) => c.id));
     return `<div class="th-trow ${x.peak ? 'peakrow' : ''}"><div class="th-tl" style="--c:${x.c}" ${x.peak ? `title="${tr('Абсолютный пик')}"` : ''}><b>${x.peak ? peakLabelHTML() : esc((!ro && tierNames[x.t]?.name) || x.t)}</b></div><div class="th-items ch-items">${row.map((c) => `<button type="button" class="ch-chip os-chip" data-osplay="${esc(c.id)}" title="${esc(c.t.n + (c.t.anime ? ' · ' + tn(c.t.anime) : ''))}"><img loading="lazy" src="${esc(osArt(c.t.img, 200))}" alt=""><span class="os-pi">${thPlayIcon}</span><span class="os-cn">${esc(c.t.n)}</span>${c.t.anime ? `<small class="ch-sl">${esc(tn(c.t.anime))}</small>` : ''}<i class="th-cs" style="--c:${x.c}">${c.score}</i></button>`).join('')}</div></div>`;
   }).join('')}</div>`;
-  osSync();
 }
 
 $('#view-ost').addEventListener('click', (e) => {
@@ -247,7 +278,7 @@ $('#view-ost').addEventListener('click', (e) => {
   const pk = e.target.closest('[data-ospeak]');
   if (pk) { osPeak(pk.dataset.ospeak); osRender(); return; }
   const p = e.target.closest('[data-osplay]');
-  if (p) { const x = osTracks.get(p.dataset.osplay); if (x) osPlay(x.t); }
+  if (p) osOpen(p.dataset.osplay);
 });
 let osSearchT = 0;
 $('#osSearch').addEventListener('input', (e) => { clearTimeout(osSearchT); const v = e.target.value.trim(); $('#osTools .clear').hidden = !v; osSearchT = setTimeout(() => { os.q = v; osRender(); }, 200); });
