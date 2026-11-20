@@ -50,9 +50,17 @@ function osItunes(path) {
     const wait = osLast + 3000 - Date.now();
     if (wait > 0) await new Promise((ok) => setTimeout(ok, wait));
     osLast = Date.now();
-    const r = await fetch('https://itunes.apple.com/' + path);
-    if (!r.ok) throw new Error('itunes ' + r.status);
-    return r.json();
+    // 20.11: сервер Apple иногда отдаёт для конкретного адреса закэшированный ответ без CORS — тогда повторяем с лишним параметром
+    let err;
+    for (const tail of ['', '&_=' + Math.floor(Date.now() / 36e5), '&_=' + Date.now()]) {
+      try {
+        const r = await fetch('https://itunes.apple.com/' + path + tail);
+        if (r.ok) return await r.json();
+        err = new Error('itunes ' + r.status);
+      } catch (e) { err = e; }
+      await new Promise((ok) => setTimeout(ok, 800));
+    }
+    throw err;
   };
   const p = osGate.then(run, run);
   osGate = p.catch(() => {});
