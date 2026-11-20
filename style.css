@@ -1210,6 +1210,7 @@ body.viewing .ach { cursor: pointer; }
 .th-prog { display: flex; align-items: center; gap: 10px; margin: 6px 0 16px; color: var(--muted); font-size: 14px; }
 .th-spin { width: 16px; height: 16px; border: 2px solid var(--line2); border-top-color: var(--accent); border-radius: 50%; animation: th-spin .8s linear infinite; }
 @keyframes th-spin { to { transform: rotate(360deg); } }
+.ch-more { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 12px 0 4px; }
 .th-bar { display: flex; justify-content: flex-end; margin: -6px 0 8px; }
 .th-bar .link { font-size: 13px; }
 .th-group { margin-bottom: 8px; border: 1px solid var(--line); border-radius: 16px; background: var(--elev); overflow: hidden; }

@@ -2,7 +2,7 @@
 /* Персонажи (2026-11-18): тир-лист персонажей из аниме своего топа. Данные — Shikimori (characterRoles).
    Оценка 1–10, тир по оценке как в топе. db.chars[id] = { score, added, updated, c: снимок } — синхронизируются с аккаунтом. */
 Object.assign(EN, {
-  'Персонажи': 'Characters', 'Главные': 'Main', 'Второстепенные': 'Supporting', 'главный': 'main', 'второстепенный': 'supporting',
+  'Персонажи': 'Characters', 'Показать ещё {n}': 'Show {n} more', 'Показать всех ({n})': 'Show all ({n})', 'Главные': 'Main', 'Второстепенные': 'Supporting', 'главный': 'main', 'второстепенный': 'supporting',
   'Найди персонажа или аниме': 'Find a character or anime', 'Загружаю персонажей… {d} из {n}': 'Loading characters… {d} of {n}',
   'персонажей — {n}': '{n} characters', 'Персонажи {l}': '{l}’s characters', 'Оцени персонажа — он появится здесь.': 'Rate a character — they will show up here.',
   'Смотрит на твою оценку самого аниме': 'Uses your rating of the anime itself',
@@ -20,15 +20,21 @@ $$('#chSeg [data-chmode] span').forEach((s) => { s.textContent = tr(s.textConten
 $('#chSearch').placeholder = tr('Найди персонажа или аниме');
 
 // 19.11: второстепенные — самые обсуждаемые (комментарии к персонажу на Shikimori), из всех сезонов серии; раньше брались первые 12 по алфавиту
-const CH_KEY = 'animetop.chars2', CH_TTL = 14 * 864e5, CH_SUP = 20; // второстепенных на аниме или серию — не больше 20
+const CH_KEY = 'animetop.chars2', CH_TTL = 14 * 864e5, CH_PAGE = 60; // 20.11: берём ВСЕХ персонажей, в списке показываем по 60 (у One Piece их ~1500)
 try { localStorage.removeItem('animetop.chars1'); } catch {}
 const CHS = () => (db.chars ||= {});
-const ch = { mode: pref('chMode', 'anime') === 'list' ? 'list' : 'anime', role: 'all', af: pref('chAf', 'all'), unr: false, q: '', open: new Set(), sea: {}, sm: {}, lm: pref('chLm', 'all') === 'sea' ? 'sea' : 'all', loading: false, prog: '', byId: new Map(), cur: null };
+const ch = { mode: pref('chMode', 'anime') === 'list' ? 'list' : 'anime', role: 'all', af: pref('chAf', 'all'), unr: false, q: '', open: new Set(), lim: {}, sea: {}, sm: {}, lm: pref('chLm', 'all') === 'sea' ? 'sea' : 'all', loading: false, prog: '', byId: new Map(), cur: null };
 let chCache = {};
-try { chCache = JSON.parse(localStorage.getItem(CH_KEY) || '{}') || {}; } catch {}
-const chSaveCache = () => { try { localStorage.setItem(CH_KEY, JSON.stringify(Object.fromEntries(Object.entries(chCache).sort((a, b) => b[1].at - a[1].at).slice(0, 300)))); } catch {} };
+const CH_PFX = 'https://shikimori.io/uploads/poster/characters/';
+try { chCache = JSON.parse((localStorage.getItem(CH_KEY) || '{}').split('@@ch/').join(CH_PFX)) || {}; } catch {}
+const chSaveCache = () => {
+  const all = Object.entries(chCache).sort((a, b) => b[1].at - a[1].at);
+  for (let n = Math.min(all.length, 300); n > 0; n = Math.floor(n / 2)) {
+    try { localStorage.setItem(CH_KEY, JSON.stringify(Object.fromEntries(all.slice(0, n))).split(CH_PFX).join('@@ch/')); return; } catch {}
+  }
+};
 const chParts = (s) => s.parts.slice(0, 12); // у длинных серий — первые 12 частей
-const chSig = (s) => 'v5:' + chParts(s).map((p) => p.id).join(','); // v3 — с сезонами персонажа (19.11)
+const chSig = (s) => 'v6:' + chParts(s).map((p) => p.id).join(','); // v3 — с сезонами персонажа (19.11)
 const chFresh = (s) => chCache[s.id] && chCache[s.id].sig === chSig(s) && Date.now() - chCache[s.id].at < CH_TTL;
 const chScore = (r) => (r ? r.score ?? null : null);
 const chName = (c) => (EN_ON ? c.n || c.r : c.r || c.n) || '';
@@ -73,7 +79,7 @@ async function chLoad(force) {
     // сезоны — только TV-части (фильмы, OVA и пересказы идут в общую оценку); если TV меньше двух — все части
     const withChars = ps.filter((p, j) => got[j].length).map((p) => ({ id: String(p.id), name: p.name, russian: p.russian, english: p.english, kind: meta[String(p.id)]?.kind || p.kind || '', poster: meta[String(p.id)]?.poster || '' }));
     const tv = withChars.filter((p) => p.kind === 'tv'), sea = tv.length >= 2 ? tv : withChars;
-    chCache[s.id] = { at: Date.now(), sig: chSig(s), sea, list: [...all.filter((c) => c.m), ...all.filter((c) => !c.m).slice(0, CH_SUP)] };
+    chCache[s.id] = { at: Date.now(), sig: chSig(s), sea, list: [...all.filter((c) => c.m), ...all.filter((c) => !c.m)] };
   }
   ch.loading = false; ch.prog = ''; chSaveCache(); chRender();
 }
@@ -171,6 +177,11 @@ function chRowHTML(c, anime, pid) {
     ${!chRO() && my === 10 ? chPeakBtn(c.id, '', CHS()[c.id]?.peak) : ''}
   </div>`;
 }
+// длинный список — порциями: сначала 60 самых известных, дальше по кнопке
+function chPageHTML(g) {
+  const lim = ch.q ? Infinity : ch.lim[g.s.id] || CH_PAGE, rest = g.items.length - lim;
+  return g.items.slice(0, lim).map((c) => chRowHTML(c, null, g.pid)).join('') + (rest > 0 ? `<div class="ch-more"><button type="button" class="btn" data-chmore="${esc(g.s.id)}">${tr('Показать ещё {n}', { n: Math.min(rest, CH_PAGE) })}</button>${rest > CH_PAGE ? `<button type="button" class="link" data-chmore="${esc(g.s.id)}" data-all="1">${tr('Показать всех ({n})', { n: g.items.length })}</button>` : ''}</div>` : '');
+}
 function chRender() {
   const box = $('#view-chars');
   if (!box || box.hidden) return;
@@ -213,7 +224,7 @@ function chRender() {
     body.innerHTML = prog + `<div class="th-bar"><button type="button" class="link" data-chall="${allOpen ? 0 : 1}">${tr(allOpen ? 'Свернуть все' : 'Развернуть все')}</button></div>` + vis.map((g) => {
       const open = ch.open.has(g.s.id) || !!q, r = g.full.filter((c) => chScore(rated[c.id]) != null).length;
       return `<section class="th-group ${open ? 'open' : ''}"><button type="button" class="th-ghead" data-chg="${esc(g.s.id)}"><img loading="lazy" src="${esc(g.s.anime.poster || '')}" alt=""><span class="th-gt"><b>${esc(tn(g.s.anime))}</b><small>${tr('персонажей — {n}', { n: g.full.length })} · ${tr('оценено {a} из {b}', { a: r, b: g.full.length })}</small></span>${g.s.score != null ? `<span class="th-gs">${tr('моя {n}', { n: g.s.score })}</span>` : ''}<span class="th-chev">${icon('chev')}</span></button>
-        ${open ? `<div class="th-gbody">${g.sea.length > 1 ? `<div class="ch-sm"><div class="th-seg" role="tablist"><button type="button" role="tab" class="${g.pid ? '' : 'on'}" data-chsm="all" data-g="${esc(g.s.id)}">${tr('Общая оценка')}</button><button type="button" role="tab" class="${g.pid ? 'on' : ''}" data-chsm="sea" data-g="${esc(g.s.id)}">${tr('По сезонам')}</button></div><p class="ch-seahint">${tr(g.pid ? 'Оценки по сезонам — отдельный список для каждого сезона. Общая оценка от них не меняется. Свою картинку персонажа для сезона можно поставить в его карточке.' : 'Общая оценка — за всё аниме целиком.')}</p></div>${g.pid ? `<div class="ch-sea" role="tablist">${g.sea.map((x) => `<button type="button" role="tab" class="ch-sp ${g.pid === x.id ? 'on' : ''}" data-chsg="${esc(g.s.id)}" data-pid="${esc(x.id)}" title="${esc(x.full)}">${x.poster ? `<img src="${esc(x.poster)}" alt="" loading="lazy">` : ''}<span>${esc(x.l)}</span></button>`).join('')}</div>` : ''}` : ''}${g.items.map((c) => chRowHTML(c, null, g.pid)).join('')}</div>` : ''}</section>`;
+        ${open ? `<div class="th-gbody">${g.sea.length > 1 ? `<div class="ch-sm"><div class="th-seg" role="tablist"><button type="button" role="tab" class="${g.pid ? '' : 'on'}" data-chsm="all" data-g="${esc(g.s.id)}">${tr('Общая оценка')}</button><button type="button" role="tab" class="${g.pid ? 'on' : ''}" data-chsm="sea" data-g="${esc(g.s.id)}">${tr('По сезонам')}</button></div><p class="ch-seahint">${tr(g.pid ? 'Оценки по сезонам — отдельный список для каждого сезона. Общая оценка от них не меняется. Свою картинку персонажа для сезона можно поставить в его карточке.' : 'Общая оценка — за всё аниме целиком.')}</p></div>${g.pid ? `<div class="ch-sea" role="tablist">${g.sea.map((x) => `<button type="button" role="tab" class="ch-sp ${g.pid === x.id ? 'on' : ''}" data-chsg="${esc(g.s.id)}" data-pid="${esc(x.id)}" title="${esc(x.full)}">${x.poster ? `<img src="${esc(x.poster)}" alt="" loading="lazy">` : ''}<span>${esc(x.l)}</span></button>`).join('')}</div>` : ''}` : ''}${chPageHTML(g)}</div>` : ''}</section>`;
     }).join('');
     return;
   }
@@ -323,6 +334,8 @@ $('#view-chars').addEventListener('click', (e) => {
   const sv = e.target.closest('.ch-row [data-chsea]');
   if (sv) { const row = sv.closest('.ch-row'); chRateSea(row.dataset.cid, row.dataset.pid, +sv.dataset.chsea); chRender(); return; }
   if (e.target.closest('[data-chrefresh]')) { chLoad(true); return; }
+  const more = e.target.closest('[data-chmore]');
+  if (more) { const k = more.dataset.chmore; ch.lim[k] = more.dataset.all ? Infinity : (ch.lim[k] || CH_PAGE) + CH_PAGE; chRender(); return; }
   const all = e.target.closest('[data-chall]');
   if (all) { $$('#chBody [data-chg]').forEach((b) => ch.open[all.dataset.chall === '1' ? 'add' : 'delete'](b.dataset.chg)); chRender(); return; }
   const g = e.target.closest('[data-chg]');
