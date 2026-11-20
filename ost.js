@@ -10,7 +10,7 @@ Object.assign(EN, {
   'Показать все ({n})': 'Show all ({n})', 'Не получилось загрузить. Попробуй чуть позже.': "Couldn't load. Try a bit later.",
   'Оцени трек — он появится здесь.': 'Rate a track — it will show up here.', 'Найди трек или аниме': 'Find a track or anime',
   'Здесь появится музыка аниме из твоего топа.': 'Music of the anime in your top will show up here.', 'Саундтреки {l}': '{l}’s soundtracks',
-  'Отрывки и альбомы — iTunes': 'Clips and albums — iTunes', 'Отрывок 30 секунд — iTunes': '30-second clip — iTunes', 'Слушать полностью': 'Full track', 'Полный трек — YouTube': 'Full track — YouTube', 'автор': 'by', 'Открыть на YouTube': 'Open on YouTube', 'полный': 'full', 'Отрывок не загрузился': "The clip didn't load", 'Абсолютный пик': 'Absolute peak', 'Пик': 'Peak', 'Лучшее из лучшего — выше S': 'The best of the best — above S', 'Слушать': 'Listen', 'Пауза': 'Pause',
+  'Отрывки и альбомы — iTunes': 'Clips and albums — iTunes', 'Отрывок 30 секунд — iTunes': '30-second clip — iTunes', 'Слушать полностью': 'Full track', 'Песни из сериала': 'Songs from the series', 'Полный трек — YouTube': 'Full track — YouTube', 'автор': 'by', 'Открыть на YouTube': 'Open on YouTube', 'полный': 'full', 'Отрывок не загрузился': "The clip didn't load", 'Абсолютный пик': 'Absolute peak', 'Пик': 'Peak', 'Лучшее из лучшего — выше S': 'The best of the best — above S', 'Слушать': 'Listen', 'Пауза': 'Pause',
 });
 $('.nav-btn[data-view="themes"] span').textContent = tr('Музыка');
 document.body.querySelector('#view-themes .view-head').insertAdjacentHTML('afterend', `<div class="th-seg mu-sw"><button type="button" class="on" data-musw="themes">${tr('Опенинги')}</button><button type="button" data-musw="ost">${tr('Саундтреки')}</button></div>`);
@@ -101,15 +101,24 @@ async function osLoadAnime(s) {
   } catch { os.err[id] = true; }
   os.busy[id] = false; osRender();
 }
+// 20.11: свои подборки (ost-extra.js) — песни, которые звучат в сериале, но лежат в разных альбомах (радио игры и т.п.)
+function osExtra(s) {
+  const E = window.OS_EXTRA || {}, keys = [s.id, s.anime?.id, ...(s.parts || []).map((p) => p.id)].map(String);
+  const seen = new Set();
+  return keys.flatMap((k) => E[k] || []).filter((a) => !seen.has(a.id) && seen.add(a.id)).map((a) => ({ id: a.id, n: tr(a.n), ar: a.ar || '', y: a.y || '', img: a.img || '', cnt: a.ids.length, x: true }));
+}
+const osExtraDef = (alId) => Object.values(window.OS_EXTRA || {}).flat().find((a) => a.id === alId);
 async function osLoadAlbum(alId) {
   const k = 'al:' + alId;
   if (os.busy[k] || osFresh(k)) return;
   os.busy[k] = true; os.err[k] = false; osRender();
   try {
-    const d = await osItunes(`lookup?id=${encodeURIComponent(alId)}&entity=song&country=JP&limit=200`);
+    const ex = osExtraDef(alId);
+    const d = await osItunes(ex ? `lookup?id=${ex.ids.join(',')}&country=JP` : `lookup?id=${encodeURIComponent(alId)}&entity=song&country=JP&limit=200`);
+    if (ex) { const got = new Set((d.results || []).map((t) => String(t.trackId))), miss = ex.ids.filter((i) => !got.has(i)); if (miss.length) d.results = [...(d.results || []), ...((await osItunes(`lookup?id=${miss.join(',')}&country=US`)).results || [])]; } // чего нет в японском магазине — из американского
     const tracks = (d.results || []).filter((t) => t.wrapperType === 'track' && t.previewUrl)
-      .sort((a, b) => (a.discNumber || 1) - (b.discNumber || 1) || (a.trackNumber || 0) - (b.trackNumber || 0))
-      .map((t) => ({ id: String(t.trackId), n: t.trackName, ar: t.artistName, no: t.trackNumber || 0, ms: t.trackTimeMillis || 0, prev: t.previewUrl, al: String(alId), aln: t.collectionName, img: t.artworkUrl100 || '' }));
+      .sort((a, b) => ex ? ex.ids.indexOf(String(a.trackId)) - ex.ids.indexOf(String(b.trackId)) : (a.discNumber || 1) - (b.discNumber || 1) || (a.trackNumber || 0) - (b.trackNumber || 0))
+      .map((t, i) => ({ id: String(t.trackId), n: t.trackName, ar: t.artistName, no: ex ? i + 1 : t.trackNumber || 0, ms: t.trackTimeMillis || 0, prev: t.previewUrl, al: String(alId), aln: ex ? tr(ex.n) : t.collectionName, img: t.artworkUrl100 || '' }));
     osCache[k] = { at: Date.now(), tracks };
     osSaveCache();
   } catch { os.err[k] = true; }
@@ -151,7 +160,7 @@ function osOpen(id, list) {
     <div class="th-meta"><div class="th-top"><h2>${esc(t.n || '—')}</h2>
       <div class="th-arrows">${arrow(prev, false, 'Предыдущий')}<span>${i >= 0 ? `${i + 1} / ${L.length}` : ''}</span>${arrow(next, true, 'Следующий')}</div></div>
       <p>${[t.ar, t.aln, x.anime && tn(x.anime)].filter(Boolean).map(esc).join(' · ')}</p>
-      <p class="th-now"></p>${yt ? `<p class="os-clip os-by">${tr('Полный трек — YouTube')} · ${tr('автор')}: <a href="https://www.youtube.com${esc(yt.url)}" target="_blank" rel="noopener">${esc(yt.ch)}</a> · <a href="https://www.youtube.com/watch?v=${esc(yt.v)}&list=${esc(yt.list)}" target="_blank" rel="noopener">${tr('Открыть на YouTube')}</a></p>` : `<p class="os-clip">${tr('Отрывок 30 секунд — iTunes')}</p>${osFullHTML(t)}`}</div>
+      <p class="th-now"></p>${yt ? `<p class="os-clip os-by">${tr('Полный трек — YouTube')} · ${tr('автор')}: <a href="https://www.youtube.com${esc(yt.url)}" target="_blank" rel="noopener">${esc(yt.ch)}</a> · <a href="https://www.youtube.com/watch?v=${esc(yt.v)}${yt.list ? `&list=${esc(yt.list)}` : ''}" target="_blank" rel="noopener">${tr('Открыть на YouTube')}</a></p>` : `<p class="os-clip">${tr('Отрывок 30 секунд — iTunes')}</p>${osFullHTML(t)}`}</div>
     ${ro ? '' : `<div class="th-big">${Array.from({ length: 10 }, (_, j) => 10 - j).map((n) => `<button type="button" data-osbig="${n}" style="--c:${thColor(n)}"><b>${n}</b><small>${esc(LABEL[n])}</small></button>`).join('')}</div>`}
     <div class="peak-w os-peakw"></div>
     ${ro ? '' : `<div class="th-nav"><button type="button" class="btn" data-osaddcur>${icon('plus')}<span>${tr('В плейлист')}</span></button><button type="button" class="link" data-osunrate>${tr('Убрать оценку')}</button></div>`}`;
@@ -251,7 +260,7 @@ function osRender() {
     if (!srcs.length) { body.innerHTML = empty(tr('Ничего не подходит'), tr('Попробуй другие фильтры.')); return; }
     body.innerHTML = `<p class="ch-seahint os-hint">${tr('Музыка из аниме — фоновые мелодии из альбомов-саундтреков. Слушай отрывок и оценивай.')}</p>` + srcs.map((s) => {
       const open = os.open.has(s.id), c = osCache[s.id], anime = { id: s.id, name: s.anime.name, russian: s.anime.russian, english: s.anime.english };
-      const albums = c?.albums || [];
+      const albums = [...osExtra(s), ...(c?.albums || [])];
       const nr = Object.values(rated).filter((r) => r.t?.anime?.id === s.id && osScore(r) != null).length;
       const sub = os.busy[s.id] ? tr('Ищу саундтрек…') : c ? (albums.length ? tr('альбомов — {n}', { n: albums.length }) : tr('Саундтрек не нашёлся')) : tr('Нажми, чтобы найти саундтрек');
       let inner = '';
