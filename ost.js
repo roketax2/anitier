@@ -68,7 +68,7 @@ function osItunes(path) {
 }
 const osNorm = (s) => (s || '').toLowerCase().normalize('NFKC').replace(/[^\p{L}\p{N}]+/gu, '');
 const OS_KW = /サウンドトラック|サントラ|soundtrack|\bost\b|オリジナル・?サウンド|music collection|ミュージックコレクション|bgm/i;
-const OS_BAD = /cover|piano|lofi|lo-fi|8-?bit|music box|オルゴール|karaoke|tribute|remix|instrumental covers|- single$/i;
+const OS_BAD = /cover|piano|lofi|lo-fi|8-?bit|music box|オルゴール|karaoke|tribute|remix|instrumental covers|video ?game|- single$/i;
 const osArt = (u, n = 300) => (u || '').replace(/\/\d+x\d+bb\./, `/${n}x${n}bb.`);
 
 // альбомы-саундтреки аниме: ищем по японскому названию, если мало — по английскому
