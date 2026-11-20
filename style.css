@@ -1492,7 +1492,23 @@ body.viewing .ach { cursor: pointer; }
 .ch-sr > span img { width: 16px; height: 22px; object-fit: cover; border-radius: 4px; margin-right: 6px; vertical-align: middle; }
 .ch-sl { display: block; margin-top: -2px; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ch-h { margin-top: 6px; font: 700 14px var(--display); color: var(--text2); }
-.ch-seas { display: grid; gap: 8px; }
+.ch-seas { display: grid; gap: 10px; }
+.ch-srh { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ch-pic { position: relative; flex: none; width: 36px; height: 48px; padding: 0; border: 1px dashed var(--line2); border-radius: 8px; background: var(--elev2); overflow: hidden; cursor: pointer; color: var(--text); }
+.ch-pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.ch-pic:not(.has) img { opacity: .5; }
+.ch-pic.has { border: 1px solid var(--accent); }
+.ch-pic i { position: absolute; inset: auto 0 0; display: grid; place-items: center; height: 18px; background: rgba(0, 0, 0, .6); }
+.ch-pic i svg { width: 12px; height: 12px; }
+.ch-srt { display: grid; justify-items: start; gap: 2px; min-width: 0; }
+.ch-srt span { max-width: 100%; font-size: 12.5px; color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ch-srt .link { font-size: 12px; }
+.ch-picp { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--elev2); min-width: 0; }
+.ch-picp .set-note { margin: 0; }
+.ch-picb { display: flex; flex-wrap: wrap; gap: 8px; }
+.ch-picb .btn { display: inline-flex; align-items: center; gap: 8px; }
+.ch-picu { display: flex; gap: 8px; min-width: 0; }
+.ch-picu input { flex: 1; min-width: 0; height: 38px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--elev); color: var(--text); font-size: 13px; }
 .ch-sr { display: grid; gap: 4px; }
 .ch-sr > span { font-size: 12.5px; color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ch-sr { min-width: 0; }

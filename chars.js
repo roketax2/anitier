@@ -8,7 +8,10 @@ Object.assign(EN, {
   'Смотрит на твою оценку самого аниме': 'Uses your rating of the anime itself',
   'Здесь появятся персонажи аниме из твоего топа.': 'Characters of the anime in your top will show up here.',
   'Все сезоны': 'All seasons', 'Сезон {n}': 'Season {n}', 'По сезонам': 'By season', 'Общая': 'Overall', 'Общая оценка': 'Overall rating',
-  'Общая оценка — за всё аниме целиком.': 'Overall rating is for the whole anime.', 'Оценки по сезонам — отдельный список для каждого сезона. Общая оценка от них не меняется.': 'Season ratings are a separate list for each season. They don’t change the overall rating.',
+  'Общая оценка — за всё аниме целиком.': 'Overall rating is for the whole anime.', 'Оценки по сезонам — отдельный список для каждого сезона. Общая оценка от них не меняется. Свою картинку персонажа для сезона можно поставить в его карточке.': 'Season ratings are a separate list for each season. They don’t change the overall rating. You can set your own character picture for a season in the character card.',
+  'Своя картинка': 'Own picture', 'Сменить картинку': 'Change picture', 'Загрузить картинку': 'Upload picture', 'Убрать': 'Remove', 'Ссылка на картинку': 'Picture link',
+  'Твоя картинка персонажа для этого сезона. Видна в списке, тир-листе и друзьям по ссылке на топ.': 'Your picture of the character for this season. Shown in the list, the tier list and to friends.',
+  'Картинка сохранена': 'Picture saved', 'Не получилось открыть картинку': 'Could not open the picture', 'Нужна ссылка https://…': 'Need an https://… link', 'Слишком много своих картинок — убери старые': 'Too many own pictures — remove some old ones',
   'общая {n}': 'overall {n}', 'Как менялся': 'How they changed', 'Оценка за сезон': 'Season rating', 'Оцени персонажа за этот сезон': 'Rate the character for this season',
 });
 $('.nav-btn[data-view="chars"] span').textContent = tr('Персонажи');
@@ -94,10 +97,38 @@ function chRateSea(id, pid, score) {
   if (s[pid] === score) delete s[pid]; else s[pid] = score;
   const rec = { ...old, s, added: old.added || now, updated: now, c: chSnap(c) };
   if (!Object.keys(s).length) delete rec.s;
-  if (rec.score == null && !rec.s) { delete CHS()[id]; (db.deleted ||= {})['h:' + id] = now; }
+  if (rec.score == null && !rec.s && !rec.img) { delete CHS()[id]; (db.deleted ||= {})['h:' + id] = now; }
   else { CHS()[id] = rec; if (db.deleted) delete db.deleted['h:' + id]; }
   save();
 }
+/* ---------- своя картинка персонажа для сезона (20.11): db.chars[id].img = { id части: https-ссылка или маленький JPEG } ---------- */
+const chImgOk = (v) => typeof v === 'string' && v.length < 40000 && /^(https:\/\/[^\s"'<>()\\]+|data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+)$/.test(v);
+const chImg = (id, pid, r = CHS()[id]) => { const v = r?.img?.[pid]; return chImgOk(v) ? v : ''; };
+function chSetImg(id, pid, val) {
+  const c = ch.byId.get(id);
+  if (!c || chRO()) return false;
+  if (val && val.startsWith('data:') && Object.values(CHS()).reduce((n, r) => n + Object.values(r?.img || {}).filter((v) => String(v).startsWith('data:')).length, 0) >= 120) { toast(tr('Слишком много своих картинок — убери старые')); return false; }
+  const now = Date.now(), old = CHS()[id] || {}, img = { ...(old.img || {}) };
+  if (val) img[pid] = val; else delete img[pid];
+  const rec = { ...old, img, added: old.added || now, updated: now, c: chSnap(c) };
+  if (!Object.keys(img).length) delete rec.img;
+  if (rec.score == null && !rec.s && !rec.img) { delete CHS()[id]; (db.deleted ||= {})['h:' + id] = now; }
+  else { CHS()[id] = rec; if (db.deleted) delete db.deleted['h:' + id]; }
+  save();
+  return true;
+}
+// файл → JPEG 150×200 (обрезка по центру, чуть выше середины — там обычно лицо), ~8 КБ
+async function chImgFile(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const im = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = url; });
+    const W = 150, H = 200, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const k = Math.max(W / im.naturalWidth, H / im.naturalHeight), w = im.naturalWidth * k, h = im.naturalHeight * k;
+    cv.getContext('2d').drawImage(im, (W - w) / 2, (H - h) * 0.3, w, h);
+    return cv.toDataURL('image/jpeg', 0.8);
+  } finally { URL.revokeObjectURL(url); }
+}
+const chImgTest = (src) => new Promise((ok) => { const i = new Image(), t = setTimeout(() => ok(false), 9000); i.onload = () => { clearTimeout(t); ok(i.naturalWidth > 0); }; i.onerror = () => { clearTimeout(t); ok(false); }; i.src = src; });
 const chSnap = (c) => ({ id: c.id, n: c.n, r: c.r, p: c.p, big: c.big, m: c.m, anime: c.anime, sp: c.sp, mp: c.mp, sea: c.sea });
 const chScoreRow = (my, attr = 'data-chrate') => `<div class="th-sc">${Array.from({ length: 10 }, (_, i) => i + 1).map((n) => `<button type="button" ${attr}="${n}" style="--c:${chColor(n)}" class="${my === n ? 'on' : ''}" title="${esc(LABEL[n])}">${n}</button>`).join('')}</div>`;
 const chColor = (s) => thColor(s);
@@ -107,7 +138,7 @@ function chRowHTML(c, anime, pid) {
     const my = chSea(c.id, pid), all = chScore(CHS()[c.id]), m = c.mp ? c.mp.includes(pid) : c.m;
     const sp = (ch.byId.get(c.id)?.sea || c.sea || []).find((x) => x.id === pid)?.poster;
     return `<div class="th-row ch-row" data-cid="${esc(c.id)}" data-pid="${esc(pid)}">
-    <span class="ch-avw" data-chopen="${esc(c.id)}"><img class="ch-ava" loading="lazy" src="${esc(c.p)}" alt="">${sp ? `<img class="ch-avs" loading="lazy" src="${esc(sp)}" alt="">` : ''}</span>
+    <span class="ch-avw" data-chopen="${esc(c.id)}"><img class="ch-ava" loading="lazy" src="${esc(chImg(c.id, pid) || c.p)}" alt="">${sp ? `<img class="ch-avs" loading="lazy" src="${esc(sp)}" alt="">` : ''}</span>
     <div class="th-info" data-chopen="${esc(c.id)}"><b>${esc(chName(c))}</b><span>${tr(m ? 'главный' : 'второстепенный')}${all ? ' · ' + tr('общая {n}', { n: all }) : ''}</span></div>
     ${chScoreRow(my, 'data-chsea')}
   </div>`;
@@ -161,12 +192,12 @@ function chRender() {
     body.innerHTML = prog + `<div class="th-bar"><button type="button" class="link" data-chall="${allOpen ? 0 : 1}">${tr(allOpen ? 'Свернуть все' : 'Развернуть все')}</button></div>` + vis.map((g) => {
       const open = ch.open.has(g.s.id) || !!q, r = g.full.filter((c) => chScore(rated[c.id]) != null).length;
       return `<section class="th-group ${open ? 'open' : ''}"><button type="button" class="th-ghead" data-chg="${esc(g.s.id)}"><img loading="lazy" src="${esc(g.s.anime.poster || '')}" alt=""><span class="th-gt"><b>${esc(tn(g.s.anime))}</b><small>${tr('персонажей — {n}', { n: g.full.length })} · ${tr('оценено {a} из {b}', { a: r, b: g.full.length })}</small></span>${g.s.score != null ? `<span class="th-gs">${tr('моя {n}', { n: g.s.score })}</span>` : ''}<span class="th-chev">${icon('chev')}</span></button>
-        ${open ? `<div class="th-gbody">${g.sea.length > 1 ? `<div class="ch-sm"><div class="th-seg" role="tablist"><button type="button" role="tab" class="${g.pid ? '' : 'on'}" data-chsm="all" data-g="${esc(g.s.id)}">${tr('Общая оценка')}</button><button type="button" role="tab" class="${g.pid ? 'on' : ''}" data-chsm="sea" data-g="${esc(g.s.id)}">${tr('По сезонам')}</button></div><p class="ch-seahint">${tr(g.pid ? 'Оценки по сезонам — отдельный список для каждого сезона. Общая оценка от них не меняется.' : 'Общая оценка — за всё аниме целиком.')}</p></div>${g.pid ? `<div class="ch-sea" role="tablist">${g.sea.map((x) => `<button type="button" role="tab" class="ch-sp ${g.pid === x.id ? 'on' : ''}" data-chsg="${esc(g.s.id)}" data-pid="${esc(x.id)}" title="${esc(x.full)}">${x.poster ? `<img src="${esc(x.poster)}" alt="" loading="lazy">` : ''}<span>${esc(x.l)}</span></button>`).join('')}</div>` : ''}` : ''}${g.items.map((c) => chRowHTML(c, null, g.pid)).join('')}</div>` : ''}</section>`;
+        ${open ? `<div class="th-gbody">${g.sea.length > 1 ? `<div class="ch-sm"><div class="th-seg" role="tablist"><button type="button" role="tab" class="${g.pid ? '' : 'on'}" data-chsm="all" data-g="${esc(g.s.id)}">${tr('Общая оценка')}</button><button type="button" role="tab" class="${g.pid ? 'on' : ''}" data-chsm="sea" data-g="${esc(g.s.id)}">${tr('По сезонам')}</button></div><p class="ch-seahint">${tr(g.pid ? 'Оценки по сезонам — отдельный список для каждого сезона. Общая оценка от них не меняется. Свою картинку персонажа для сезона можно поставить в его карточке.' : 'Общая оценка — за всё аниме целиком.')}</p></div>${g.pid ? `<div class="ch-sea" role="tablist">${g.sea.map((x) => `<button type="button" role="tab" class="ch-sp ${g.pid === x.id ? 'on' : ''}" data-chsg="${esc(g.s.id)}" data-pid="${esc(x.id)}" title="${esc(x.full)}">${x.poster ? `<img src="${esc(x.poster)}" alt="" loading="lazy">` : ''}<span>${esc(x.l)}</span></button>`).join('')}</div>` : ''}` : ''}${g.items.map((c) => chRowHTML(c, null, g.pid)).join('')}</div>` : ''}</section>`;
     }).join('');
     return;
   }
   const items = ch.lm === 'sea'
-    ? Object.entries(rated).flatMap(([id, r]) => { const c = { ...(r.c || {}), ...(ch.byId.get(id) || {}) }; const lab = new Map((c.sea || []).map((x) => [x.id, x])); return Object.entries(r.s || {}).map(([pid, v]) => ({ ...c, id, score: v, at: r.updated || r.added, m: c.mp ? c.mp.includes(pid) : c.m, sl: lab.get(pid)?.l || '', sf: lab.get(pid)?.full || '', spp: lab.get(pid)?.poster || '' })); }).filter((c) => c.score != null && roleOk(c))
+    ? Object.entries(rated).flatMap(([id, r]) => { const c = { ...(r.c || {}), ...(ch.byId.get(id) || {}) }; const lab = new Map((c.sea || []).map((x) => [x.id, x])); return Object.entries(r.s || {}).map(([pid, v]) => ({ ...c, id, score: v, at: r.updated || r.added, m: c.mp ? c.mp.includes(pid) : c.m, sl: lab.get(pid)?.l || '', sf: lab.get(pid)?.full || '', spp: lab.get(pid)?.poster || '', p: chImg(id, pid, r) || c.p })); }).filter((c) => c.score != null && roleOk(c))
     : Object.entries(rated).map(([id, r]) => ({ ...(ch.byId.get(id) || r.c), id, score: chScore(r), at: r.updated || r.added })).filter((c) => c.score != null && roleOk(c));
   if (!items.length) { body.innerHTML = empty(tr('Тир-лист пока пуст'), ro ? '' : tr('Оцени персонажа — он появится здесь.')); return; }
   body.innerHTML = `<div class="th-board">${TIERS.map((x) => {
@@ -180,13 +211,14 @@ function chRate(id, score) {
   const c = ch.byId.get(id);
   if (!c || chRO()) return;
   const now = Date.now(), old = CHS()[id];
-  if (chScore(old) === score && !old?.s) { delete CHS()[id]; (db.deleted ||= {})['h:' + id] = now; }
+  if (chScore(old) === score && !old?.s && !old?.img) { delete CHS()[id]; (db.deleted ||= {})['h:' + id] = now; }
   else { CHS()[id] = { ...(old || {}), score: chScore(old) === score ? null : score, added: old?.added || now, updated: now, c: chSnap(c) }; if (db.deleted) delete db.deleted['h:' + id]; }
   save();
 }
 document.body.insertAdjacentHTML('beforeend', `<dialog id="chDlg" class="sheet card ch-dlg" aria-label="${tr('Персонажи')}">
   <button class="icon-btn card-close" data-close aria-label="${tr('Закрыть')}">${icon('x')}</button>
   <div class="card-scroll"><div class="ch-card" id="chCard"></div></div>
+  <input type="file" id="chPicFile" accept="image/*" hidden>
 </dialog>`);
 const chDlg = $('#chDlg');
 function chSeaCard(c, ro) {
@@ -194,12 +226,13 @@ function chSeaCard(c, ro) {
   if (sea.length < 2) return '';
   const got = sea.map((x) => ({ ...x, v: chSea(c.id, x.id) })), done = got.filter((x) => x.v != null);
   const trend = done.length > 1 ? `<div class="ch-trend"><span>${tr('Как менялся')}</span>${done.map((x, i) => `${i ? '<i>→</i>' : ''}<b style="--c:${chColor(x.v)}" title="${esc(x.full)}">${x.v}</b>`).join('')}</div>` : '';
-  if (ro) return done.length ? `<h3 class="ch-h">${tr('По сезонам')}</h3>${trend}<div class="ch-seas">${done.map((x) => `<div class="ch-sr"><span title="${esc(x.full)}">${x.poster ? `<img src="${esc(x.poster)}" alt="" loading="lazy">` : ''}${esc(x.l)}</span><b class="th-my" style="--c:${chColor(x.v)}">${x.v}</b></div>`).join('')}</div>` : '';
-  return `<h3 class="ch-h">${tr('По сезонам')}</h3>${trend}<div class="ch-seas">${got.map((x) => `<div class="ch-sr" data-pid="${esc(x.id)}"><span title="${esc(x.full)}">${x.poster ? `<img src="${esc(x.poster)}" alt="" loading="lazy">` : ''}${esc(x.l)}</span>${chScoreRow(x.v, 'data-chsea')}</div>`).join('')}</div>`;
+  if (ro) return done.length ? `<h3 class="ch-h">${tr('По сезонам')}</h3>${trend}<div class="ch-seas">${done.map((x) => `<div class="ch-sr"><span title="${esc(x.full)}">${(chImg(c.id, x.id) || x.poster) ? `<img src="${esc(chImg(c.id, x.id) || x.poster)}" alt="" loading="lazy">` : ''}${esc(x.l)}</span><b class="th-my" style="--c:${chColor(x.v)}">${x.v}</b></div>`).join('')}</div>` : '';
+  return `<h3 class="ch-h">${tr('По сезонам')}</h3>${trend}<div class="ch-seas">${got.map((x) => { const im = chImg(c.id, x.id), pic = im || x.poster; return `<div class="ch-sr" data-pid="${esc(x.id)}"><div class="ch-srh"><button type="button" class="ch-pic ${im ? 'has' : ''}" data-chpic title="${tr('Своя картинка')}">${pic ? `<img src="${esc(pic)}" alt="" loading="lazy">` : ''}${im ? '' : `<i>${icon('upload')}</i>`}</button><div class="ch-srt"><span title="${esc(x.full)}">${esc(x.l)}</span><button type="button" class="link" data-chpic>${tr(im ? 'Сменить картинку' : 'Своя картинка')}</button></div></div>${ch.picOpen === x.id ? `<div class="ch-picp"><p class="set-note">${tr('Твоя картинка персонажа для этого сезона. Видна в списке, тир-листе и друзьям по ссылке на топ.')}</p><div class="ch-picb"><button type="button" class="btn primary" data-chpicf>${icon('upload')}<span>${tr('Загрузить картинку')}</span></button>${im ? `<button type="button" class="btn" data-chpicx>${tr('Убрать')}</button>` : ''}</div><form class="ch-picu"><input type="url" name="u" inputmode="url" placeholder="${tr('Ссылка на картинку')}: https://…" value="${im && !im.startsWith('data:') ? esc(im) : ''}"><button class="btn">OK</button></form></div>` : ''}${chScoreRow(x.v, 'data-chsea')}</div>`; }).join('')}</div>`;
 }
 function chOpen(id) {
   const c = ch.byId.get(id);
   if (!c) return;
+  if (ch.cur !== id) ch.picOpen = null;
   ch.cur = id;
   const my = chScore(CHS()[id]), ro = chRO();
   $('#chCard').innerHTML = `<img class="ch-big" src="${esc(c.big || c.p)}" alt=""><div class="ch-meta"><h2>${esc(chName(c))}</h2>${c.r && c.n ? `<p class="ch-orig">${esc(EN_ON ? c.r : c.n)}</p>` : ''}<p>${tr(c.m ? 'главный' : 'второстепенный')}${c.anime ? ' · ' + esc(tn(c.anime)) : ''}</p>
@@ -214,7 +247,36 @@ chDlg.addEventListener('click', (e) => {
   const r = e.target.closest('[data-chrate]');
   if (r && ch.cur) { chRate(ch.cur, +r.dataset.chrate); chOpen(ch.cur); chRender(); return; }
   const sv = e.target.closest('[data-chsea]');
-  if (sv && ch.cur) { chRateSea(ch.cur, sv.closest('[data-pid]').dataset.pid, +sv.dataset.chsea); chOpen(ch.cur); chRender(); }
+  if (sv && ch.cur) { chRateSea(ch.cur, sv.closest('[data-pid]').dataset.pid, +sv.dataset.chsea); chOpen(ch.cur); chRender(); return; }
+  const pp = e.target.closest('[data-chpic]');
+  if (pp && ch.cur) { const pid = pp.closest('[data-pid]').dataset.pid; ch.picOpen = ch.picOpen === pid ? null : pid; chOpen(ch.cur); return; }
+  if (e.target.closest('[data-chpicf]') && ch.cur) { ch.picPid = e.target.closest('[data-pid]').dataset.pid; $('#chPicFile').click(); return; }
+  const px = e.target.closest('[data-chpicx]');
+  if (px && ch.cur) { chSetImg(ch.cur, px.closest('[data-pid]').dataset.pid, null); ch.picOpen = null; chOpen(ch.cur); chRender(); }
+});
+chDlg.addEventListener('submit', async (e) => {
+  const f = e.target.closest('.ch-picu');
+  if (!f || !ch.cur) return;
+  e.preventDefault();
+  const u = f.u.value.trim(), id = ch.cur, pid = f.closest('[data-pid]').dataset.pid;
+  if (!u) return;
+  if (!chImgOk(u)) { toast(tr('Нужна ссылка https://…')); return; }
+  f.querySelector('button').disabled = true;
+  const ok = await chImgTest(u);
+  if (!ok) { toast(tr('Не получилось открыть картинку')); f.querySelector('button').disabled = false; return; }
+  if (chSetImg(id, pid, u)) { ch.picOpen = null; toast(tr('Картинка сохранена')); }
+  if (ch.cur === id && chDlg.open) chOpen(id);
+  chRender();
+});
+$('#chPicFile').addEventListener('change', async (e) => {
+  const file = e.target.files[0], id = ch.cur, pid = ch.picPid;
+  e.target.value = '';
+  if (!file || !id || !pid) return;
+  let data = '';
+  try { data = await chImgFile(file); } catch { toast(tr('Не получилось открыть картинку')); return; }
+  if (chSetImg(id, pid, data)) { ch.picOpen = null; toast(tr('Картинка сохранена')); }
+  if (ch.cur === id && chDlg.open) chOpen(id);
+  chRender();
 });
 chDlg.addEventListener('close', () => { if (history.state?.modal === 'chDlg') history.back(); });
 
