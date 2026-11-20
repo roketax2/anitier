@@ -12,15 +12,28 @@ Object.assign(EN, {
   'Игра окончена': 'Game over', 'Правильно {a} из {b}': '{a} of {b} correct', 'Новый рекорд!': 'New record!', 'Ещё раз': 'Play again', 'К играм': 'Back to games',
   'Готовлю игру…': 'Preparing the game…', 'Мало аниме для игры — нужно хотя бы 4 разных. Оцени больше аниме или выбери «Популярные».': 'Not enough anime — at least 4 are needed. Rate more anime or choose “Popular”.',
   'Не получилось загрузить игру. Проверь интернет.': "Couldn't load the game. Check your connection.", 'Нажми, чтобы включить звук': 'Tap to play the sound', 'Загружаю…': 'Loading…',
+  'Сложность': 'Difficulty', 'Обычно': 'Normal', 'Сложно': 'Hard', 'Отдалить': 'Zoom out',
 });
 $('.nav-btn[data-view="games"] span').textContent = tr('Игры');
 
 const GM_ROUNDS = 10;
 // Shikimori иногда отказывает на частые запросы — повторяем с паузой (impGql из import.js)
 const gmGql = (q) => (typeof impGql === 'function' ? impGql(q) : gql(q));
-const gm = { kind: null, src: pref('gmSrc', 'mine'), sec: +pref('gmSec', '10') || 10, start: pref('gmStart', 'begin'), rounds: [], i: 0, score: 0, right: 0, t0: 0, timer: 0, answered: false, shots: 1, pool: null };
+const gm = { kind: null, src: pref('gmSrc', 'mine'), sec: +pref('gmSec', '10') || 10, start: pref('gmStart', 'begin'), diff: pref('gmDiff', 'norm') === 'hard' ? 'hard' : 'norm', rounds: [], i: 0, score: 0, right: 0, t0: 0, timer: 0, answered: false, shots: 1, pool: null };
 const gmBox = $('#view-games');
 const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+// 21.11: уже показанные кадры (не повторяются, пока у аниме есть новые)
+const GM_SEEN = 'animetop.gmSeen';
+const gmShotKey = (s) => String(s.small || s.big || '').split('?')[0].split('/').slice(-2).join('/');
+function gmSeen() { try { return new Set(JSON.parse(localStorage.getItem(GM_SEEN) || '[]')); } catch { return new Set(); } }
+function gmMarkSeen(shots) {
+  try { const s = gmSeen(); for (const x of shots) { s.delete(gmShotKey(x)); s.add(gmShotKey(x)); } localStorage.setItem(GM_SEEN, JSON.stringify([...s].slice(-3000))); } catch {}
+}
+// режим «Сложно»: сначала увеличенный кусочек кадра, кнопка «Отдалить» показывает больше
+const GM_ZOOM = [3.2, 2.2, 1.5, 1];
+const gmHard = () => gm.kind === 'anime' && gm.diff === 'hard';
+const gmBestKey = (kind) => (kind === 'anime' && gm.diff === 'hard' ? 'anime_hard' : kind);
 
 /* ---------- пул аниме ---------- */
 // из моего топа: серии и аниме, как в «Рейтинге»; популярные — топ Shikimori по популярности
@@ -55,10 +68,17 @@ async function gmPrepare() {
   }
   // угадай аниме: кадры с Shikimori
   const pick = shuffle(list.slice()).slice(0, GM_ROUNDS + 4);
-  const ids = pick.map((p) => p.parts[Math.floor(Math.random() * Math.min(p.parts.length, 3))] || p.id);
-  const d = await gmGql(`{ animes(ids: ${JSON.stringify(ids.join(','))}, limit: 50) { id screenshots { originalUrl x332Url } } }`);
-  const shots = new Map(d.animes.map((a) => [String(a.id), shuffle((a.screenshots || []).map((s) => ({ big: s.originalUrl || s.x332Url, small: s.x332Url || s.originalUrl })))]));
-  const rounds = pick.map((p, i) => ({ p, shots: (shots.get(String(ids[i])) || []).slice(0, 3), opts: gmOptions(list, p) })).filter((r) => r.shots.length).slice(0, GM_ROUNDS);
+  // 21.11: кадры из нескольких частей серии (до 3 случайных сезонов/фильмов) — больше разных моментов, не только из начала
+  const per = Math.max(1, Math.min(3, Math.floor(50 / pick.length)));
+  const ids = pick.map((p) => shuffle((p.parts.length ? p.parts : [p.id]).slice(0, 12)).slice(0, per).map(String));
+  const d = await gmGql(`{ animes(ids: ${JSON.stringify(ids.flat().join(','))}, limit: 50) { id screenshots { originalUrl x332Url } } }`);
+  const by = new Map(d.animes.map((a) => [String(a.id), (a.screenshots || []).map((s) => ({ big: s.originalUrl || s.x332Url, small: s.x332Url || s.originalUrl }))]));
+  const seen = gmSeen();
+  const rounds = pick.map((p, i) => {
+    const all = ids[i].flatMap((id) => by.get(id) || []);
+    const fresh = shuffle(all.filter((s) => !seen.has(gmShotKey(s)))), old = shuffle(all.filter((s) => seen.has(gmShotKey(s))));
+    return { p, shots: [...fresh, ...old].slice(0, 3), opts: gmOptions(list, p) };
+  }).filter((r) => r.shots.length).slice(0, GM_ROUNDS);
   if (rounds.length < 3) throw new Error('few');
   return rounds;
 }
@@ -68,12 +88,13 @@ const gmBest = (kind) => +pref('gmBest_' + kind, '0') || 0;
 function gmMenu() {
   gmStopAudio(); clearInterval(gm.timer);
   const seg = (name, cur, opts) => `<div class="set-seg gm-seg">${opts.map(([v, l]) => `<button type="button" data-gmset="${name}" data-v="${v}" class="${String(cur) === String(v) ? 'on' : ''}">${tr(l)}</button>`).join('')}</div>`;
-  const card = (kind, ic, title, desc) => `<button type="button" class="gm-card ${gm.kind === kind ? 'on' : ''}" data-gmkind="${kind}"><span class="gm-ic">${icon(ic)}</span><b>${tr(title)}</b><small>${tr(desc)}</small><em>${tr('Лучший счёт: {n}', { n: gmBest(kind) })}</em></button>`;
+  const card = (kind, ic, title, desc) => `<button type="button" class="gm-card ${gm.kind === kind ? 'on' : ''}" data-gmkind="${kind}"><span class="gm-ic">${icon(ic)}</span><b>${tr(title)}</b><small>${tr(desc)}</small><em>${tr('Лучший счёт: {n}', { n: gmBest(gmBestKey(kind)) })}</em></button>`;
   gmBox.innerHTML = `<div class="view-head"><div><h1>${tr('Игры')}</h1></div></div>
     <div class="gm-cards">${card('op', 'music', 'Угадай опенинг', 'Играет кусочек опенинга или эндинга — угадай аниме.')}${card('anime', 'compass', 'Угадай аниме', 'Показывается кадр из серии — угадай аниме.')}</div>
     <div class="gm-set">
       <div class="set-sec"><h3>${tr('Аниме')}</h3>${seg('src', gm.src, [['mine', 'Из моего топа'], ['pop', 'Популярные']])}</div>
       <div class="set-sec"><h3>${tr('Секунд')}</h3>${seg('sec', gm.sec, [[5, '5'], [10, '10'], [15, '15'], [20, '20']])}</div>
+      ${gm.kind === 'anime' ? `<div class="set-sec"><h3>${tr('Сложность')}</h3>${seg('diff', gm.diff, [['norm', 'Обычно'], ['hard', 'Сложно']])}</div>` : ''}
       ${gm.kind !== 'anime' ? `<div class="set-sec"><h3>${tr('Откуда играет')}</h3>${seg('start', gm.start, [['begin', 'С начала'], ['random', 'Случайный момент']])}</div>` : ''}
       <button type="button" class="btn primary wide gm-go" data-gmgo ${gm.kind ? '' : 'disabled'}>${icon('play')}<span>${tr('Играть')}</span></button>
       <p class="imp-status gm-msg" id="gmMsg"></p>
@@ -160,6 +181,8 @@ function gmRound() {
   const head = `<div class="gm-top"><span>${tr('Раунд {a} из {b}', { a: gm.i + 1, b: gm.rounds.length })}</span><b>${tr('Очки: {n}', { n: gm.score })}</b></div><div class="gm-bar"><i id="gmBar"></i></div>`;
   const stage = gm.kind === 'op'
     ? `<div class="gm-stage gm-audio wait" id="gmStage"><span class="gm-wait"><span class="th-spin"></span>${tr('Загружаю…')}</span><div class="gm-eq">${Array.from({ length: 9 }, (_, i) => `<i style="animation-delay:${-i * 0.13}s"></i>`).join('')}</div><button type="button" class="btn" id="gmReplay">${icon('play')}<span>${tr('Слушать ещё раз')}</span></button></div>`
+    : gmHard()
+    ? `<div class="gm-stage gm-shots wait" id="gmStage"><span class="gm-wait"><span class="th-spin"></span>${tr('Загружаю…')}</span><div class="gm-shotbox gm-zoom" id="gmShots" style="--z:${GM_ZOOM[0]};--ox:${r.ox ??= 15 + Math.round(Math.random() * 70)}%;--oy:${r.oy ??= 15 + Math.round(Math.random() * 70)}%">${gmShot(r.shots[0])}</div></div><button type="button" class="link gm-more" id="gmZoom">${tr('Отдалить')}</button>`
     : `<div class="gm-stage gm-shots wait" id="gmStage"><span class="gm-wait"><span class="th-spin"></span>${tr('Загружаю…')}</span><div class="gm-shotbox" id="gmShots">${gmShot(r.shots[0])}</div></div>${r.shots.length > 1 ? `<button type="button" class="link gm-more" id="gmMore">${tr('Ещё кадр')}</button>` : ''}`;
   gmBox.innerHTML = `<div class="gm-play">${head}${stage}<div class="gm-opts">${r.opts.map((o, i) => `<button type="button" class="gm-opt" data-gmans="${i}"><img loading="lazy" src="${esc(o.anime.poster || '')}" alt=""><span>${esc(o.title)}</span></button>`).join('')}</div><div id="gmAfter"></div></div>`;
   if (gm.kind === 'op') gmPlayClip();
@@ -192,7 +215,8 @@ function gmAnswer(i) {
   $$('.gm-opt').forEach((b, k) => { b.disabled = true; b.classList.toggle('right', k === right); b.classList.toggle('wrong', k === i && !ok); });
   if (gm.kind === 'op' && gmAudio) { gmAudio.ontimeupdate = null; gmAudio.play().catch(() => {}); } // после ответа — слушаем дальше
   $('#gmStage')?.classList.remove('wait');
-  if (gm.kind === 'anime') { const box = $('#gmShots'); if (box) { const have = box.querySelectorAll('img').length; box.insertAdjacentHTML('beforeend', r.shots.slice(have).map(gmShot).join('')); gmSharpen(box); } $('#gmMore')?.remove(); }
+  if (gm.kind === 'anime') { gmMarkSeen(r.shots); $('#gmZoom')?.remove(); }
+  if (gm.kind === 'anime') { const box = $('#gmShots'); if (box) { box.classList.remove('gm-zoom'); const have = box.querySelectorAll('img').length; box.insertAdjacentHTML('beforeend', r.shots.slice(have).map(gmShot).join('')); gmSharpen(box); } $('#gmMore')?.remove(); }
   const what = gm.kind === 'op' ? `${r.t.type}${r.t.seq} «${r.t.song}»${r.t.artists ? ' — ' + r.t.artists : ''}` : '';
   $('#gmAfter').innerHTML = `<div class="gm-res ${ok ? 'ok' : 'bad'}"><b>${ok ? tr('Верно!') : i < 0 ? tr('Время вышло') : tr('Мимо')}</b><span>${tr('Это было: {t}', { t: esc(r.p.title) })}${what ? ` · ${esc(what)}` : ''}</span></div>
     <button type="button" class="btn primary wide" data-gmnext>${tr('Дальше')}</button>`;
@@ -200,8 +224,8 @@ function gmAnswer(i) {
 function gmEnd() {
   gmStopAudio();
   gm.rounds.forEach((r) => { if (r.el?.load) { r.el.removeAttribute('src'); r.el.load(); } r.el = null; });
-  const best = gmBest(gm.kind), rec = gm.score > best;
-  if (rec) setPref('gmBest_' + gm.kind, String(gm.score));
+  const bk = gmBestKey(gm.kind), best = gmBest(bk), rec = gm.score > best;
+  if (rec) setPref('gmBest_' + bk, String(gm.score));
   gmBox.innerHTML = `<div class="gm-play gm-end"><h2>${tr('Игра окончена')}</h2><div class="gm-big">${gm.score}</div><p>${tr('Правильно {a} из {b}', { a: gm.right, b: gm.rounds.length })}${rec ? ` · <b class="gm-rec">${tr('Новый рекорд!')}</b>` : ` · ${tr('Лучший счёт: {n}', { n: best })}`}</p>
     <div class="gm-end-btns"><button type="button" class="btn primary" data-gmgo>${tr('Ещё раз')}</button><button type="button" class="btn" data-gmmenu>${tr('К играм')}</button></div></div>`;
 }
@@ -216,6 +240,11 @@ gmBox.addEventListener('click', (e) => {
   if (a) { gmAnswer(+a.dataset.gmans); return; }
   if (e.target.closest('[data-gmnext]')) { gmStopAudio(); const done = gm.rounds[gm.i]; if (done) done.el = null; gm.i++; if (gm.i >= gm.rounds.length) gmEnd(); else gmRound(); return; }
   if (e.target.closest('#gmReplay')) { gm.rounds[gm.i].from = gm.rounds[gm.i].from ?? 0; gmPlayClip(); return; }
+  if (e.target.closest('#gmZoom')) {
+    if (gm.shots < GM_ZOOM.length) { $('#gmShots')?.style.setProperty('--z', GM_ZOOM[gm.shots]); gm.shots++; }
+    if (gm.shots >= GM_ZOOM.length) $('#gmZoom')?.remove();
+    return;
+  }
   if (e.target.closest('#gmMore')) {
     const r = gm.rounds[gm.i];
     if (gm.shots < r.shots.length) { $('#gmShots').insertAdjacentHTML('beforeend', gmShot(r.shots[gm.shots])); gmSharpen($('#gmShots')); gm.shots++; }

@@ -34,7 +34,15 @@ const chSaveCache = () => {
   }
 };
 const chParts = (s) => s.parts.slice(0, 12); // у длинных серий — первые 12 частей
-const chSig = (s) => 'v6:' + chParts(s).map((p) => p.id).join(','); // v3 — с сезонами персонажа (19.11)
+const chSig = (s) => 'v7:' + chParts(s).map((p) => p.id).join(','); // v3 — с сезонами персонажа (19.11)
+// 21.11: фоновые персонажи без имени («Мужчина», «Волк», «Рассказчик», «Мать Хинаты», «Ученик 2») — не показываем.
+// Признак: английское имя только из общих слов (+ «чей-то», номер или буква), мало обсуждений и короткое описание на Shikimori
+const CH_BGW = new Set('man men woman women boy boys girl girls guy lady gentleman old young elderly little big tall short fat thin small large kid kids child children baby teen teenage male female mr mrs ms miss sir madam mister father mother dad mom mum papa mama brother sister son daughter wife husband grandfather grandmother grandma grandpa uncle aunt cousin family parent parents boyfriend girlfriend lover fiance friend friends classmate classmates neighbor neighbour twins twin teacher student students principal president vice director manager owner shopkeeper clerk staff employee worker waiter waitress maid butler cook chef doctor nurse police policeman officer detective guard guards soldier soldiers knight knights captain chief leader member members boss subordinate assistant secretary receptionist announcer reporter narrator commentator referee judge coach player players fan fans customer customers client passenger driver pilot sailor pirate pirates bandit bandits thief thug thugs delinquent delinquents gang gangster yakuza priest nun monk villager villagers townsperson citizen citizens merchant farmer hunter fisherman servant slave prisoner hostage hostages civilian civilians person people crowd stranger visitor tourist audience spectator spectators king queen prince princess lord noble nobleman emperor general commander lieutenant sergeant private demon demons monster monsters beast creature spirit ghost zombie zombies robot android alien titan titans dragon slime goblin orc wolf wolves bear dog cat bird fox hawk crow snake rabbit cow horse pig mouse rat fish shark voice computer ai system mascot club team school high middle elementary college university academy class store shop house home cafe restaurant bar hospital village town city military army force red blue black white green yellow pink purple brown silver gold golden gray grey blonde haired hair masked robed hooded glasses bearded first second third fourth fifth unknown unnamed mysterious other another fellow random'.split(' '));
+const CH_STOP = new Set(['a', 'an', 'the', 'of', 'in', 'at', 'on', 'from', 'with', 'and', 'to', 'for', 'no']);
+function chBgName(n) {
+  const ws = String(n || '').replace(/\(.*?\)/g, ' ').toLowerCase().replace(/[.,!?"“”:]/g, ' ').split(/[\s\-/]+/).filter(Boolean);
+  return ws.some((w) => CH_BGW.has(w)) && ws.every((w) => CH_BGW.has(w) || CH_STOP.has(w) || /^#?\d+(st|nd|rd|th)?$/.test(w) || /['’]s$/.test(w) || /^[a-z]$/.test(w));
+}
 const chFresh = (s) => chCache[s.id] && chCache[s.id].sig === chSig(s) && Date.now() - chCache[s.id].at < CH_TTL;
 const chScore = (r) => (r ? r.score ?? null : null);
 const chName = (c) => (EN_ON ? c.n || c.r : c.r || c.n) || '';
@@ -74,7 +82,16 @@ async function chLoad(force) {
         if (m && !cur.mp.includes(pid)) cur.mp.push(pid); // где он главный
       }
     });
-    const all = [...by.values()].filter((c) => c.core).sort((a, b) => b.k - a.k);
+    let all = [...by.values()].filter((c) => c.core).sort((a, b) => b.k - a.k);
+    // кандидаты в фоновые: проверяем длину описания (у «Короля» из One Punch Man оно большое — оставляем). Оценённых не трогаем
+    const bg = all.filter((c) => !c.m && c.k < 10 && !CHS()[c.id] && chBgName(c.n)), drop = new Set();
+    for (let i = 0; i < bg.length; i += 50) {
+      try {
+        const d = await impGql(`{ characters(ids: ${JSON.stringify(bg.slice(i, i + 50).map((c) => c.id).join(','))}, limit: 50) { id description } }`);
+        for (const x of d.characters || []) if ((x.description || '').length <= 300) drop.add(String(x.id));
+      } catch {}
+    }
+    if (drop.size) all = all.filter((c) => !drop.has(c.id));
     for (const c of all) delete c.core;
     // сезоны — только TV-части (фильмы, OVA и пересказы идут в общую оценку); если TV меньше двух — все части
     const withChars = ps.filter((p, j) => got[j].length).map((p) => ({ id: String(p.id), name: p.name, russian: p.russian, english: p.english, kind: meta[String(p.id)]?.kind || p.kind || '', poster: meta[String(p.id)]?.poster || '' }));

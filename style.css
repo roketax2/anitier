@@ -1441,6 +1441,9 @@ body.viewing .ach { cursor: pointer; }
 .gm-shotbox { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 4px; }
 .gm-shots img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; }
 .gm-more { justify-self: center; }
+/* «Сложно» (21.11): увеличенный кусочек кадра, «Отдалить» уменьшает увеличение */
+.gm-zoom { overflow: hidden; }
+.gm-zoom img { transform: scale(var(--z, 1)); transform-origin: var(--ox, 50%) var(--oy, 50%); transition: transform .45s ease; }
 .gm-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .gm-opt { display: flex; align-items: center; gap: 10px; padding: 8px 12px 8px 8px; border: 1.5px solid var(--line); border-radius: 14px; background: var(--elev2); color: var(--text); font: inherit; font-size: 14px; font-weight: 600; text-align: left; cursor: pointer; }
 .gm-opt img { width: 36px; height: 50px; flex: none; object-fit: cover; border-radius: 7px; }
