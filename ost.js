@@ -10,7 +10,7 @@ Object.assign(EN, {
   'Показать все ({n})': 'Show all ({n})', 'Не получилось загрузить. Попробуй чуть позже.': "Couldn't load. Try a bit later.",
   'Оцени трек — он появится здесь.': 'Rate a track — it will show up here.', 'Найди трек или аниме': 'Find a track or anime',
   'Здесь появится музыка аниме из твоего топа.': 'Music of the anime in your top will show up here.', 'Саундтреки {l}': '{l}’s soundtracks',
-  'Отрывки и альбомы — iTunes': 'Clips and albums — iTunes', 'Отрывок 30 секунд — iTunes': '30-second clip — iTunes', 'Слушать полностью': 'Full track', 'Отрывок не загрузился': "The clip didn't load", 'Абсолютный пик': 'Absolute peak', 'Пик': 'Peak', 'Лучшее из лучшего — выше S': 'The best of the best — above S', 'Слушать': 'Listen', 'Пауза': 'Pause',
+  'Отрывки и альбомы — iTunes': 'Clips and albums — iTunes', 'Отрывок 30 секунд — iTunes': '30-second clip — iTunes', 'Слушать полностью': 'Full track', 'Полный трек — YouTube': 'Full track — YouTube', 'автор': 'by', 'Открыть на YouTube': 'Open on YouTube', 'полный': 'full', 'Отрывок не загрузился': "The clip didn't load", 'Абсолютный пик': 'Absolute peak', 'Пик': 'Peak', 'Лучшее из лучшего — выше S': 'The best of the best — above S', 'Слушать': 'Listen', 'Пауза': 'Pause',
 });
 $('.nav-btn[data-view="themes"] span').textContent = tr('Музыка');
 document.body.querySelector('#view-themes .view-head').insertAdjacentHTML('afterend', `<div class="th-seg mu-sw"><button type="button" class="on" data-musw="themes">${tr('Опенинги')}</button><button type="button" data-musw="ost">${tr('Саундтреки')}</button></div>`);
@@ -123,6 +123,13 @@ document.body.insertAdjacentHTML('beforeend', `<dialog id="osDlg" class="sheet c
 const osDlg = $('#osDlg');
 let osList = []; // треки в порядке показа — для стрелок
 // 20.11: полный трек — в музыкальных сервисах (iTunes даёт только 30 секунд). Позже — YouTube прямо в плеере
+// альбом подобран вручную (ost-yt.js) — полный трек с YouTube и автор
+function osYt(t) {
+  const a = window.OS_YT?.[t.al], x = a?.v?.[t.id];
+  if (!x) return null;
+  const [ch, url] = a.ch[x[1]] || ['YouTube', ''];
+  return { v: x[0], list: a.list, ch: ch.replace(/ - Topic$/, ''), url };
+}
 function osFullHTML(t) {
   const q = encodeURIComponent([t.n, t.ar].filter(Boolean).join(' '));
   const L = [['YouTube Music', `https://music.youtube.com/search?q=${q}`], ['Spotify', `https://open.spotify.com/search/${q}`], ['Apple Music', `https://music.apple.com/song/${encodeURIComponent(t.id)}`]];
@@ -136,20 +143,23 @@ function osOpen(id) {
   os.cur = id;
   const L = os.plist, i = L.indexOf(id), prev = i > 0 ? L[i - 1] : null, next = i >= 0 && i < L.length - 1 ? L[i + 1] : null;
   const arrow = (to, flip, label) => `<button type="button" class="th-arr" data-osgo="${esc(to || '')}" ${to ? '' : 'disabled'} title="${tr(label)}" aria-label="${tr(label)}">${icon('back', flip ? 'flip' : '')}</button>`;
-  $('#osPl').innerHTML = `<div class="th-video"><video id="osVid" class="audio" src="${esc(t.prev || '')}" poster="${esc(osArt(t.img, 600))}" controls autoplay playsinline preload="auto"></video>
-      <div class="th-verr" hidden>${tr('Отрывок не загрузился')}</div></div>
+  const yt = osYt(t);
+  $('#osPl').innerHTML = `${yt ? `<div class="th-video os-ytv"><iframe src="https://www.youtube-nocookie.com/embed/${esc(yt.v)}?autoplay=1&rel=0&playsinline=1" title="${esc(t.n || 'YouTube')}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>` : `<div class="th-video"><video id="osVid" class="audio" src="${esc(t.prev || '')}" poster="${esc(osArt(t.img, 600))}" controls autoplay playsinline preload="auto"></video>
+      <div class="th-verr" hidden>${tr('Отрывок не загрузился')}</div></div>`}
     <div class="th-meta"><div class="th-top"><h2>${esc(t.n || '—')}</h2>
       <div class="th-arrows">${arrow(prev, false, 'Предыдущий')}<span>${i >= 0 ? `${i + 1} / ${L.length}` : ''}</span>${arrow(next, true, 'Следующий')}</div></div>
       <p>${[t.ar, t.aln, x.anime && tn(x.anime)].filter(Boolean).map(esc).join(' · ')}</p>
-      <p class="th-now"></p><p class="os-clip">${tr('Отрывок 30 секунд — iTunes')}</p>${osFullHTML(t)}</div>
+      <p class="th-now"></p>${yt ? `<p class="os-clip os-by">${tr('Полный трек — YouTube')} · ${tr('автор')}: <a href="https://www.youtube.com${esc(yt.url)}" target="_blank" rel="noopener">${esc(yt.ch)}</a> · <a href="https://www.youtube.com/watch?v=${esc(yt.v)}&list=${esc(yt.list)}" target="_blank" rel="noopener">${tr('Открыть на YouTube')}</a></p>` : `<p class="os-clip">${tr('Отрывок 30 секунд — iTunes')}</p>${osFullHTML(t)}`}</div>
     ${ro ? '' : `<div class="th-big">${Array.from({ length: 10 }, (_, j) => 10 - j).map((n) => `<button type="button" data-osbig="${n}" style="--c:${thColor(n)}"><b>${n}</b><small>${esc(LABEL[n])}</small></button>`).join('')}</div>`}
     <div class="peak-w os-peakw"></div>
     ${ro ? '' : `<div class="th-nav"><button type="button" class="link" data-osunrate>${tr('Убрать оценку')}</button></div>`}`;
   osMark();
   const vid = $('#osVid');
+  if (vid) {
   vid.volume = Math.min(1, Math.max(0, +pref('thVol', '0.8')));
   vid.addEventListener('volumechange', () => setPref('thVol', String(vid.muted ? 0 : vid.volume)));
   vid.addEventListener('error', () => { $('.th-verr', osDlg).hidden = false; });
+  }
   if (!osDlg.open) openModal(osDlg);
 }
 // после оценки — только подсветка и подписи, звук играет дальше
@@ -160,7 +170,7 @@ function osMark() {
   const un = $('[data-osunrate]', osDlg); if (un) un.hidden = !my;
   const pw = $('.os-peakw', osDlg); if (pw) pw.innerHTML = my === 10 ? (ro ? (r?.peak ? peakTagHTML() : '') : osPeakBtn(os.cur, r?.peak)) : '';
 }
-function osStop() { const v = $('#osVid'); if (v) { v.pause(); v.removeAttribute('src'); v.load(); } }
+function osStop() { $('#osPl iframe')?.remove(); const v = $('#osVid'); if (v) { v.pause(); v.removeAttribute('src'); v.load(); } }
 osDlg.addEventListener('close', () => { osStop(); os.cur = null; if (history.state?.modal === 'osDlg') history.back(); osRender(); });
 osDlg.addEventListener('click', (e) => {
   if (e.target === osDlg || e.target.closest('[data-close]')) { osDlg.close(); return; }
@@ -239,7 +249,7 @@ function osRender() {
             list = shown.map((t) => {
               const my = osScore(rated[t.id]);
               osList.push(t.id);
-              return `<div class="th-row os-row" data-tid="${esc(t.id)}">${osPlayBtn(t)}<div class="th-info" data-osplay="${esc(t.id)}"><b>${esc(t.n)}</b><span>${t.no ? t.no + '. ' : ''}${esc(t.ar)}${t.ms ? ' · ' + osTime(t.ms) : ''}</span></div>${chScoreRow(my, 'data-osrate')}${my === 10 ? osPeakBtn(t.id, rated[t.id]?.peak) : ''}</div>`;
+              return `<div class="th-row os-row" data-tid="${esc(t.id)}">${osPlayBtn(t)}<div class="th-info" data-osplay="${esc(t.id)}"><b>${esc(t.n)}</b><span>${t.no ? t.no + '. ' : ''}${esc(t.ar)}${t.ms ? ' · ' + osTime(t.ms) : ''}${osYt(t) ? ` · <i class="os-yt">${tr('полный')}</i>` : ''}</span></div>${chScoreRow(my, 'data-osrate')}${my === 10 ? osPeakBtn(t.id, rated[t.id]?.peak) : ''}</div>`;
             }).join('') + (shown.length < tr_.length ? `<button type="button" class="btn os-more" data-osall="${esc(k)}">${tr('Показать все ({n})', { n: tr_.length })}</button>` : '');
           }
           inner = tabs + list;
