@@ -95,8 +95,11 @@ function chRateSea(id, pid, score) {
   if (!c || chRO()) return;
   const now = Date.now(), old = CHS()[id] || {}, s = { ...(old.s || {}) };
   if (s[pid] === score) delete s[pid]; else s[pid] = score;
-  const rec = { ...old, s, added: old.added || now, updated: now, c: chSnap(c) };
+  const pk = { ...(old.pk || {}) };
+  if (s[pid] !== 10) delete pk[pid];
+  const rec = { ...old, s, pk, added: old.added || now, updated: now, c: chSnap(c) };
   if (!Object.keys(s).length) delete rec.s;
+  if (!Object.keys(pk).length) delete rec.pk;
   if (rec.score == null && !rec.s && !rec.img) { delete CHS()[id]; (db.deleted ||= {})['h:' + id] = now; }
   else { CHS()[id] = rec; if (db.deleted) delete db.deleted['h:' + id]; }
   save();
@@ -129,6 +132,16 @@ async function chImgFile(file) {
   } finally { URL.revokeObjectURL(url); }
 }
 const chImgTest = (src) => new Promise((ok) => { const i = new Image(), t = setTimeout(() => ok(false), 9000); i.onload = () => { clearTimeout(t); ok(i.naturalWidth > 0); }; i.onerror = () => { clearTimeout(t); ok(false); }; i.src = src; });
+// 20.11: «Абсолютный пик» — общий (peak) и за сезон (pk[id сезона])
+function chPeak(id, pid) {
+  const r = CHS()[id];
+  if (!r || chRO()) return;
+  if (pid) { if (r.s?.[pid] !== 10) return; const pk = { ...(r.pk || {}) }; if (pk[pid]) delete pk[pid]; else pk[pid] = true; if (Object.keys(pk).length) r.pk = pk; else delete r.pk; }
+  else { if (chScore(r) !== 10) return; if (r.peak) delete r.peak; else r.peak = true; }
+  r.updated = Date.now();
+  save();
+}
+const chPeakBtn = (id, pid, on) => peakBtnHTML(`data-chpeak="${esc(id)}" ${pid ? `data-chpeakp="${esc(pid)}"` : ''}`, on);
 const chSnap = (c) => ({ id: c.id, n: c.n, r: c.r, p: c.p, big: c.big, m: c.m, anime: c.anime, sp: c.sp, mp: c.mp, sea: c.sea });
 const chScoreRow = (my, attr = 'data-chrate') => `<div class="th-sc">${Array.from({ length: 10 }, (_, i) => i + 1).map((n) => `<button type="button" ${attr}="${n}" style="--c:${chColor(n)}" class="${my === n ? 'on' : ''}" title="${esc(LABEL[n])}">${n}</button>`).join('')}</div>`;
 const chColor = (s) => thColor(s);
@@ -141,6 +154,7 @@ function chRowHTML(c, anime, pid) {
     <span class="ch-avw" data-chopen="${esc(c.id)}"><img class="ch-ava" loading="lazy" src="${esc(chImg(c.id, pid) || c.p)}" alt="">${sp ? `<img class="ch-avs" loading="lazy" src="${esc(sp)}" alt="">` : ''}</span>
     <div class="th-info" data-chopen="${esc(c.id)}"><b>${esc(chName(c))}</b><span>${tr(m ? 'главный' : 'второстепенный')}${all ? ' · ' + tr('общая {n}', { n: all }) : ''}</span></div>
     ${chScoreRow(my, 'data-chsea')}
+    ${my === 10 ? chPeakBtn(c.id, pid, CHS()[c.id]?.pk?.[pid]) : ''}
   </div>`;
   }
   const my = chScore(CHS()[c.id]);
@@ -148,6 +162,7 @@ function chRowHTML(c, anime, pid) {
     <img class="ch-ava" loading="lazy" src="${esc(c.p)}" alt="" data-chopen="${esc(c.id)}">
     <div class="th-info" data-chopen="${esc(c.id)}"><b>${esc(chName(c))}</b><span>${tr(c.m ? 'главный' : 'второстепенный')}${anime ? ' · ' + esc(tn(anime)) : ''}</span></div>
     ${chRO() ? (my ? `<b class="th-my" style="--c:${chColor(my)}">${my}</b>` : '') : `<div class="th-sc">${Array.from({ length: 10 }, (_, i) => i + 1).map((n) => `<button type="button" data-chrate="${n}" style="--c:${chColor(n)}" class="${my === n ? 'on' : ''}" title="${esc(LABEL[n])}">${n}</button>`).join('')}</div>`}
+    ${!chRO() && my === 10 ? chPeakBtn(c.id, '', CHS()[c.id]?.peak) : ''}
   </div>`;
 }
 function chRender() {
@@ -197,12 +212,12 @@ function chRender() {
     return;
   }
   const items = ch.lm === 'sea'
-    ? Object.entries(rated).flatMap(([id, r]) => { const c = { ...(r.c || {}), ...(ch.byId.get(id) || {}) }; const lab = new Map((c.sea || []).map((x) => [x.id, x])); return Object.entries(r.s || {}).map(([pid, v]) => ({ ...c, id, score: v, at: r.updated || r.added, m: c.mp ? c.mp.includes(pid) : c.m, sl: lab.get(pid)?.l || '', sf: lab.get(pid)?.full || '', spp: lab.get(pid)?.poster || '', p: chImg(id, pid, r) || c.p })); }).filter((c) => c.score != null && roleOk(c))
-    : Object.entries(rated).map(([id, r]) => ({ ...(ch.byId.get(id) || r.c), id, score: chScore(r), at: r.updated || r.added })).filter((c) => c.score != null && roleOk(c));
+    ? Object.entries(rated).flatMap(([id, r]) => { const c = { ...(r.c || {}), ...(ch.byId.get(id) || {}) }; const lab = new Map((c.sea || []).map((x) => [x.id, x])); return Object.entries(r.s || {}).map(([pid, v]) => ({ ...c, id, score: v, at: r.updated || r.added, m: c.mp ? c.mp.includes(pid) : c.m, sl: lab.get(pid)?.l || '', sf: lab.get(pid)?.full || '', spp: lab.get(pid)?.poster || '', p: chImg(id, pid, r) || c.p, peak: v === 10 && !!r.pk?.[pid] })); }).filter((c) => c.score != null && roleOk(c))
+    : Object.entries(rated).map(([id, r]) => ({ ...(ch.byId.get(id) || r.c), id, score: chScore(r), peak: !!r.peak && chScore(r) === 10, at: r.updated || r.added })).filter((c) => c.score != null && roleOk(c));
   if (!items.length) { body.innerHTML = empty(tr('Тир-лист пока пуст'), ro ? '' : tr('Оцени персонажа — он появится здесь.')); return; }
-  body.innerHTML = `<div class="th-board">${TIERS.map((x) => {
-    const row = items.filter((c) => thTierOf(c.score) === x.t).sort((a, b) => b.score - a.score || a.at - b.at);
-    return `<div class="th-trow"><div class="th-tl" style="--c:${x.c}"><b>${esc((!ro && tierNames[x.t]?.name) || x.t)}</b></div><div class="th-items ch-items">${row.map((c) => `<button type="button" class="ch-chip" data-chopen="${esc(c.id)}" title="${esc(chName(c) + (c.sf ? ' · ' + c.sf : ''))}"><img loading="lazy" src="${esc(c.p)}" alt="">${c.spp ? `<img class="ch-chs" loading="lazy" src="${esc(c.spp)}" alt="">` : ''}<span>${esc(chName(c))}</span>${c.sl ? `<small class="ch-sl">${esc(c.sl)}</small>` : ''}<i class="th-cs" style="--c:${x.c}">${c.score}</i></button>`).join('')}</div></div>`;
+  body.innerHTML = `<div class="th-board">${(items.some((c) => c.peak) ? [PEAK, ...TIERS] : TIERS).map((x) => {
+    const row = items.filter((c) => (x.t === 'P' ? c.peak : !c.peak && thTierOf(c.score) === x.t)).sort((a, b) => b.score - a.score || a.at - b.at);
+    return `<div class="th-trow ${x.t === 'P' ? 'peakrow' : ''}"><div class="th-tl" style="--c:${x.c}"><b>${x.t === 'P' ? peakLabelHTML() : esc((!ro && tierNames[x.t]?.name) || x.t)}</b></div><div class="th-items ch-items">${row.map((c) => `<button type="button" class="ch-chip" data-chopen="${esc(c.id)}" title="${esc(chName(c) + (c.sf ? ' · ' + c.sf : ''))}"><img loading="lazy" src="${esc(c.p)}" alt="">${c.spp ? `<img class="ch-chs" loading="lazy" src="${esc(c.spp)}" alt="">` : ''}<span>${esc(chName(c))}</span>${c.sl ? `<small class="ch-sl">${esc(c.sl)}</small>` : ''}<i class="th-cs" style="--c:${x.c}">${c.score}</i></button>`).join('')}</div></div>`;
   }).join('')}</div>`;
 }
 
@@ -212,7 +227,7 @@ function chRate(id, score) {
   if (!c || chRO()) return;
   const now = Date.now(), old = CHS()[id];
   if (chScore(old) === score && !old?.s && !old?.img) { delete CHS()[id]; (db.deleted ||= {})['h:' + id] = now; }
-  else { CHS()[id] = { ...(old || {}), score: chScore(old) === score ? null : score, added: old?.added || now, updated: now, c: chSnap(c) }; if (db.deleted) delete db.deleted['h:' + id]; }
+  else { CHS()[id] = { ...(old || {}), score: chScore(old) === score ? null : score, added: old?.added || now, updated: now, c: chSnap(c) }; if (CHS()[id].score !== 10) delete CHS()[id].peak; if (db.deleted) delete db.deleted['h:' + id]; }
   save();
 }
 document.body.insertAdjacentHTML('beforeend', `<dialog id="chDlg" class="sheet card ch-dlg" aria-label="${tr('Персонажи')}">
@@ -227,7 +242,7 @@ function chSeaCard(c, ro) {
   const got = sea.map((x) => ({ ...x, v: chSea(c.id, x.id) })), done = got.filter((x) => x.v != null);
   const trend = done.length > 1 ? `<div class="ch-trend"><span>${tr('Как менялся')}</span>${done.map((x, i) => `${i ? '<i>→</i>' : ''}<b style="--c:${chColor(x.v)}" title="${esc(x.full)}">${x.v}</b>`).join('')}</div>` : '';
   if (ro) return done.length ? `<h3 class="ch-h">${tr('По сезонам')}</h3>${trend}<div class="ch-seas">${done.map((x) => `<div class="ch-sr"><span title="${esc(x.full)}">${(chImg(c.id, x.id) || x.poster) ? `<img src="${esc(chImg(c.id, x.id) || x.poster)}" alt="" loading="lazy">` : ''}${esc(x.l)}</span><b class="th-my" style="--c:${chColor(x.v)}">${x.v}</b></div>`).join('')}</div>` : '';
-  return `<h3 class="ch-h">${tr('По сезонам')}</h3>${trend}<div class="ch-seas">${got.map((x) => { const im = chImg(c.id, x.id), pic = im || x.poster; return `<div class="ch-sr" data-pid="${esc(x.id)}"><div class="ch-srh"><button type="button" class="ch-pic ${im ? 'has' : ''}" data-chpic title="${tr('Своя картинка')}">${pic ? `<img src="${esc(pic)}" alt="" loading="lazy">` : ''}${im ? '' : `<i>${icon('upload')}</i>`}</button><div class="ch-srt"><span title="${esc(x.full)}">${esc(x.l)}</span><button type="button" class="link" data-chpic>${tr(im ? 'Сменить картинку' : 'Своя картинка')}</button></div></div>${ch.picOpen === x.id ? `<div class="ch-picp"><p class="set-note">${tr('Твоя картинка персонажа для этого сезона. Видна в списке, тир-листе и друзьям по ссылке на топ.')}</p><div class="ch-picb"><button type="button" class="btn primary" data-chpicf>${icon('upload')}<span>${tr('Загрузить картинку')}</span></button>${im ? `<button type="button" class="btn" data-chpicx>${tr('Убрать')}</button>` : ''}</div><form class="ch-picu"><input type="url" name="u" inputmode="url" placeholder="${tr('Ссылка на картинку')}: https://…" value="${im && !im.startsWith('data:') ? esc(im) : ''}"><button class="btn">OK</button></form></div>` : ''}${chScoreRow(x.v, 'data-chsea')}</div>`; }).join('')}</div>`;
+  return `<h3 class="ch-h">${tr('По сезонам')}</h3>${trend}<div class="ch-seas">${got.map((x) => { const im = chImg(c.id, x.id), pic = im || x.poster; return `<div class="ch-sr" data-pid="${esc(x.id)}"><div class="ch-srh"><button type="button" class="ch-pic ${im ? 'has' : ''}" data-chpic title="${tr('Своя картинка')}">${pic ? `<img src="${esc(pic)}" alt="" loading="lazy">` : ''}${im ? '' : `<i>${icon('upload')}</i>`}</button><div class="ch-srt"><span title="${esc(x.full)}">${esc(x.l)}</span><button type="button" class="link" data-chpic>${tr(im ? 'Сменить картинку' : 'Своя картинка')}</button></div></div>${ch.picOpen === x.id ? `<div class="ch-picp"><p class="set-note">${tr('Твоя картинка персонажа для этого сезона. Видна в списке, тир-листе и друзьям по ссылке на топ.')}</p><div class="ch-picb"><button type="button" class="btn primary" data-chpicf>${icon('upload')}<span>${tr('Загрузить картинку')}</span></button>${im ? `<button type="button" class="btn" data-chpicx>${tr('Убрать')}</button>` : ''}</div><form class="ch-picu"><input type="url" name="u" inputmode="url" placeholder="${tr('Ссылка на картинку')}: https://…" value="${im && !im.startsWith('data:') ? esc(im) : ''}"><button class="btn">OK</button></form></div>` : ''}${chScoreRow(x.v, 'data-chsea')}${x.v === 10 ? chPeakBtn(c.id, x.id, CHS()[c.id]?.pk?.[x.id]) : ''}</div>`; }).join('')}</div>`;
 }
 function chOpen(id) {
   const c = ch.byId.get(id);
@@ -237,7 +252,8 @@ function chOpen(id) {
   const my = chScore(CHS()[id]), ro = chRO();
   $('#chCard').innerHTML = `<img class="ch-big" src="${esc(c.big || c.p)}" alt=""><div class="ch-meta"><h2>${esc(chName(c))}</h2>${c.r && c.n ? `<p class="ch-orig">${esc(EN_ON ? c.r : c.n)}</p>` : ''}<p>${tr(c.m ? 'главный' : 'второстепенный')}${c.anime ? ' · ' + esc(tn(c.anime)) : ''}</p>
     <p class="th-now">${my ? tr(ro ? 'Оценка: {n}' : 'Моя оценка: {n}', { n: `${my} — ${LABEL[my]}` }) : ro ? tr('нет оценки') : tr('Ещё не оценён')}</p>
-    ${ro ? '' : `${chSeaOf(c).length > 1 ? `<h3 class="ch-h">${tr('Общая оценка')}</h3>` : ''}<div class="th-big">${Array.from({ length: 10 }, (_, j) => 10 - j).map((n) => `<button type="button" data-chrate="${n}" style="--c:${chColor(n)}" class="${my === n ? 'on' : ''}"><b>${n}</b><small>${esc(LABEL[n])}</small></button>`).join('')}</div>`}
+    ${ro ? '' : `${chSeaOf(c).length > 1 ? `<h3 class="ch-h">${tr('Общая оценка')}</h3>` : ''}<div class="th-big">${Array.from({ length: 10 }, (_, j) => 10 - j).map((n) => `<button type="button" data-chrate="${n}" style="--c:${chColor(n)}" class="${my === n ? 'on' : ''}"><b>${n}</b><small>${esc(LABEL[n])}</small></button>`).join('')}</div>${my === 10 ? `<div class="peak-w">${chPeakBtn(id, '', CHS()[id]?.peak)}</div>` : ''}`}
+    ${ro && my === 10 && CHS()[id]?.peak ? peakTagHTML() : ''}
     ${chSeaCard(c, ro)}
     <a class="ext" href="https://shikimori.io/characters/${esc(id)}" target="_blank" rel="noopener">${tr('Открыть на Shikimori')}${icon('ext')}</a></div>`;
   if (!chDlg.open) openModal(chDlg);
@@ -248,6 +264,8 @@ chDlg.addEventListener('click', (e) => {
   if (r && ch.cur) { chRate(ch.cur, +r.dataset.chrate); chOpen(ch.cur); chRender(); return; }
   const sv = e.target.closest('[data-chsea]');
   if (sv && ch.cur) { chRateSea(ch.cur, sv.closest('[data-pid]').dataset.pid, +sv.dataset.chsea); chOpen(ch.cur); chRender(); return; }
+  const pk = e.target.closest('[data-chpeak]');
+  if (pk && ch.cur) { chPeak(ch.cur, pk.dataset.chpeakp || ''); chOpen(ch.cur); chRender(); return; }
   const pp = e.target.closest('[data-chpic]');
   if (pp && ch.cur) { const pid = pp.closest('[data-pid]').dataset.pid; ch.picOpen = ch.picOpen === pid ? null : pid; chOpen(ch.cur); return; }
   if (e.target.closest('[data-chpicf]') && ch.cur) { ch.picPid = e.target.closest('[data-pid]').dataset.pid; $('#chPicFile').click(); return; }
@@ -290,6 +308,8 @@ $('#view-chars').addEventListener('click', (e) => {
   if (e.target.closest('[data-chunr]')) { ch.unr = !ch.unr; chRender(); return; }
   const lm = e.target.closest('[data-chlm]');
   if (lm) { ch.lm = lm.dataset.chlm; setPref('chLm', ch.lm); chRender(); return; }
+  const pk = e.target.closest('[data-chpeak]');
+  if (pk) { chPeak(pk.dataset.chpeak, pk.dataset.chpeakp || ''); chRender(); return; }
   const sm = e.target.closest('[data-chsm]');
   if (sm) { ch.sm[sm.dataset.g] = sm.dataset.chsm; chRender(); return; }
   const sg = e.target.closest('[data-chsg]');

@@ -242,12 +242,13 @@ const scrollPos = { mine: 0, catalog: 0 };
 function show(v) {
   scrollPos[view] = window.scrollY;
   view = v;
-  $$('.nav-btn').forEach((t) => t.classList.toggle('on', t.dataset.view === v));
+  $$('.nav-btn').forEach((t) => t.classList.toggle('on', t.dataset.view === (v === 'ost' ? 'themes' : v)));
   $('#view-mine').hidden = v !== 'mine';
   $('#view-catalog').hidden = v !== 'catalog';
   $('#view-themes').hidden = v !== 'themes';
   $('#view-games').hidden = v !== 'games';
   $('#view-chars').hidden = v !== 'chars';
+  if ($('#view-ost')) $('#view-ost').hidden = v !== 'ost';
   $('#trayBtn').hidden = v !== 'mine';
   if (v !== 'mine' && trayOpen) setTray(false);
   if (v === 'mine') renderMine();
@@ -255,6 +256,7 @@ function show(v) {
   if (v === 'themes' && typeof thShowView === 'function') thShowView();
   if (v === 'games' && typeof gmShowView === 'function') gmShowView();
   if (v === 'chars' && typeof chShowView === 'function') chShowView();
+  if (v === 'ost' && typeof osShowView === 'function') osShowView();
   setPref('view', v);
   window.scrollTo(0, scrollPos[v] || 0);
 }
@@ -458,7 +460,7 @@ function titleGroups() {
   return [...g.values()];
 }
 function seasonRow(it) {
-  return { type: 'season', anime: it.anime, score: it.score, approx: false, world: it.anime.score, status: it.status, note: it.note, added: it.added, tier: it.tier || null, pos: it.pos ?? null };
+  return { type: 'season', anime: it.anime, score: it.score, approx: false, world: it.anime.score, status: it.status, note: it.note, added: it.added, tier: it.tier || null, pos: it.pos ?? null, peak: !!it.peak && it.score === 10 };
 }
 function titleRow(g) {
   const f = g.f;
@@ -473,7 +475,7 @@ function titleRow(g) {
     status: f?.status || ss[ss.length - 1].status, note: f?.note || '',
     added: Math.max(f?.added || 0, ...g.seasons.map((s) => s.added)),
     parts: f?.anime.parts || null, ratedSeasons: g.seasons.length,
-    tier: f?.tier || null, pos: f?.pos ?? null,
+    tier: f?.tier || null, pos: f?.pos ?? null, peak: !!f?.peak && f?.score === 10,
   };
 }
 function buildRows() {
@@ -714,7 +716,13 @@ const TIERS = [
 ];
 // отдельная полоса внизу — то, что ещё не смотрел (статус «Не смотрел»)
 const NW = { t: 'nw', c: '#9a95ad', name: tr('Не смотрел'), d: '' };
-const TIER_DEF = Object.fromEntries([...TIERS.map((x) => [x.t, { name: x.t, d: x.d }]), ['nw', { name: NW.name, d: NW.d }]]);
+// 20.11: «Абсолютный пик» — доп. отметка для оценки 10 во всех разделах; в тир-листах — ряд «Пик» выше S (только если в нём что-то есть)
+Object.assign(EN, { 'Абсолютный пик': 'Absolute peak', 'Пик': 'Peak', 'Лучшее из лучшего': 'The best of the best', 'Лучшее из лучшего — выше S': 'The best of the best — above S', 'Пик — только для оценки 10': 'Peak is only for a 10' });
+const PEAK = { t: 'P', c: '#ffd36b', d: tr('Лучшее из лучшего') };
+const peakBtnHTML = (attr, on) => `<button type="button" class="peak-btn ${on ? 'on' : ''}" ${attr} title="${esc(tr('Лучшее из лучшего — выше S'))}">${icon('trophy')}<span>${tr('Абсолютный пик')}</span></button>`;
+const peakTagHTML = () => `<span class="peak-tag">${icon('trophy')}${tr('Абсолютный пик')}</span>`;
+const TIER_DEF = Object.fromEntries([...TIERS.map((x) => [x.t, { name: x.t, d: x.d }]), ['P', { name: tr('Пик'), d: PEAK.d }], ['nw', { name: NW.name, d: NW.d }]]);
+const peakLabelHTML = () => `${icon('trophy')}<small>${esc(tierNames.P?.name || tr('Пик'))}</small>`;
 // свои названия и подписи тиров: { S: { name: 'Топ', d: 'Любимые' } }
 let tierNames = {};
 try { tierNames = JSON.parse(pref('tierNames', '{}')) || {}; } catch {}
@@ -778,7 +786,7 @@ function autoTier(s) {
   const r = Math.round(s);
   return r >= 10 ? 'S' : r >= 9 ? 'A' : r >= 8 ? 'B' : r >= 7 ? 'C' : r >= 5 ? 'D' : 'F';
 }
-const rowTier = (r) => r.tier || autoTier(r.score);
+const rowTier = (r) => (r.peak && Math.round(r.score || 0) >= 10 ? 'P' : r.tier === 'P' ? autoTier(r.score) : r.tier || autoTier(r.score));
 const rowId = (r) => (r.type === 'title' ? 't:' + r.key : 's:' + r.anime.id);
 function withinTier(a, b) {
   return (a.pos ?? 1e9) - (b.pos ?? 1e9) || (b.score || 0) - (a.score || 0) || (b.world || 0) - (a.world || 0)
@@ -803,10 +811,12 @@ function dropRow(r, ng, before) {
   full.splice(idx, 0, r);
   full.forEach((x, k) => writeRow(x, { pos: k }));
   if (ng === 'nw') { if (r.status !== 'not_watched') writeRow(r, { status: 'not_watched' }); }
+  else if (ng === 'P') { if (Math.round(r.score || 0) >= 10 && !r.approx) writeRow(r, { peak: true, status: r.status === 'not_watched' ? 'completed' : r.status }); else toast(tr('Пик — только для оценки 10')); }
   else {
     const patch = {};
+    if (r.peak) patch.peak = false;
     if (r.status === 'not_watched') patch.status = 'completed'; // вытащил из «Не смотрел» — значит посмотрел
-    if (ng !== rowTier(r)) patch.tier = ng;
+    if (ng !== rowTier(r) || r.peak) patch.tier = ng;
     writeRow(r, patch);
   }
   save(); renderMine();
@@ -1017,10 +1027,10 @@ function renderMine() {
   if (layout === 'tiers') {
     // тир-лист: в каждом тире свои места 1, 2, 3…
     mineRows = [];
-    const groups = [...TIERS, NW, { t: null, c: '#4a4560' }].map((x) => ({ ...x, rows: list.filter((r) => rowGroup(r) === x.t).sort(withinTier) }));
-    mineList.innerHTML = `<div class="tiers">${groups.filter((g) => g.t || g.rows.length).map((g) => {
+    const groups = [PEAK, ...TIERS, NW, { t: null, c: '#4a4560' }].map((x) => ({ ...x, rows: list.filter((r) => rowGroup(r) === x.t).sort(withinTier) }));
+    mineList.innerHTML = `<div class="tiers">${groups.filter((g) => (g.t && g.t !== 'P') || g.rows.length).map((g) => {
       const name = g.t ? tierName(g.t) : '?', desc = g.t ? tierDesc(g.t) : tr('Без оценки');
-      return `<section class="tier ${g.t === 'nw' ? 'tier-nw' : ''}" data-tier="${g.t || ''}" style="--c:${g.c}">
+      return `<section class="tier ${g.t === 'nw' ? 'tier-nw' : ''} ${g.t === 'P' ? 'tier-peak' : ''}" data-tier="${g.t || ''}" style="--c:${g.c}">
         <div class="tier-label">
           <button class="tier-name" ${g.t ? `data-edit="${g.t}" title="${tr('Нажми, чтобы переименовать')}"` : 'disabled'}>
             <b class="${name.length > 2 ? 'long' : ''}">${esc(name)}</b>${desc ? `<em>${esc(desc)}</em>` : ''}
@@ -1453,6 +1463,7 @@ function setRec(patch) {
   const snap = isTitle(st) ? titleSnap(st) : snapshot(st.anime);
   const cur = store[key] || { score: null, status: 'completed', note: '', added: now };
   const n = $('#note');
+  if ('score' in patch && patch.score !== 10) patch = { ...patch, peak: false };
   store[key] = { ...cur, ...(n ? { note: n.value.trim() } : {}), ...patch, anime: snap, updated: now };
   save(); afterChange();
 }
@@ -1532,7 +1543,7 @@ function renderCard() {
   }
   let rate;
   if (window.VIEWING) {
-    rate = rec?.score ? `<section class="sec"><div class="sec-head"><h3>${tr('Оценка {l}', { l: esc(window.VIEWING.login) })}</h3><div class="verdict">${verdictHTML(rec.score)}</div></div></section>` : '';
+    rate = rec?.score ? `<section class="sec"><div class="sec-head"><h3>${tr('Оценка {l}', { l: esc(window.VIEWING.login) })}</h3><div class="verdict">${verdictHTML(rec.score)}</div></div>${rec.peak && rec.score === 10 ? peakTagHTML() : ''}</section>` : '';
   } else if (!title && !st.loading && notOut(st.anime) && !rec) {
     rate = `<section class="sec"><div class="sec-head"><h3>${tr('Моя оценка')}</h3></div><div class="soon-box">${tr('Это аниме ещё не вышло — оценить можно будет после выхода.')}</div></section>`;
   } else if (waitTitle) {
@@ -1541,6 +1552,7 @@ function renderCard() {
     rate = `<section class="sec">
       <div class="sec-head"><h3>${rateH}</h3><div class="verdict" id="verdict">${verdictHTML(rec?.score)}</div></div>
       <div class="scale" id="scale">${Array.from({ length: 10 }, (_, i) => i + 1).map((n) => `<button data-n="${n}" class="${rec?.score >= n ? 'fill' : ''} ${rec?.score === n ? 'on' : ''}" aria-label="${n} — ${LABEL[n]}">${n}</button>`).join('')}</div>
+      ${rec?.score === 10 ? `<div class="peak-w">${peakBtnHTML('id="peakBtn"', rec.peak)}</div>` : ''}
       <p class="rate-hint">${rec?.score ? `<button class="link" id="unrate">${tr('Убрать оценку')}</button>` : esc(hintText)}</p>
       <div class="field"><span class="lbl">${tr('Статус')}</span><div class="chips">${Object.entries(WATCH).map(([k, v]) => `<button class="chip ${rec?.status === k ? 'on' : ''}" data-watch="${k}">${v}</button>`).join('')}</div></div>
       ${tierField}
@@ -1593,6 +1605,7 @@ function renderCard() {
   });
   scale.addEventListener('pointerleave', () => preview(0));
   $('#unrate')?.addEventListener('click', () => { setRec({ score: null }); renderCard(); toast(tr('Оценка убрана')); });
+  $('#peakBtn')?.addEventListener('click', () => { const on = !curRec()?.peak; setRec({ peak: on, ...(on ? { pos: null } : {}) }); renderCard(); if (on) toast(tr('Абсолютный пик')); });
   $$('[data-watch]', card).forEach((b) => b.addEventListener('click', () => {
     const had = !!curRec();
     setRec({ status: b.dataset.watch });
@@ -1671,9 +1684,9 @@ async function makeShareImage(onProgress) {
   // размеры рейтинга
   const RH = 140, LIMIT = 50;
   if (tiers) {
-    groups = [...TIERS, NW, { t: null, c: '#4a4560' }]
+    groups = [PEAK, ...TIERS, NW, { t: null, c: '#4a4560' }]
       .map((x) => ({ ...x, rows: all.filter((r) => rowGroup(r) === x.t).sort(withinTier) }))
-      .filter((g) => (g.t && g.t !== 'nw') || g.rows.length);
+      .filter((g) => (g.t && g.t !== 'nw' && g.t !== 'P') || g.rows.length);
     groups.forEach((g) => { g.h = g.rows.length ? Math.ceil(g.rows.length / per) * (PH + NH + GAP) - GAP + 24 : 116; });
     H = HEAD + groups.reduce((sum, g) => sum + g.h + 12, 0) + FOOT;
   } else {
@@ -1921,7 +1934,7 @@ if (history.state?.modal) history.replaceState(null, ''); // страницу о
 updateCount();
 renderPills();
 loadGenres();
-view = ['catalog', 'themes', 'games', 'chars'].includes(pref('view', 'mine')) ? pref('view', 'mine') : 'mine';
+view = ['catalog', 'themes', 'games', 'chars', 'ost'].includes(pref('view', 'mine')) ? pref('view', 'mine') : 'mine';
 show(view);
 if (EN_ON) fillEnglishNames();
 try { localStorage.removeItem('animetop.series2'); localStorage.removeItem('animetop.series3'); localStorage.removeItem('animetop.genres'); } catch {} // старые кэши без английских названий

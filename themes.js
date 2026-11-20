@@ -204,6 +204,7 @@ function thRowHTML(t) {
     <div class="th-info" data-play="${esc(t.k)}"><b><span class="th-tag ${t.type === 'ED' ? 'ed' : ''}">${thLabel(t)}</span>${esc(t.song || '—')}</b>
       <span>${thMeta(t).map(esc).join(' · ')}${t.spoiler ? ` · <i class="th-sp">${tr('спойлер')}</i>` : ''}</span></div>
     ${thRO() ? (my ? `<b class="th-my" style="--c:${thColor(my)}">${my}</b>` : '') : `<div class="th-sc">${Array.from({ length: 10 }, (_, i) => i + 1).map((n) => `<button type="button" data-rate="${n}" style="--c:${thColor(n)}" class="${my === n ? 'on' : ''}" title="${esc(LABEL[n])}">${n}</button>`).join('')}</div>`}
+    ${!thRO() && my === 10 ? peakBtnHTML(`data-thpeak="${esc(t.k)}"`, TH()[t.k]?.peak) : thRO() && my === 10 && TH()[t.k]?.peak ? peakTagHTML() : ''}
   </div>`;
 }
 const thPlayIcon = '<svg viewBox="0 0 24 24" class="ic"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>';
@@ -276,14 +277,14 @@ function renderThemes() {
     return;
   }
   // тир-лист по оценке
-  const items = Object.entries(rated).map(([k, r]) => ({ ...(th.byKey.get(k) || r.t), score: thScore(r), at: r.updated || r.added }))
+  const items = Object.entries(rated).map(([k, r]) => ({ ...(th.byKey.get(k) || r.t), score: thScore(r), peak: !!r.peak && thScore(r) === 10, at: r.updated || r.added }))
     .filter((t) => t.k && t.score != null && thKindOk(t));
   th.list = [];
   if (!items.length) { body.innerHTML = prog + (ro ? thCompareHTML() : '') + empty(tr('Тир-лист пока пуст'), ro ? '' : tr('Включи видео и поставь оценку — опенинг появится здесь.')); return; }
-  body.innerHTML = (ro ? thCompareHTML() : '') + `<div class="th-board">${TIERS.map((x) => {
-    const row = items.filter((t) => thTierOf(t.score) === x.t).sort((a, b) => b.score - a.score || a.at - b.at);
+  body.innerHTML = (ro ? thCompareHTML() : '') + `<div class="th-board">${(items.some((t) => t.peak) ? [PEAK, ...TIERS] : TIERS).map((x) => {
+    const row = items.filter((t) => (x.t === 'P' ? t.peak : !t.peak && thTierOf(t.score) === x.t)).sort((a, b) => b.score - a.score || a.at - b.at);
     th.list.push(...row.map((t) => t.k));
-    return `<div class="th-trow"><div class="th-tl" style="--c:${x.c}"><b>${esc((!ro && tierNames[x.t]?.name) || x.t)}</b></div><div class="th-items">${row.map((t) => `<button type="button" class="th-chip" data-play="${esc(t.k)}" title="${esc(`${thLabel(t)} · ${t.song} — ${t.artists}`)}">
+    return `<div class="th-trow ${x.t === 'P' ? 'peakrow' : ''}"><div class="th-tl" style="--c:${x.c}"><b>${x.t === 'P' ? peakLabelHTML() : esc((!ro && tierNames[x.t]?.name) || x.t)}</b></div><div class="th-items">${row.map((t) => `<button type="button" class="th-chip" data-play="${esc(t.k)}" title="${esc(`${thLabel(t)} · ${t.song} — ${t.artists}`)}">
       <img loading="lazy" src="${esc(t.anime?.poster || '')}" alt=""><span><b>${esc(t.song || thLabel(t))}</b><small>${esc(tn(t.part || t.anime))} · ${thLabel(t)}</small></span><i class="th-cs" style="--c:${x.c}">${t.score}</i></button>`).join('')}</div></div>`;
   }).join('')}</div>${credit}`;
 }
@@ -324,14 +325,14 @@ function thCompareHTML() {
 /* ---------- картинка тир-листа опенингов ---------- */
 async function thMakeImage(onProgress) {
   const rated = TH();
-  const items = Object.entries(rated).map(([k, r]) => ({ ...(th.byKey.get(k) || r.t), score: thScore(r), at: r.updated || r.added })).filter((t) => t.k && t.score != null);
+  const items = Object.entries(rated).map(([k, r]) => ({ ...(th.byKey.get(k) || r.t), score: thScore(r), peak: !!r.peak && thScore(r) === 10, at: r.updated || r.added })).filter((t) => t.k && t.score != null);
   try { await Promise.all([document.fonts.load('700 40px Unbounded'), document.fonts.load('700 20px Onest'), document.fonts.load('500 20px Onest')]); } catch {}
   const F = (w, px, disp) => w + ' ' + px + 'px ' + (disp ? 'Unbounded' : 'Onest') + ', system-ui, sans-serif';
   const P = 48, HEAD = 176, FOOT = 92, LW = 150, GAP = 12, CH = 124, LIMIT = 90;
   const bodyX = P + LW + 12, bodyW = SHARE_W - P - bodyX, per = 2, CW = Math.floor((bodyW - 24 - GAP) / per);
   let left = LIMIT;
-  const groups = TIERS.map((x) => {
-    const all = items.filter((t) => thTierOf(t.score) === x.t).sort((a, b) => b.score - a.score || a.at - b.at);
+  const groups = (items.some((t) => t.peak) ? [PEAK, ...TIERS] : TIERS).map((x) => {
+    const all = items.filter((t) => (x.t === 'P' ? t.peak : !t.peak && thTierOf(t.score) === x.t)).sort((a, b) => b.score - a.score || a.at - b.at);
     const rows = all.slice(0, Math.max(0, left)); left -= rows.length;
     return { ...x, rows, cut: all.length - rows.length };
   });
@@ -426,8 +427,15 @@ function thRate(k, score) {
   if (!t || thRO() || !(score >= 1 && score <= 10)) return;
   const now = Date.now(), old = TH()[k];
   const { vids, ...rest } = t;
-  TH()[k] = { score, added: old?.added || now, updated: now, t: { ...rest, vids: vids?.slice(0, 6) } };
+  TH()[k] = { score, added: old?.added || now, updated: now, t: { ...rest, vids: vids?.slice(0, 6) }, ...(score === 10 && old?.peak ? { peak: true } : {}) };
   if (db.deleted) delete db.deleted['o:' + k];
+  save();
+}
+function thPeak(k) {
+  const r = TH()[k];
+  if (!r || thRO() || thScore(r) !== 10) return;
+  if (r.peak) delete r.peak; else r.peak = true;
+  r.updated = Date.now();
   save();
 }
 function thUnrate(k) {
@@ -471,6 +479,7 @@ function thOpen(k, keepTime) {
       ${vids.length > 1 ? `<div class="th-q"><span>${tr('Качество')}</span>${vids.map((x) => `<button type="button" data-thq="${x.audio ? 'audio' : x.r + (x.nc ? 'nc' : '')}" class="${x === v ? 'on' : ''}">${esc(thQLabel(x))}</button>`).join('')}</div>` : ''}
       <p class="th-now">${my ? tr(ro ? 'Оценка: {n}' : 'Моя оценка: {n}', { n: `${my} — ${LABEL[my]}` }) : ro ? tr('нет оценки') : tr('Ещё не оценён')}${ro && thScore(th.mine?.themes?.[k]) != null ? ` · ${tr('твоя: {n}', { n: thScore(th.mine.themes[k]) })}` : ''}</p></div>
     ${ro ? '' : `<div class="th-big">${Array.from({ length: 10 }, (_, j) => 10 - j).map((n) => `<button type="button" data-rate="${n}" style="--c:${thColor(n)}" class="${my === n ? 'on' : ''}"><b>${n}</b><small>${esc(LABEL[n])}</small></button>`).join('')}</div>`}
+    <div class="peak-w th-peakw">${my === 10 ? (ro ? (TH()[k]?.peak ? peakTagHTML() : '') : peakBtnHTML(`data-thpeak="${esc(k)}"`, TH()[k]?.peak)) : ''}</div>
     ${ro ? '' : `<div class="th-nav"><button type="button" class="link" data-unrate ${my ? '' : 'hidden'}>${tr('Убрать оценку')}</button></div>`}`;
   const vid = $('#thVid');
   vid.volume = Math.min(1, Math.max(0, +pref('thVol', '0.8')));
@@ -485,6 +494,7 @@ function thMarkRating() {
   $$('.th-big [data-rate]', thDlg).forEach((b) => b.classList.toggle('on', +b.dataset.rate === my));
   const now = $('.th-now', thDlg); if (now) now.textContent = my ? tr('Моя оценка: {n}', { n: `${my} — ${LABEL[my]}` }) : tr('Ещё не оценён');
   const un = $('[data-unrate]', thDlg); if (un) un.hidden = !my;
+  const pw = $('.th-peakw', thDlg); if (pw) pw.innerHTML = my === 10 ? peakBtnHTML(`data-thpeak="${esc(th.cur)}"`, TH()[th.cur]?.peak) : '';
 }
 function thStop() { const v = $('#thVid'); if (v) { v.pause(); v.removeAttribute('src'); v.load(); } }
 thDlg.addEventListener('close', () => { thStop(); th.cur = null; if (history.state?.modal === 'thDlg') history.back(); renderThemes(); });
@@ -495,6 +505,7 @@ thDlg.addEventListener('click', (e) => {
   const q = e.target.closest('[data-thq]');
   if (q) { const v = $('#thVid'), at = v?.currentTime || 0; setPref('thQ', q.dataset.thq); thStop(); thOpen(th.cur, at); return; }
   if (e.target.closest('[data-unrate]')) { thUnrate(th.cur); thMarkRating(); renderThemes(); return; }
+  if (e.target.closest('[data-thpeak]') && th.cur) { thPeak(th.cur); thMarkRating(); renderThemes(); return; }
   const r = e.target.closest('[data-rate]');
   if (r && th.cur) {
     thRate(th.cur, +r.dataset.rate);
@@ -555,3 +566,9 @@ function thFullAlbums(d = db) {
   }).length;
 }
 if (view === 'themes') thShowView();
+
+// 20.11: «Абсолютный пик» в списке опенингов
+$('#view-themes').addEventListener('click', (e) => {
+  const p = e.target.closest('[data-thpeak]');
+  if (p) { thPeak(p.dataset.thpeak); renderThemes(); }
+});

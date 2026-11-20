@@ -1493,6 +1493,42 @@ body.viewing .ach { cursor: pointer; }
 .ch-sl { display: block; margin-top: -2px; font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ch-h { margin-top: 6px; font: 700 14px var(--display); color: var(--text2); }
 .ch-seas { display: grid; gap: 10px; }
+/* саундтреки (ost.js) */
+.mu-sw { margin: -4px 0 14px; }
+.os-hint { margin: 0 2px 10px; }
+.os-row { grid-template-columns: 44px minmax(0, 1fr) auto; }
+.os-play { position: relative; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 10px; overflow: hidden; background: var(--elev2); cursor: pointer; color: #fff; }
+.os-play img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.os-play .os-pi { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, .35); }
+.os-play .os-pi .ic { width: 18px; height: 18px; }
+.os-play.on { outline: 2px solid var(--accent); outline-offset: 1px; }
+.os-play.on .os-pi { background: rgba(0, 0, 0, .5); }
+.os-als .ch-sp { max-width: 300px; }
+.os-als .ch-sp span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.os-als .ch-sp img { width: 32px; height: 32px; }
+.os-al1 { margin: 10px 2px 4px; font-size: 12.5px; color: var(--muted); }
+.os-more { justify-self: start; margin: 8px 0 4px; }
+.os-chip img { height: 84px; }
+.os-chip .os-pi { position: absolute; top: 28px; left: 50%; width: 28px; height: 28px; margin-left: -14px; display: grid; place-items: center; border-radius: 50%; background: rgba(0, 0, 0, .55); color: #fff; }
+.os-chip .os-pi .ic { width: 14px; height: 14px; }
+.os-chip.on .os-pi { background: var(--accent); }
+/* «Абсолютный пик» (20.11) */
+.peak-btn { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border: 1px dashed #ffd36b88; border-radius: 999px; background: none; color: #ffd36b; font: 600 12.5px var(--font, inherit); cursor: pointer; white-space: nowrap; }
+.peak-btn .ic { width: 14px; height: 14px; }
+.peak-btn:hover { border-style: solid; }
+.peak-btn.on { border: 1px solid #ffd36b; background: linear-gradient(90deg, #ffd36b33, #ff8a5c33); color: #fff3cf; box-shadow: 0 0 16px #ffd36b44; }
+.th-row .peak-btn { grid-column: 2 / -1; justify-self: start; }
+.ch-sr .peak-btn { justify-self: start; }
+.peak-w { display: flex; margin-top: 10px; }
+.peak-w:empty { display: none; }
+.peak-tag { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 4px 10px; border-radius: 999px; background: linear-gradient(90deg, #ffd36b33, #ff8a5c33); color: #ffe7a3; font-size: 12.5px; font-weight: 600; }
+.peak-tag .ic { width: 14px; height: 14px; }
+.peakrow .th-tl { background: linear-gradient(160deg, #ffe08a, #ff9a5c); }
+.peakrow .th-tl b { display: grid; justify-items: center; gap: 2px; color: #2a1600; }
+.peakrow .th-tl b .ic { width: 20px; height: 20px; }
+.peakrow .th-tl small { font-size: 11px; font-weight: 800; }
+.tier-peak .tier-label { background: linear-gradient(160deg, #ffe08a, #ff9a5c); }
+.os-cn { font-size: 12px; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .ch-srh { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .ch-pic { position: relative; flex: none; width: 36px; height: 48px; padding: 0; border: 1px dashed var(--line2); border-radius: 8px; background: var(--elev2); overflow: hidden; cursor: pointer; color: var(--text); }
 .ch-pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
