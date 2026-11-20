@@ -20,6 +20,7 @@ $('#view-chars').insertAdjacentHTML('afterend', `<main id="view-ost" class="view
     <div class="head-actions"><div class="seg" id="osSeg" role="tablist">
       <button data-osmode="anime" role="tab">${icon('music')}<span>${tr('По аниме')}</span></button>
       <button data-osmode="list" role="tab">${icon('tiers')}<span>${tr('Мой тир-лист')}</span></button>
+      <button data-osmode="pl" role="tab">${icon('list')}<span>${tr('Плейлисты')}</span></button>
     </div></div>
   </div>
   <div class="th-seg mu-sw"><button type="button" data-musw="themes">${tr('Опенинги')}</button><button type="button" class="on" data-musw="ost">${tr('Саундтреки')}</button></div>
@@ -30,7 +31,7 @@ document.addEventListener('click', (e) => { const b = e.target.closest('[data-mu
 
 const OS_KEY = 'animetop.ost1', OS_TTL = 30 * 864e5, OS_SHOW = 30;
 const OSS = () => (db.osts ||= {});
-const os = { mode: pref('osMode', 'anime') === 'list' ? 'list' : 'anime', q: '', open: new Set(), al: {}, all: new Set(), busy: {}, err: {}, cur: null };
+const os = { mode: ['list', 'pl'].includes(pref('osMode', 'anime')) ? pref('osMode', 'anime') : 'anime', q: '', open: new Set(), al: {}, all: new Set(), busy: {}, err: {}, cur: null };
 let osCache = {};
 try { osCache = JSON.parse(localStorage.getItem(OS_KEY) || '{}') || {}; } catch {}
 // списки альбомов — до 300 аниме, треки — до 40 альбомов (их много весят)
@@ -135,16 +136,17 @@ function osFullHTML(t) {
   const L = [['YouTube Music', `https://music.youtube.com/search?q=${q}`], ['Spotify', `https://open.spotify.com/search/${q}`], ['Apple Music', `https://music.apple.com/song/${encodeURIComponent(t.id)}`]];
   return `<div class="os-full"><span>${tr('Слушать полностью')}:</span>${L.map(([n, u]) => `<a class="pill" href="${esc(u)}" target="_blank" rel="noopener">${n}</a>`).join('')}</div>`;
 }
-function osOpen(id) {
+function osOpen(id, list) {
   const x = osTracks.get(id);
   if (!x) return;
   const t = x.t, ro = osRO();
-  if (!osDlg.open || !os.plist?.includes(id)) os.plist = osList.includes(id) ? osList.slice() : [id];
+  if (list) os.plist = list;
+  else if (!osDlg.open || !os.plist?.includes(id)) os.plist = osList.includes(id) ? osList.slice() : [id];
   os.cur = id;
   const L = os.plist, i = L.indexOf(id), prev = i > 0 ? L[i - 1] : null, next = i >= 0 && i < L.length - 1 ? L[i + 1] : null;
   const arrow = (to, flip, label) => `<button type="button" class="th-arr" data-osgo="${esc(to || '')}" ${to ? '' : 'disabled'} title="${tr(label)}" aria-label="${tr(label)}">${icon('back', flip ? 'flip' : '')}</button>`;
   const yt = osYt(t);
-  $('#osPl').innerHTML = `${yt ? `<div class="th-video os-ytv"><iframe src="https://www.youtube-nocookie.com/embed/${esc(yt.v)}?autoplay=1&rel=0&playsinline=1" title="${esc(t.n || 'YouTube')}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>` : `<div class="th-video"><video id="osVid" class="audio" src="${esc(t.prev || '')}" poster="${esc(osArt(t.img, 600))}" controls autoplay playsinline preload="auto"></video>
+  $('#osPl').innerHTML = `${yt ? `<div class="th-video os-ytv"><iframe src="https://www.youtube-nocookie.com/embed/${esc(yt.v)}?autoplay=1&rel=0&playsinline=1&enablejsapi=1&origin=${encodeURIComponent(location.origin)}" title="${esc(t.n || 'YouTube')}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>` : `<div class="th-video"><video id="osVid" class="audio" src="${esc(t.prev || '')}" poster="${esc(osArt(t.img, 600))}" controls autoplay playsinline preload="auto"></video>
       <div class="th-verr" hidden>${tr('Отрывок не загрузился')}</div></div>`}
     <div class="th-meta"><div class="th-top"><h2>${esc(t.n || '—')}</h2>
       <div class="th-arrows">${arrow(prev, false, 'Предыдущий')}<span>${i >= 0 ? `${i + 1} / ${L.length}` : ''}</span>${arrow(next, true, 'Следующий')}</div></div>
@@ -152,15 +154,34 @@ function osOpen(id) {
       <p class="th-now"></p>${yt ? `<p class="os-clip os-by">${tr('Полный трек — YouTube')} · ${tr('автор')}: <a href="https://www.youtube.com${esc(yt.url)}" target="_blank" rel="noopener">${esc(yt.ch)}</a> · <a href="https://www.youtube.com/watch?v=${esc(yt.v)}&list=${esc(yt.list)}" target="_blank" rel="noopener">${tr('Открыть на YouTube')}</a></p>` : `<p class="os-clip">${tr('Отрывок 30 секунд — iTunes')}</p>${osFullHTML(t)}`}</div>
     ${ro ? '' : `<div class="th-big">${Array.from({ length: 10 }, (_, j) => 10 - j).map((n) => `<button type="button" data-osbig="${n}" style="--c:${thColor(n)}"><b>${n}</b><small>${esc(LABEL[n])}</small></button>`).join('')}</div>`}
     <div class="peak-w os-peakw"></div>
-    ${ro ? '' : `<div class="th-nav"><button type="button" class="link" data-osunrate>${tr('Убрать оценку')}</button></div>`}`;
+    ${ro ? '' : `<div class="th-nav"><button type="button" class="btn" data-osaddcur>${icon('plus')}<span>${tr('В плейлист')}</span></button><button type="button" class="link" data-osunrate>${tr('Убрать оценку')}</button></div>`}`;
   osMark();
+  if (yt) osYtWatch();
   const vid = $('#osVid');
   if (vid) {
   vid.volume = Math.min(1, Math.max(0, +pref('thVol', '0.8')));
   vid.addEventListener('volumechange', () => setPref('thVol', String(vid.muted ? 0 : vid.volume)));
   vid.addEventListener('error', () => { $('.th-verr', osDlg).hidden = false; });
+  vid.addEventListener('ended', osNext);
   }
   if (!osDlg.open) openModal(osDlg);
+}
+// трек кончился — следующий по списку (плейлист, альбом, тир-лист)
+function osNext() {
+  const L = os.plist || [], i = L.indexOf(os.cur);
+  if (osDlg.open && i >= 0 && i < L.length - 1) { osStop(); osOpen(L[i + 1]); }
+}
+// YouTube сообщает о конце трека только через свой IFrame API — подключаем его, когда впервые играет полный трек
+let osYtApi = null;
+function osYtWatch() {
+  osYtApi ||= new Promise((ok) => {
+    if (window.YT?.Player) return ok(window.YT);
+    const prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => { prev?.(); ok(window.YT); };
+    const s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api'; document.head.append(s);
+  });
+  const f = $('#osPl iframe');
+  osYtApi.then((YT) => { if (f.isConnected) new YT.Player(f, { events: { onStateChange: (e) => { if (e.data === 0 && f.isConnected) osNext(); } } }); });
 }
 // после оценки — только подсветка и подписи, звук играет дальше
 function osMark() {
@@ -181,7 +202,8 @@ osDlg.addEventListener('click', (e) => {
   const b = e.target.closest('[data-osbig]');
   if (b) { if (osScore(OSS()[os.cur]) !== +b.dataset.osbig) osRate(x.t, x.anime, +b.dataset.osbig); osMark(); osRender(); return; }
   if (e.target.closest('[data-osunrate]')) { if (osScore(OSS()[os.cur]) != null) osRate(x.t, x.anime, osScore(OSS()[os.cur])); osMark(); osRender(); return; }
-  if (e.target.closest('[data-ospeak]')) { osPeak(os.cur); osMark(); osRender(); }
+  if (e.target.closest('[data-ospeak]')) { osPeak(os.cur); osMark(); osRender(); return; }
+  if (e.target.closest('[data-osaddcur]')) osPickOpen(os.cur);
 });
 
 /* ---------- оценки ---------- */
@@ -211,7 +233,7 @@ function osRender() {
   const box = $('#view-ost');
   if (!box || box.hidden) return;
   const ro = osRO(), rated = OSS();
-  if (ro) os.mode = 'list';
+  if (ro && os.mode !== 'list') os.mode = 'list';
   $('#osSeg').hidden = ro; $('#view-ost .mu-sw').hidden = ro;
   $('#view-ost h1').textContent = ro ? tr('Саундтреки {l}', { l: window.VIEWING.login }) : tr('Саундтреки');
   $$('#osSeg [data-osmode]').forEach((b) => b.classList.toggle('on', b.dataset.osmode === os.mode));
@@ -221,6 +243,8 @@ function osRender() {
   const empty = (h, p) => `<div class="empty-state small"><div class="empty-art">${icon('music')}</div><h2>${h}</h2><p>${p}</p></div>`;
   osTracks = new Map(); osList = [];
   for (const [id, r] of Object.entries(rated)) if (r.t) osTracks.set(id, { t: r.t, anime: r.t.anime });
+  for (const p of Object.values(db.pls || {})) for (const t of p.items || []) if (!osTracks.has(t.id)) osTracks.set(t.id, { t, anime: t.anime });
+  if (os.mode === 'pl') { if (window.osPlRender) osPlRender(body, ro); return; }
   if (os.mode === 'anime') {
     const srcs = thSources().filter((s) => !q || tn(s.anime).toLowerCase().includes(q) || (osCache[s.id]?.albums || []).some((a) => a.n.toLowerCase().includes(q)));
     if (!thSources().length) { body.innerHTML = empty(tr('Сначала оцени аниме'), tr('Здесь появится музыка аниме из твоего топа.')); return; }
@@ -249,7 +273,7 @@ function osRender() {
             list = shown.map((t) => {
               const my = osScore(rated[t.id]);
               osList.push(t.id);
-              return `<div class="th-row os-row" data-tid="${esc(t.id)}">${osPlayBtn(t)}<div class="th-info" data-osplay="${esc(t.id)}"><b>${esc(t.n)}</b><span>${t.no ? t.no + '. ' : ''}${esc(t.ar)}${t.ms ? ' · ' + osTime(t.ms) : ''}${osYt(t) ? ` · <i class="os-yt">${tr('полный')}</i>` : ''}</span></div>${chScoreRow(my, 'data-osrate')}${my === 10 ? osPeakBtn(t.id, rated[t.id]?.peak) : ''}</div>`;
+              return `<div class="th-row os-row" data-tid="${esc(t.id)}">${osPlayBtn(t)}<div class="th-info" data-osplay="${esc(t.id)}"><b>${esc(t.n)}</b><span>${t.no ? t.no + '. ' : ''}${esc(t.ar)}${t.ms ? ' · ' + osTime(t.ms) : ''}${osYt(t) ? ` · <i class="os-yt">${tr('полный')}</i>` : ''}</span></div>${ro ? '' : `<button type="button" class="icon-btn os-add" data-osadd="${esc(t.id)}" title="${tr('В плейлист')}" aria-label="${tr('В плейлист')}">${icon('plus')}</button>`}${chScoreRow(my, 'data-osrate')}${my === 10 ? osPeakBtn(t.id, rated[t.id]?.peak) : ''}</div>`;
             }).join('') + (shown.length < tr_.length ? `<button type="button" class="btn os-more" data-osall="${esc(k)}">${tr('Показать все ({n})', { n: tr_.length })}</button>` : '');
           }
           inner = tabs + list;

@@ -64,7 +64,7 @@ function setUser(u) { acct.user = u; setPref('user', JSON.stringify(u)); updateA
 /* ---------- синхронизация ---------- */
 const recTime = (r) => r?.updated || r?.added || 0;
 function syncData() {
-  return { v: 1, items: db.items, franchises: db.franchises, themes: db.themes || {}, chars: db.chars || {}, osts: db.osts || {}, deleted: db.deleted || {}, ach: db.ach || {}, settings: { tierNames, tierNamesAt: +pref('tierNamesAt', '0') || 0 } };
+  return { v: 1, items: db.items, franchises: db.franchises, themes: db.themes || {}, chars: db.chars || {}, osts: db.osts || {}, pls: db.pls || {}, deleted: db.deleted || {}, ach: db.ach || {}, settings: { tierNames, tierNamesAt: +pref('tierNamesAt', '0') || 0 } };
 }
 function mergeTop(a, b) {
   const now = Date.now(), KEEP = 120 * 864e5, del = {};
@@ -82,15 +82,15 @@ function mergeTop(a, b) {
   // достижения: объединяем, дата — самая ранняя
   const ach = { ...(b.ach || {}) };
   for (const [k, t] of Object.entries(a.ach || {})) if (!ach[k] || t < ach[k]) ach[k] = t;
-  return { v: 1, ach, items: side('i:', a.items, b.items), franchises: side('f:', a.franchises, b.franchises), themes: side('o:', a.themes, b.themes), chars: side('h:', a.chars, b.chars), osts: side('u:', a.osts, b.osts), deleted: del, settings: (sb.tierNamesAt || 0) > (sa.tierNamesAt || 0) ? sb : sa };
+  return { v: 1, ach, items: side('i:', a.items, b.items), franchises: side('f:', a.franchises, b.franchises), themes: side('o:', a.themes, b.themes), chars: side('h:', a.chars, b.chars), osts: side('u:', a.osts, b.osts), pls: side('p:', a.pls, b.pls), deleted: del, settings: (sb.tierNamesAt || 0) > (sa.tierNamesAt || 0) ? sb : sa };
 }
 // одинаковы ли два топа по составу и датам — тогда не нужно отправлять обратно
 function sameTop(a, b) {
-  const sig = (t) => ['items', 'franchises', 'themes', 'chars', 'osts'].map((p) => Object.entries(t[p] || {}).map(([k, r]) => k + ':' + recTime(r)).sort().join(',')).join('|') + '|' + Object.keys(t.deleted || {}).length + '|' + (t.settings?.tierNamesAt || 0) + '|' + Object.keys(t.ach || {}).length;
+  const sig = (t) => ['items', 'franchises', 'themes', 'chars', 'osts', 'pls'].map((p) => Object.entries(t[p] || {}).map(([k, r]) => k + ':' + recTime(r)).sort().join(',')).join('|') + '|' + Object.keys(t.deleted || {}).length + '|' + (t.settings?.tierNamesAt || 0) + '|' + Object.keys(t.ach || {}).length;
   return sig(a) === sig(b);
 }
 function applyTop(m) {
-  db.items = m.items || {}; db.franchises = m.franchises || {}; db.themes = m.themes || {}; db.chars = m.chars || {}; db.osts = m.osts || {}; db.deleted = m.deleted || {}; db.ach = m.ach || db.ach || {};
+  db.items = m.items || {}; db.franchises = m.franchises || {}; db.themes = m.themes || {}; db.chars = m.chars || {}; db.osts = m.osts || {}; db.pls = m.pls || {}; db.deleted = m.deleted || {}; db.ach = m.ach || db.ach || {};
   const st = m.settings || {};
   if ((st.tierNamesAt || 0) > (+pref('tierNamesAt', '0') || 0)) {
     tierNames = st.tierNames || {};
