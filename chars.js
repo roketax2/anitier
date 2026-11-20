@@ -28,7 +28,7 @@ let chCache = {};
 try { chCache = JSON.parse(localStorage.getItem(CH_KEY) || '{}') || {}; } catch {}
 const chSaveCache = () => { try { localStorage.setItem(CH_KEY, JSON.stringify(Object.fromEntries(Object.entries(chCache).sort((a, b) => b[1].at - a[1].at).slice(0, 300)))); } catch {} };
 const chParts = (s) => s.parts.slice(0, 12); // у длинных серий — первые 12 частей
-const chSig = (s) => 'v4:' + chParts(s).map((p) => p.id).join(','); // v3 — с сезонами персонажа (19.11)
+const chSig = (s) => 'v5:' + chParts(s).map((p) => p.id).join(','); // v3 — с сезонами персонажа (19.11)
 const chFresh = (s) => chCache[s.id] && chCache[s.id].sig === chSig(s) && Date.now() - chCache[s.id].at < CH_TTL;
 const chScore = (r) => (r ? r.score ?? null : null);
 const chName = (c) => (EN_ON ? c.n || c.r : c.r || c.n) || '';
@@ -43,12 +43,16 @@ async function chLoad(force) {
   for (let i = 0; i < parts.length; i += 8) {
     ch.prog = tr('Загружаю персонажей… {d} из {n}', { d: Math.round((i / parts.length) * srcs.length), n: srcs.length }); chRender();
     try {
-      const d = await impGql(`{ animes(ids: ${JSON.stringify(parts.slice(i, i + 8).join(','))}, limit: 8) { id kind poster { previewUrl } characterRoles { rolesEn character { id name russian poster { mainUrl previewUrl } topic { commentsCount } } } } }`);
-      for (const a of d.animes) { roles[String(a.id)] = a.characterRoles || []; meta[String(a.id)] = { kind: a.kind, poster: a.poster?.previewUrl || '' }; }
+      const d = await impGql(`{ animes(ids: ${JSON.stringify(parts.slice(i, i + 8).join(','))}, limit: 8) { id kind episodes poster { previewUrl } characterRoles { rolesEn character { id name russian poster { mainUrl previewUrl } topic { commentsCount } } } } }`);
+      for (const a of d.animes) { roles[String(a.id)] = a.characterRoles || []; meta[String(a.id)] = { kind: a.kind, eps: a.episodes || 0, poster: a.poster?.previewUrl || '' }; }
     } catch {}
   }
   for (const s of srcs) {
     const ps = chParts(s), got = ps.map((p) => roles[String(p.id)]);
+    // 20.11: «основные» части — TV и фильмы, а также сами части из топа. Персонаж только из ONA/спешлов вне топа —
+    // это кроссовер или вставка (Momonga из «Ple Ple Pleiades x Kagejitsu!» в «Восхождении в тени»), его не берём
+    const own = new Set([s.id, ...(s.mine || [])]);
+    const isCore = (p) => { const m = meta[String(p.id)] || {}, k = m.kind || p.kind; return own.has(String(p.id)) || ['tv', 'movie'].includes(k) || (['ona', 'ova'].includes(k) && m.eps >= 5); }; // длинные ONA — полноценные сезоны (JoJo: Stone Ocean)
     if (got.some((x) => !x)) continue; // часть не загрузилась — попробуем в следующий раз
     const by = new Map();
     got.forEach((list, j) => {
@@ -59,11 +63,13 @@ async function chLoad(force) {
         let cur = by.get(id);
         if (!cur) by.set(id, cur = { id, n: c.name, r: c.russian, p: c.poster?.previewUrl || '', big: c.poster?.mainUrl || '', m: false, k: c.topic?.commentsCount || 0, sp: [], mp: [] });
         cur.m ||= m;
+        cur.core ||= isCore(ps[j]);
         if (!cur.sp.includes(pid)) cur.sp.push(pid); // сезоны, где есть персонаж
         if (m && !cur.mp.includes(pid)) cur.mp.push(pid); // где он главный
       }
     });
-    const all = [...by.values()].sort((a, b) => b.k - a.k);
+    const all = [...by.values()].filter((c) => c.core).sort((a, b) => b.k - a.k);
+    for (const c of all) delete c.core;
     // сезоны — только TV-части (фильмы, OVA и пересказы идут в общую оценку); если TV меньше двух — все части
     const withChars = ps.filter((p, j) => got[j].length).map((p) => ({ id: String(p.id), name: p.name, russian: p.russian, english: p.english, kind: meta[String(p.id)]?.kind || p.kind || '', poster: meta[String(p.id)]?.poster || '' }));
     const tv = withChars.filter((p) => p.kind === 'tv'), sea = tv.length >= 2 ? tv : withChars;

@@ -127,7 +127,7 @@ function thSources() {
         own = uniq.filter((p) => ids.has(p.id));
         for (const x of mine) if (!own.some((p) => p.id === String(x.anime.id))) own.push({ id: String(x.anime.id), name: x.anime.name, russian: x.anime.russian, english: x.anime.english });
       }
-      return { id: String(r.anime.id), score: r.score ?? null, anime: r.anime, parts: own, allParts: uniq, fr, franchise };
+      return { id: String(r.anime.id), score: r.score ?? null, anime: r.anime, parts: own, allParts: uniq, mine: mine.map((x) => String(x.anime.id)), fr, franchise };
     });
 }
 async function thLoad(force) {
