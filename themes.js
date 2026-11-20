@@ -119,7 +119,15 @@ function thSources() {
       const franchise = r.anime.franchise || null, fr = franchise ? g.key : null;
       const parts = (fr && thCache['p:' + fr]?.parts) || [r.anime, ...(g.seasons || []).map((s) => s.anime).filter(Boolean)].map((a) => ({ id: String(a.id), name: a.name, russian: a.russian, english: a.english }));
       const uniq = []; const seen = new Set(); for (const p of parts) if (!seen.has(p.id)) { seen.add(p.id); uniq.push(p); }
-      return { id: String(r.anime.id), score: r.score ?? null, anime: r.anime, parts: uniq, fr, franchise };
+      // 20.11: если серия целиком не оценена — только те части, что есть в топе (у Fate десятки частей, смотрел не все)
+      const mine = (g.seasons || []).filter((x) => x.status !== 'not_watched' && x.anime);
+      let own = uniq;
+      if (g.f?.score == null && mine.length) {
+        const ids = new Set(mine.map((x) => String(x.anime.id)));
+        own = uniq.filter((p) => ids.has(p.id));
+        for (const x of mine) if (!own.some((p) => p.id === String(x.anime.id))) own.push({ id: String(x.anime.id), name: x.anime.name, russian: x.anime.russian, english: x.anime.english });
+      }
+      return { id: String(r.anime.id), score: r.score ?? null, anime: r.anime, parts: own, allParts: uniq, fr, franchise };
     });
 }
 async function thLoad(force) {
