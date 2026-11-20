@@ -1,4 +1,5 @@
 import { handleAccounts } from "./accounts";
+import { handleAudio } from "./audio";
 import { HttpError, SITE_ORIGINS, corsHeaders, json } from "./http";
 import { handleCommunity } from "./community";
 import { handlePromo } from "./promo";
@@ -9,7 +10,7 @@ import { handleTop } from "./top";
 // ссылка на свой топ. Сайт — anitierapp.pages.dev (до 18.11.2026 — roketax2.github.io/anitier).
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const path = new URL(request.url).pathname;
     const origin = request.headers.get("Origin") ?? "";
     const cors = corsHeaders(origin);
@@ -38,6 +39,10 @@ export default {
       }
       if (path === "/api/ping" || path === "/api/stats") {
         const response = await handleStats(request, env, path);
+        if (response) return withCors(response);
+      }
+      if (path === "/api/audiohead") {
+        const response = await handleAudio(request, ctx);
         if (response) return withCors(response);
       }
       if (path.startsWith("/api/top") || path.startsWith("/api/shared/")) {

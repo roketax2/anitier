@@ -95,7 +95,7 @@ function gmPreload(i) {
   const r = gm.rounds[i];
   if (!r || r.pre) return;
   r.pre = true;
-  if (gm.kind === 'op') { const a = new Audio(); a.preload = 'auto'; a.src = r.t.audio; a.load(); r.el = a; }
+  if (gm.kind === 'op') { const a = new Audio(); a.preload = 'auto'; a.src = r.t.audio; a.load(); r.el = a; if (gm.start !== 'random') gmLead(r); }
   // только маленький первый кадр (~30 КБ): большие картинки разом забивают канал, и всё грузится медленно
   else { const im = new Image(); im.src = r.shots[0].small; r.el = im; }
 }
@@ -108,6 +108,25 @@ function gmSharpen(box) {
     big.src = img.dataset.big; img.removeAttribute('data-big');
   });
 }
+// 20.11: в начале файлов animethemes 0,5–1,5 с тишины — из-за неё казалось, что звук появляется не сразу.
+// Сервер AniTier отдаёт первые ~3 с файла (у animethemes нет CORS), находим первый громкий отсчёт и играем с него.
+const GM_LEAD = 0.45; // если узнать не вышло: обычно тишины ~0,5 с
+function gmLead(r) {
+  if (r.leadP) return r.leadP;
+  const f = (r.t.audio.match(/^https:\/\/a\.animethemes\.moe\/([A-Za-z0-9._-]+\.ogg)$/) || [])[1];
+  r.leadP = !f || typeof API_BASE === 'undefined' || typeof OfflineAudioContext === 'undefined' ? Promise.resolve(null) : (async () => {
+    try {
+      const res = await fetch(API_BASE + '/api/audiohead?f=' + encodeURIComponent(f));
+      if (!res.ok) return null;
+      const buf = await new OfflineAudioContext(1, 1, 22050).decodeAudioData(await res.arrayBuffer());
+      const d = buf.getChannelData(0);
+      let i = 0;
+      while (i < d.length && Math.abs(d[i]) < 0.02) i++;
+      return i >= d.length ? null : Math.max(0, i / buf.sampleRate - 0.08);
+    } catch { return null; }
+  })();
+  return r.leadP;
+}
 // таймер раунда стартует, когда реально пошёл звук или показался кадр, а не когда открылся раунд
 function gmGo() {
   if (gm.t0 || gm.answered) return;
@@ -119,8 +138,13 @@ function gmPlayClip() {
   if (gmAudio && gmAudio !== r.el) gmStopAudio();
   gmAudio = r.el || (r.el = Object.assign(new Audio(), { preload: 'auto', src: r.t.audio }));
   gmAudio.volume = Math.min(1, Math.max(0, +pref('thVol', '0.8')));
-  const begin = () => {
-    if (r.from == null) r.from = gm.start === 'random' && gmAudio.duration > gm.sec + 5 ? Math.random() * (gmAudio.duration - gm.sec - 3) : 0;
+  const a = gmAudio;
+  const begin = async () => {
+    if (r.from == null) {
+      if (gm.start === 'random' && a.duration > gm.sec + 5) r.from = Math.random() * (a.duration - gm.sec - 3);
+      else { const lead = await Promise.race([gmLead(r), new Promise((ok) => setTimeout(() => ok(null), 1500))]); r.from = Math.min(lead ?? GM_LEAD, 3); }
+    }
+    if (gmAudio !== a) return; // пока ждали, раунд сменился
     try { gmAudio.currentTime = r.from; } catch {}
     const stopAt = r.from + gm.sec;
     gmAudio.ontimeupdate = () => { if (!gm.answered && gmAudio.currentTime >= stopAt) gmAudio.pause(); };
