@@ -155,8 +155,8 @@ function markDeleted(store, key) {
 const fKey = (a) => a.franchise || 'id' + a.id;
 
 /* ---------- API ---------- */
-const FIELDS = 'id name russian english score kind status episodes episodesAired airedOn{year date} url poster{mainUrl main2xUrl previewUrl preview2xUrl} genres{id name russian kind} franchise';
-const LIGHT = 'id name russian english score kind status episodes airedOn{year date} url poster{mainUrl main2xUrl previewUrl preview2xUrl} genres{id name russian kind} franchise';
+const FIELDS = 'id name russian english score kind status episodes episodesAired duration airedOn{year date} url poster{mainUrl main2xUrl previewUrl preview2xUrl} genres{id name russian kind} franchise';
+const LIGHT = 'id name russian english score kind status episodes duration airedOn{year date} url poster{mainUrl main2xUrl previewUrl preview2xUrl} genres{id name russian kind} franchise';
 // Shikimori: не больше 5 запросов в секунду и 90 в минуту
 const callTimes = [];
 let gate = Promise.resolve();
@@ -203,15 +203,28 @@ function relPatch(o) {
 }
 let relBusy = false, relT = 0;
 const relSoon = () => { clearTimeout(relT); relT = setTimeout(relResolve, 2500); };
-async function relResolve() {
-  if (relBusy || window.VIEWING) return;
+// аниме каталога без франшизы — проверяем пачкой через секунду после показа
+const relCat = new Set();
+let relCatT = 0;
+const relCatSoon = () => { clearTimeout(relCatT); relCatT = setTimeout(() => { const l = [...relCat]; relCat.clear(); if (l.length) relResolve(l); }, 1200); };
+async function relResolve(extra) {
+  if (window.VIEWING) return;
+  if (relBusy) { for (const a of extra || []) relCat.add(a); if (extra?.length) relCatSoon(); return; } // занято — проверим следом
   const now = Date.now();
-  const todo = Object.values(db.items).map((it) => it.anime).filter((a) => a && (!a.franchise || String(a.franchise).startsWith('rel_')) && !(now - (relFr.chk[a.id] || 0) < REL_RECHECK));
+  let todo = [...Object.values(db.items).map((it) => it.anime), ...(extra || [])].filter((a) => a && (!a.franchise || String(a.franchise).startsWith('rel_')) && !(now - (relFr.chk[a.id] || 0) < REL_RECHECK));
   if (!todo.length) return;
   relBusy = true;
-  let changed = false;
+  let changed = false, found = false;
   try {
-    for (const a0 of todo.slice(0, 15)) {
+    // сначала одним запросом: у кого вообще есть продолжение / предыстория (у большинства одиночных аниме — нет)
+    todo = todo.slice(0, 200);
+    for (let i = 0; i < todo.length; i += 50) {
+      const d = await gql(`{ animes(ids: ${JSON.stringify(todo.slice(i, i + 50).map((a) => String(a.id)).join(","))}, limit: 50) { id related { relationKind anime { id kind } } } }`);
+      for (const x of d.animes || []) if (!(x.related || []).some((r) => (r.relationKind === "sequel" || r.relationKind === "prequel") && r.anime && REL_KINDS.has(r.anime.kind))) relFr.chk[x.id] = now;
+    }
+    const chains = todo.filter((a) => !(now - (relFr.chk[a.id] || 0) < REL_RECHECK)); // без проверенных недавно — иначе очередь не опустеет
+    for (const a of chains.slice(15)) if (extra?.includes(a)) relCat.add(a); // остальное — следующим заходом
+    for (const a0 of chains.slice(0, 15)) {
       if (now - (relFr.chk[a0.id] || 0) < REL_RECHECK) continue; // уже проверили вместе с другой частью серии
       // обходим связи «продолжение / предыстория» (до 15 частей)
       const seen = new Map(), queue = [String(a0.id)];
@@ -231,7 +244,7 @@ async function relResolve() {
       const real = [...seen.values()].find((x) => x.franchise && !String(x.franchise).startsWith('rel_'))?.franchise;
       const key = real || (ids.length > 1 ? 'rel_' + ids[0] : null);
       const old = String(a0.franchise || '');
-      if (!real && key) { relFr.ids[key] = ids; for (const id of ids) relFr.byId[id] = key; }
+      if (!real && key) { relFr.ids[key] = ids; for (const id of ids) relFr.byId[id] = key; found = true; }
       if (real) for (const id of ids) delete relFr.byId[id];
       if (old.startsWith('rel_') && key !== old) { if (!real) continue; delete relFr.ids[old]; if (db.franchises[old] && !db.franchises[real]) { db.franchises[real] = db.franchises[old]; db.franchises[real].anime.franchise = real; } delete db.franchises[old]; changed = true; }
       if (!key) continue;
@@ -252,6 +265,9 @@ async function relResolve() {
   } catch {}
   relSave();
   relBusy = false;
+  if (relCat.size) relCatSoon();
+  // в каталоге и полосе: проставить ключ серии найденным частям и перерисовать
+  if (found && extra?.length) { relPatch(cat.items); if (mode === 'title' && view === 'catalog' && cat.loaded) renderCatalog(); }
   if (changed) { save(); if (typeof afterChange === 'function') afterChange(); }
 }
 
@@ -677,6 +693,7 @@ function renderCatalog() {
       if (info) { e.a = info.first; e.total = info.count; e.avg = info.score; e.years = info.years; }
       else {
         if (e.a.franchise) missing.push(k);
+        else if (!relFr.chk[e.a.id]) relCat.add(e.a);
         if (e.n > 1) e.a = firstReleased(cat.items.filter((x) => fKey(x) === k)) || e.a;
       }
     });
@@ -686,6 +703,7 @@ function renderCatalog() {
   if (catF.hideMine) list = list.filter((e) => !rated(e.a));
   cat.shown = list;
   if (mode === 'title' && cat.missing?.length) { loadSeries(cat.missing); cat.missing = null; }
+  if (mode === 'title' && relCat.size) relCatSoon();
   $('#catGrid').innerHTML = list.map((e, i) => tileHTML(e, i, mode === 'title' ? titleScores.get(fKey(e.a)) : db.items[e.a.id]?.score)).join('');
   $('#catMsg').hidden = true;
   if (!list.length && !cat.more) catMsg(cat.items.length ? 'allrated' : 'empty');
@@ -693,7 +711,7 @@ function renderCatalog() {
 }
 // состав серий для плиток: ключ серии → { first: первая вышедшая часть, count: сколько частей, score: средняя мировая }
 // запоминаем на неделю, чтобы при следующем заходе плитки сразу были верными
-const SERIES_KEY = 'animetop.series4';
+const SERIES_KEY = 'animetop.series6'; // 22.11: series5 — лицо серии теперь первый сериал
 const seriesInfo = new Map();
 try {
   const saved = JSON.parse(localStorage.getItem(SERIES_KEY) || '{}');
@@ -1419,12 +1437,27 @@ const isTitle = (st) => st.level === 'franchise' && st.members && st.members.len
 // клипы, промо и реклама — не «части» серии для обложки и средней оценки
 const MAIN_KINDS = ['tv', 'movie', 'ova', 'ona'];
 const isExtra = (m) => ['music', 'pv', 'cm'].includes(m.kind);
+const isLongPart = (m) => !m.duration || m.duration >= 10 || (m.episodes || 0) * m.duration >= 200;
+const isSeriesPart = (m) => isLongPart(m) && (m.kind === 'tv' || (m.kind === 'ona' && (m.episodes || 0) >= 6) || (m.kind === 'ova' && (m.episodes || 0) >= 20));
 // не вышло — оценивать нельзя
 const notOut = (m) => m.status === 'anons';
 // обложка серии — то, что вышло первым (сериал, фильм, OVA…)
 function firstReleased(list) {
   const main = list.filter((m) => !isExtra(m) && !notOut(m));
-  return [...(main.length ? main : list)].sort((x, y) => dateOf(x).localeCompare(dateOf(y)))[0];
+  // 22.11: лицо серии — первый сериал. Сериал — TV, веб-сериал от 6 серий или OVA-сериал от 20 серий, но не мини-шорты
+  // (короче 10 минут, если всего меньше 200 минут: «Сайки Кусуо» 120×5 — сериал). Мини-аниме и пилоты обложкой не берём;
+  // сериалов нет — первый фильм, потом что есть
+  const byDate = (l) => [...l].sort((x, y) => dateOf(x).localeCompare(dateOf(y)));
+  const series = main.filter(isSeriesPart);
+  if (series.length) {
+    const pick = byDate(series)[0];
+    // ранний OVA-сериал, который заметно лучше первого сериала, — это оригинал («Фури-кури» 2000, а не «Гранж» 2023)
+    const ova = byDate(main.filter((m) => (m.kind === 'ova' || m.kind === 'ona') && !isSeriesPart(m) && (m.episodes || 0) >= 6 && (m.duration || 0) >= 20 && dateOf(m) < dateOf(pick) && (m.score || 0) >= (pick.score || 0) + 0.5))[0];
+    return ova || pick;
+  }
+  // полноценных сериалов нет: фильм, потом короткий сериал («Моя жена — президент студсовета» из 8-минуток), потом что есть
+  const pool = [main.filter((m) => m.kind === 'movie'), main.filter((m) => m.kind === 'tv'), main.filter(isLongPart), main].find((x) => x.length) || list;
+  return byDate(pool)[0];
 }
 // средняя мировая оценка серии — по сериалам и фильмам (короткие OVA/ONA и спешлы её только искажают);
 // если в серии нет ни сериалов, ни фильмов — по OVA/ONA, а потом по всему, что есть
@@ -2011,5 +2044,28 @@ view = ['catalog', 'themes', 'games', 'chars', 'ost'].includes(pref('view', 'min
 show(view);
 if (EN_ON) fillEnglishNames();
 setTimeout(relResolve, 3000);
+// 22.11: лицо серии теперь первый сериал — у сохранённых серий пересчитываем один раз (faceFix2)
+async function fixSeriesFaces() {
+  if (window.VIEWING || pref('faceFix2', '')) return;
+  const keys = Object.entries(db.franchises).filter(([k, f]) => f.anime && !k.startsWith('id')).map(([k]) => k);
+  let changed = false;
+  try {
+    for (let i = 0; i < keys.length; i += 5) {
+      const part = keys.slice(i, i + 5);
+      const d = await gql(`{ ${part.map((k, j) => `f${j}: animes(franchise: ${JSON.stringify(k)}, limit: 50) { ${LIGHT} }`).join(' ')} }`);
+      part.forEach((k, j) => {
+        const l = d['f' + j] || [], f = db.franchises[k];
+        if (l.length < 2 || !f) return;
+        const first = firstReleased(l);
+        if (String(first.id) === String(f.anime.id)) return;
+        f.anime = { ...snapshot(first), franchise: k, score: f.anime.score, parts: f.anime.parts }; changed = true;
+        seriesInfo.set(k, seriesEntry(l));
+      });
+    }
+    setPref('faceFix2', '1');
+  } catch {}
+  if (changed) { saveSeries(); save(); if (typeof afterChange === 'function') afterChange(); }
+}
+setTimeout(fixSeriesFaces, 4000);
 try { localStorage.removeItem('animetop.series2'); localStorage.removeItem('animetop.series3'); localStorage.removeItem('animetop.genres'); } catch {} // старые кэши без английских названий
 if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});

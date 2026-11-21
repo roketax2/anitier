@@ -1,5 +1,5 @@
 // Офлайн-кэш: оболочка сайта и постеры. Данные API — всегда из сети.
-const CACHE = 'animetop-v101';
+const CACHE = 'animetop-v102';
 const SHELL = ['./', 'index.html', 'move.js', 'style.css', 'i18n.js', 'app.js', 'achievements.js', 'frames.js', 'frames2.js', 'frames3.js', 'frames4.js', 'frames5.js', 'frames6.js', 'frames7.js', 'frames8.js', 'frames9.js', 'frames10.js', 'frames11.js', 'frames12.js', 'frames13.js', 'frames14.js', 'frames15.js', 'account.js', 'compare.js', 'settings.js', 'themes.js', 'media.js', 'import.js', 'community.js', 'season.js', 'chars.js', 'ost-yt.js', 'ost-extra.js', 'ost.js', 'ost-pl.js', 'games.js', 'king.js', 'best.js', 'profile.js', 'promo.js', 'manifest.webmanifest', 'icon.svg', 'logo.svg', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png'];
 
 self.addEventListener('install', (e) => {
