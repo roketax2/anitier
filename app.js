@@ -126,6 +126,7 @@ function save() {
   updateCount();
   if (typeof onDbSaved === 'function') onDbSaved(); // синхронизация с аккаунтом (account.js)
   if (typeof checkAch === 'function') checkAch(); // достижения (achievements.js)
+  if (typeof relSoon === 'function') relSoon(); // серии без франшизы на Shikimori
 }
 function updateCount() {
   const n = buildRows().length;
@@ -174,14 +175,86 @@ function slot() {
   return p;
 }
 async function gql(query, tries = 0) {
+  query = relQuery(query);
   await slot();
   const res = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query }) });
   if (res.status === 429 && tries < 4) { await sleep(2000 * 2 ** tries); return gql(query, tries + 1); }
   if (!res.ok) throw new Error('HTTP ' + res.status);
   const j = await res.json();
   if (j.errors) throw new Error(j.errors[0]?.message || 'API error');
+  relPatch(j.data);
   return j.data;
 }
+/* 22.11: серии без «франшизы» на Shikimori. У свежих сиквелов поле franchise бывает пустым («Шальной последний
+   босс явился!» 1 и 2) — тогда сайт видел два отдельных аниме. Собираем такую серию сами по связям
+   «продолжение / предыстория» и даём ключ 'rel_<номер первой части>'. В запросах animes(franchise: "rel_…")
+   подменяем выборку на animes(ids: …), а в ответах проставляем этот ключ частям серии. */
+const REL_KEY = 'animetop.relfr', REL_RECHECK = 7 * 864e5;
+const REL_KINDS = new Set(['tv', 'movie', 'ova', 'ona', 'special', 'tv_special']);
+let relFr = { byId: {}, ids: {}, chk: {} };
+try { relFr = { byId: {}, ids: {}, chk: {}, ...JSON.parse(localStorage.getItem(REL_KEY) || '{}') }; } catch {}
+const relSave = () => { try { localStorage.setItem(REL_KEY, JSON.stringify(relFr)); } catch {} };
+const relQuery = (q) => q.replace(/animes\(franchise: "(rel_\d+)"/g, (m, k) => `animes(ids: ${JSON.stringify((relFr.ids[k] || [k.slice(4)]).join(','))}`);
+function relPatch(o) {
+  if (!o || typeof o !== 'object') return;
+  if (Array.isArray(o)) { o.forEach(relPatch); return; }
+  if ('franchise' in o && !o.franchise && o.id != null && relFr.byId[o.id]) o.franchise = relFr.byId[o.id];
+  for (const v of Object.values(o)) if (v && typeof v === 'object') relPatch(v);
+}
+let relBusy = false, relT = 0;
+const relSoon = () => { clearTimeout(relT); relT = setTimeout(relResolve, 2500); };
+async function relResolve() {
+  if (relBusy || window.VIEWING) return;
+  const now = Date.now();
+  const todo = Object.values(db.items).map((it) => it.anime).filter((a) => a && (!a.franchise || String(a.franchise).startsWith('rel_')) && !(now - (relFr.chk[a.id] || 0) < REL_RECHECK));
+  if (!todo.length) return;
+  relBusy = true;
+  let changed = false;
+  try {
+    for (const a0 of todo.slice(0, 15)) {
+      if (now - (relFr.chk[a0.id] || 0) < REL_RECHECK) continue; // уже проверили вместе с другой частью серии
+      // обходим связи «продолжение / предыстория» (до 15 частей)
+      const seen = new Map(), queue = [String(a0.id)];
+      while (queue.length && seen.size < 15) {
+        const batch = [...new Set(queue.splice(0, 10))].filter((id) => !seen.has(id));
+        if (!batch.length) continue;
+        const d = await gql(`{ animes(ids: ${JSON.stringify(batch.join(','))}, limit: 10) { id kind franchise related { relationKind anime { id kind } } } }`);
+        for (const x of d.animes || []) {
+          seen.set(String(x.id), x);
+          for (const r of x.related || []) if ((r.relationKind === 'sequel' || r.relationKind === 'prequel') && r.anime && REL_KINDS.has(r.anime.kind) && !seen.has(String(r.anime.id))) queue.push(String(r.anime.id));
+        }
+      }
+      for (const id of seen.keys()) relFr.chk[id] = now;
+      relFr.chk[a0.id] = now;
+      const ids = [...seen.keys()].sort((x, y) => x - y);
+      // Shikimori уже заполнил франшизу — переносим свои оценки на настоящий ключ
+      const real = [...seen.values()].find((x) => x.franchise && !String(x.franchise).startsWith('rel_'))?.franchise;
+      const key = real || (ids.length > 1 ? 'rel_' + ids[0] : null);
+      const old = String(a0.franchise || '');
+      if (!real && key) { relFr.ids[key] = ids; for (const id of ids) relFr.byId[id] = key; }
+      if (real) for (const id of ids) delete relFr.byId[id];
+      if (old.startsWith('rel_') && key !== old) { if (!real) continue; delete relFr.ids[old]; if (db.franchises[old] && !db.franchises[real]) { db.franchises[real] = db.franchises[old]; db.franchises[real].anime.franchise = real; } delete db.franchises[old]; changed = true; }
+      if (!key) continue;
+      const fresh = [];
+      for (const id of ids) { const it = db.items[id]; if (it && it.anime.franchise !== key) { if (!it.anime.franchise) fresh.push(id); it.anime.franchise = key; changed = true; } }
+      // в режиме «Аниме целиком» эту часть оценивали как отдельное аниме — теперь это оценка всей серии (как у остальных серий)
+      const rated = ids.filter((id) => db.items[id]);
+      if (mode === 'title' && ids.length > 1 && rated.length === 1 && fresh.includes(rated[0]) && !db.franchises[key]) {
+        const l = (await gql(`{ animes(ids: ${JSON.stringify(ids.join(','))}, limit: 50) { ${LIGHT} } }`)).animes || [];
+        if (l.length > 1) {
+          const info = seriesEntry(l), { anime, ...rec } = db.items[rated[0]];
+          seriesInfo.set(key, info); saveSeries();
+          db.franchises[key] = { ...rec, updated: Date.now(), anime: { ...snapshot(info.first), franchise: key, score: info.score, parts: info.count } };
+          delete db.items[rated[0]]; (db.deleted ||= {})['i:' + rated[0]] = Date.now();
+        }
+      }
+    }
+  } catch {}
+  relSave();
+  relBusy = false;
+  if (changed) { save(); if (typeof afterChange === 'function') afterChange(); }
+}
+
 const arg = (k, v) => (v === '' || v == null ? '' : `${k}: ${typeof v === 'number' ? v : JSON.stringify(String(v))}`);
 
 /* ---------- Состояние интерфейса ---------- */
@@ -1937,5 +2010,6 @@ loadGenres();
 view = ['catalog', 'themes', 'games', 'chars', 'ost'].includes(pref('view', 'mine')) ? pref('view', 'mine') : 'mine';
 show(view);
 if (EN_ON) fillEnglishNames();
+setTimeout(relResolve, 3000);
 try { localStorage.removeItem('animetop.series2'); localStorage.removeItem('animetop.series3'); localStorage.removeItem('animetop.genres'); } catch {} // старые кэши без английских названий
 if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
