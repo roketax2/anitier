@@ -35,7 +35,7 @@ const chSaveCache = () => {
   }
 };
 const chParts = (s) => s.parts.slice(0, 12); // у длинных серий — первые 12 частей
-const chSig = (s) => 'v7:' + chParts(s).map((p) => p.id).join(','); // v3 — с сезонами персонажа (19.11)
+const chSig = (s) => 'v8:' + chParts(s).map((p) => p.id).join(','); // v3 — с сезонами персонажа (19.11)
 // 21.11: фоновые персонажи без имени («Мужчина», «Волк», «Рассказчик», «Мать Хинаты», «Ученик 2») — не показываем.
 // Признак: английское имя только из общих слов (+ «чей-то», номер или буква), мало обсуждений и короткое описание на Shikimori
 const CH_BGW = new Set('man men woman women boy boys girl girls guy lady gentleman old young elderly little big tall short fat thin small large kid kids child children baby teen teenage male female mr mrs ms miss sir madam mister father mother dad mom mum papa mama brother sister son daughter wife husband grandfather grandmother grandma grandpa uncle aunt cousin family parent parents boyfriend girlfriend lover fiance friend friends classmate classmates neighbor neighbour twins twin teacher student students principal president vice director manager owner shopkeeper clerk staff employee worker waiter waitress maid butler cook chef doctor nurse police policeman officer detective guard guards soldier soldiers knight knights captain chief leader member members boss subordinate assistant secretary receptionist announcer reporter narrator commentator referee judge coach player players fan fans customer customers client passenger driver pilot sailor pirate pirates bandit bandits thief thug thugs delinquent delinquents gang gangster yakuza priest nun monk villager villagers townsperson citizen citizens merchant farmer hunter fisherman servant slave prisoner hostage hostages civilian civilians person people crowd stranger visitor tourist audience spectator spectators king queen prince princess lord noble nobleman emperor general commander lieutenant sergeant private demon demons monster monsters beast creature spirit ghost zombie zombies robot android alien titan titans dragon slime goblin orc wolf wolves bear dog cat bird fox hawk crow snake rabbit cow horse pig mouse rat fish shark voice computer ai system mascot club team school high middle elementary college university academy class store shop house home cafe restaurant bar hospital village town city military army force red blue black white green yellow pink purple brown silver gold golden gray grey blonde haired hair masked robed hooded glasses bearded first second third fourth fifth unknown unnamed mysterious other another fellow random'.split(' '));
@@ -46,7 +46,54 @@ function chBgName(n) {
 }
 const chFresh = (s) => chCache[s.id] && chCache[s.id].sig === chSig(s) && Date.now() - chCache[s.id].at < CH_TTL;
 const chScore = (r) => (r ? r.score ?? null : null);
-const chName = (c) => (EN_ON ? c.n || c.r : c.r || c.n) || '';
+// 22.11: как персонажа чаще зовут — первое японское прозвище из synonyms Shikimori («Kirito» у Кадзуто Киригаи),
+// по-русски — по Поливанову, как пишет имена сам Shikimori. Английские титулы («The Black Swordsman») не берём.
+const CH_KANA = [['kya', 'кя'], ['kyu', 'кю'], ['kyo', 'кё'], ['gya', 'гя'], ['gyu', 'гю'], ['gyo', 'гё'], ['sha', 'ся'], ['shu', 'сю'], ['sho', 'сё'], ['shi', 'си'], ['she', 'сэ'],
+  ['cha', 'тя'], ['chu', 'тю'], ['cho', 'тё'], ['chi', 'ти'], ['che', 'тэ'], ['tsu', 'цу'], ['nya', 'ня'], ['nyu', 'ню'], ['nyo', 'нё'], ['hya', 'хя'], ['hyu', 'хю'], ['hyo', 'хё'],
+  ['mya', 'мя'], ['myu', 'мю'], ['myo', 'мё'], ['rya', 'ря'], ['ryu', 'рю'], ['ryo', 'рё'], ['bya', 'бя'], ['byu', 'бю'], ['byo', 'бё'], ['pya', 'пя'], ['pyu', 'пю'], ['pyo', 'пё'],
+  ['ja', 'дзя'], ['ju', 'дзю'], ['jo', 'дзё'], ['ji', 'дзи'], ['je', 'дзэ'], ['fu', 'фу'], ['wa', 'ва'], ['wo', 'о'], ['ya', 'я'], ['yu', 'ю'], ['yo', 'ё']];
+const CH_CONS = { k: 'к', g: 'г', s: 'с', z: 'дз', t: 'т', d: 'д', n: 'н', h: 'х', b: 'б', p: 'п', m: 'м', r: 'р' };
+const CH_VOW = { a: 'а', i: 'и', u: 'у', e: 'э', o: 'о' };
+function chRomajiRu(word) {
+  const w = String(word).toLowerCase();
+  if (!/^[a-z]+$/.test(w)) return null;
+  let out = '', i = 0;
+  while (i < w.length) {
+    const kana = CH_KANA.find(([r]) => w.startsWith(r, i));
+    let piece = null, step = 0, vowel = '';
+    if (kana) { piece = kana[1]; step = kana[0].length; vowel = kana[0].slice(-1); }
+    else if (w[i] === 'i' && i > 0 && /[aeou]/.test(w[i - 1])) { piece = 'й'; step = 1; } // Kaito → Кайто, Sensei → Сэнсэй
+    else if (CH_VOW[w[i]]) { piece = CH_VOW[w[i]]; step = 1; vowel = w[i]; }
+    else if (w[i] === 'n' && !/[aeiouy]/.test(w[i + 1] || '')) { piece = 'н'; step = 1; }
+    else if (CH_CONS[w[i]] && w[i + 1] === w[i] && w[i] !== 'n') { piece = CH_CONS[w[i]] === 'дз' ? 'д' : CH_CONS[w[i]]; step = 1; } // удвоенная согласная: «kk» → «кк»
+    else if ((w[i] === 't' && w.startsWith('tch', i)) || (w[i] === 'c' && w.startsWith('cch', i))) { piece = 'т'; step = 1; } // Kotchan, Sacchan → «ттян»
+    else if (CH_CONS[w[i]] && CH_VOW[w[i + 1]]) {
+      // начальное «z» по-русски обычно «з»: Zero → Зеро
+      const c = i === 0 && w[i] === 'z' ? 'з' : CH_CONS[w[i]];
+      const v = i === 0 && w[i] === 'z' && w[i + 1] === 'e' ? 'е' : CH_VOW[w[i + 1]];
+      piece = c + v; step = 2; vowel = w[i + 1];
+    }
+    if (piece == null) return null; // не японское слово
+    out += piece; i += step;
+    // долгие гласные «ou», «uu» Shikimori пишет одной буквой: Gojou → Годзё
+    if ((vowel === 'o' || vowel === 'u') && w[i] === 'u') i++;
+  }
+  return out ? out[0].toUpperCase() + out.slice(1) : null;
+}
+// английские слова, похожие на японские по звучанию, — не прозвища
+const CH_NICK_STOP = new Set('demon tomato jason orange antenna mama papa mein bain titania chibi banana panda piano karate one rose home hope nine time'.split(' '));
+function chNick(syn, name) {
+  const nm = String(name || '').toLowerCase();
+  const list = (syn || []).flatMap((s) => String(s).split(/\s*,\s*/)).map((s) => s.trim()).filter(Boolean);
+  for (const s of list) {
+    if (/\s/.test(s) || s.length < 3 || nm.includes(s.toLowerCase()) || CH_NICK_STOP.has(s.toLowerCase())) continue;
+    const ru = chRomajiRu(s);
+    if (ru) return { en: s[0].toUpperCase() + s.slice(1), ru };
+  }
+  return null;
+}
+// имя + как чаще зовут в скобках: «Кадзуто Киригая (Кирито)»
+const chName = (c) => { const b = (EN_ON ? c.n || c.r : c.r || c.n) || '', k = EN_ON ? c.nkr : c.nk; return k && !b.toLowerCase().includes(k.toLowerCase()) ? `${b} (${k})` : b; };
 
 async function chLoad(force) {
   if (ch.loading) return;
@@ -58,7 +105,7 @@ async function chLoad(force) {
   for (let i = 0; i < parts.length; i += 8) {
     ch.prog = tr('Загружаю персонажей… {d} из {n}', { d: Math.round((i / parts.length) * srcs.length), n: srcs.length }); chRender();
     try {
-      const d = await impGql(`{ animes(ids: ${JSON.stringify(parts.slice(i, i + 8).join(','))}, limit: 8) { id kind episodes poster { previewUrl } characterRoles { rolesEn character { id name russian poster { mainUrl previewUrl } topic { commentsCount } } } } }`);
+      const d = await impGql(`{ animes(ids: ${JSON.stringify(parts.slice(i, i + 8).join(','))}, limit: 8) { id kind episodes poster { previewUrl } characterRoles { rolesEn character { id name russian synonyms poster { mainUrl previewUrl } topic { commentsCount } } } } }`);
       for (const a of d.animes) { roles[String(a.id)] = a.characterRoles || []; meta[String(a.id)] = { kind: a.kind, eps: a.episodes || 0, poster: a.poster?.previewUrl || '' }; }
     } catch {}
   }
@@ -76,7 +123,7 @@ async function chLoad(force) {
         const c = r.character; if (!c) continue;
         const id = String(c.id), m = r.rolesEn.includes('Main');
         let cur = by.get(id);
-        if (!cur) by.set(id, cur = { id, n: c.name, r: c.russian, p: c.poster?.previewUrl || '', big: c.poster?.mainUrl || '', m: false, k: c.topic?.commentsCount || 0, sp: [], mp: [] });
+        if (!cur) { const nk = chNick(c.synonyms, c.name); by.set(id, cur = { id, n: c.name, r: c.russian, ...(nk ? { nk: nk.ru, nkr: nk.en } : {}), p: c.poster?.previewUrl || '', big: c.poster?.mainUrl || '', m: false, k: c.topic?.commentsCount || 0, sp: [], mp: [] }); }
         cur.m ||= m;
         cur.core ||= isCore(ps[j]);
         if (!cur.sp.includes(pid)) cur.sp.push(pid); // сезоны, где есть персонаж
@@ -237,7 +284,7 @@ function chPeak(id, pid) {
   save();
 }
 const chPeakBtn = (id, pid, on) => peakBtnHTML(`data-chpeak="${esc(id)}" ${pid ? `data-chpeakp="${esc(pid)}"` : ''}`, on);
-const chSnap = (c) => ({ id: c.id, n: c.n, r: c.r, p: c.p, big: c.big, m: c.m, anime: c.anime, sp: c.sp, mp: c.mp, sea: c.sea });
+const chSnap = (c) => ({ id: c.id, n: c.n, r: c.r, nk: c.nk, nkr: c.nkr, p: c.p, big: c.big, m: c.m, anime: c.anime, sp: c.sp, mp: c.mp, sea: c.sea });
 const chScoreRow = (my, attr = 'data-chrate') => `<div class="th-sc">${Array.from({ length: 10 }, (_, i) => i + 1).map((n) => `<button type="button" ${attr}="${n}" style="--c:${chColor(n)}" class="${my === n ? 'on' : ''}" title="${esc(LABEL[n])}">${n}</button>`).join('')}</div>`;
 const chColor = (s) => thColor(s);
 const chAfOk = (score) => ch.af === 'all' || (ch.af === 'rated' ? score != null : ch.af === 'ten' ? score === 10 : score != null && score >= 5);
@@ -290,7 +337,7 @@ function chRender() {
       <button type="button" class="pill th-refresh" data-chrefresh title="${tr('Обновить список')}">${icon('sort')}</button>` : ''}</div>`;
   const roleOk = (c) => (ch.role === 'all' || (ch.role === 'main' ? c.m : !c.m)) && chSexOk(c);
   const q = ch.q.toLowerCase();
-  const qOk = (c, a) => !q || `${c.r} ${c.n} ${a ? tn(a) : ''}`.toLowerCase().includes(q);
+  const qOk = (c, a) => !q || `${c.r} ${c.n} ${c.nk || ''} ${c.nkr || ''} ${a ? tn(a) : ''}`.toLowerCase().includes(q);
   const body = $('#chBody');
   const empty = (h, p) => `<div class="empty-state small"><div class="empty-art">${icon('mask')}</div><h2>${h}</h2><p>${p}</p></div>`;
   const prog = ch.loading || ch.sexProg ? `<p class="th-prog"><span class="th-spin"></span>${esc(ch.loading ? ch.prog : ch.sexProg)}</p>` : '';
