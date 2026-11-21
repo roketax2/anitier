@@ -2,6 +2,7 @@ import { handleAccounts } from "./accounts";
 import { handleAudio } from "./audio";
 import { HttpError, SITE_ORIGINS, corsHeaders, json } from "./http";
 import { handleCommunity } from "./community";
+import { handleKing } from "./king";
 import { handlePromo } from "./promo";
 import { handleStats } from "./stats";
 import { handleTop } from "./top";
@@ -31,6 +32,10 @@ export default {
       }
       if (path === "/api/vote" || path.startsWith("/api/community/")) {
         const response = await handleCommunity(request, env, path);
+        if (response) return withCors(response);
+      }
+      if (path === "/api/king" || path.startsWith("/api/king/")) {
+        const response = await handleKing(request, env, path);
         if (response) return withCors(response);
       }
       if (path === "/api/promo/redeem" || path.startsWith("/api/admin/promo")) {
