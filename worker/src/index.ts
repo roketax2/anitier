@@ -3,6 +3,7 @@ import { handleAudio } from "./audio";
 import { HttpError, SITE_ORIGINS, corsHeaders, json } from "./http";
 import { handleCommunity } from "./community";
 import { handleKing } from "./king";
+import { handleBest } from "./best";
 import { handlePromo } from "./promo";
 import { handleStats } from "./stats";
 import { handleTop } from "./top";
@@ -36,6 +37,10 @@ export default {
       }
       if (path === "/api/king" || path.startsWith("/api/king/")) {
         const response = await handleKing(request, env, path);
+        if (response) return withCors(response);
+      }
+      if (path === "/api/best") {
+        const response = await handleBest(request, env, path);
         if (response) return withCors(response);
       }
       if (path === "/api/promo/redeem" || path.startsWith("/api/admin/promo")) {
