@@ -66,7 +66,7 @@ async function top(env: Env, kind: string, url: URL): Promise<Response> {
 
 export async function handleKing(request: Request, env: Env, path: string): Promise<Response | null> {
   if (request.method === "POST" && path === "/api/king") return result(env, request);
-  const m = /^\/api\/king\/([a-z-]{3,8})$/.exec(path);
+  const m = /^\/api\/king\/([a-z-]{2,8})$/.exec(path);
   if (request.method === "GET" && m) {
     if (!KIND_RE.test(m[1])) throw new HttpError(400, "Плохой вид");
     return top(env, m[1], new URL(request.url));
