@@ -1738,5 +1738,11 @@ body.viewing .ach { cursor: pointer; }
 .kg-trow .kg-img { width: 44px; }
 .kg-trow b { display: block; font-size: 14px; }
 .kg-trow small { display: block; font-size: 12px; color: var(--muted); }
+.kg-players { display: grid; gap: 8px; justify-items: center; width: 100%; max-width: 460px; }
+.kg-players h3 { margin: 14px 0 0; }
+.kg-players .kg-top { max-width: none; }
+.kg-trow.me { outline: 2px solid #ffc400; outline-offset: 3px; border-radius: 10px; }
+.kg-kings { display: inline-flex; align-items: center; gap: 4px; }
+.kg-kings svg { width: 15px; height: 15px; color: #ffc400; }
 .kg-trow em { font-style: normal; font-size: 12.5px; color: var(--text2); white-space: nowrap; }
 @media (max-width: 440px) { .kg-duel { gap: 10px; } .kg-pick { padding: 6px 6px 10px; } .kg-pick b { font-size: 14px; } .kg-vs { width: 36px; height: 36px; font-size: 12px; } }

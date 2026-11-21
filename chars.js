@@ -2,6 +2,7 @@
 /* Персонажи (2026-11-18): тир-лист персонажей из аниме своего топа. Данные — Shikimori (characterRoles).
    Оценка 1–10, тир по оценке как в топе. db.chars[id] = { score, added, updated, c: снимок } — синхронизируются с аккаунтом. */
 Object.assign(EN, {
+  'Парни': 'Guys', 'Девушки': 'Girls', 'Пол': 'Gender', 'Узнаю пол персонажей…': 'Finding out characters’ gender…', 'Узнаю пол персонажей… {d} из {n}': 'Finding out characters’ gender… {d} of {n}',
   'Персонажи': 'Characters', 'Показать ещё {n}': 'Show {n} more', 'Показать всех ({n})': 'Show all ({n})', 'Главные': 'Main', 'Второстепенные': 'Supporting', 'главный': 'main', 'второстепенный': 'supporting',
   'Найди персонажа или аниме': 'Find a character or anime', 'Загружаю персонажей… {d} из {n}': 'Loading characters… {d} of {n}',
   'персонажей — {n}': '{n} characters', 'Персонажи {l}': '{l}’s characters', 'Оцени персонажа — он появится здесь.': 'Rate a character — they will show up here.',
@@ -23,7 +24,7 @@ $('#chSearch').placeholder = tr('Найди персонажа или аниме
 const CH_KEY = 'animetop.chars2', CH_TTL = 14 * 864e5, CH_PAGE = 60; // 20.11: берём ВСЕХ персонажей, в списке показываем по 60 (у One Piece их ~1500)
 try { localStorage.removeItem('animetop.chars1'); } catch {}
 const CHS = () => (db.chars ||= {});
-const ch = { mode: pref('chMode', 'anime') === 'list' ? 'list' : 'anime', role: 'all', af: pref('chAf', 'all'), unr: false, q: '', open: new Set(), lim: {}, sea: {}, sm: {}, lm: pref('chLm', 'all') === 'sea' ? 'sea' : 'all', loading: false, prog: '', byId: new Map(), cur: null };
+const ch = { mode: pref('chMode', 'anime') === 'list' ? 'list' : 'anime', role: 'all', sex: ['m', 'f'].includes(pref('chSex', 'all')) ? pref('chSex', 'all') : 'all', af: pref('chAf', 'all'), unr: false, q: '', open: new Set(), lim: {}, sea: {}, sm: {}, lm: pref('chLm', 'all') === 'sea' ? 'sea' : 'all', loading: false, prog: '', byId: new Map(), cur: null };
 let chCache = {};
 const CH_PFX = 'https://shikimori.io/uploads/poster/characters/';
 try { chCache = JSON.parse((localStorage.getItem(CH_KEY) || '{}').split('@@ch/').join(CH_PFX)) || {}; } catch {}
@@ -98,10 +99,75 @@ async function chLoad(force) {
     const tv = withChars.filter((p) => p.kind === 'tv'), sea = tv.length >= 2 ? tv : withChars;
     chCache[s.id] = { at: Date.now(), sig: chSig(s), sea, list: [...all.filter((c) => c.m), ...all.filter((c) => !c.m)] };
   }
-  ch.loading = false; ch.prog = ''; chSaveCache(); chRender();
+  ch.loading = false; ch.prog = ''; chSaveCache(); chRender(); chSexEnsure();
 }
 
 const chRO = () => !!window.VIEWING;
+
+/* ---------- пол персонажей (22.11): у Shikimori его нет — берём с AniList (часть аниме по номеру MAL + имя персонажа) ---------- */
+const CH_SEX_KEY = 'animetop.chsex', CH_SEX_RETRY = 14 * 864e5;
+let chSexMap = {};
+try { chSexMap = JSON.parse(localStorage.getItem(CH_SEX_KEY) || '{}') || {}; } catch {}
+const chSex = (id) => (typeof chSexMap[id] === 'string' ? chSexMap[id] : ''); // 'm' | 'f' | 'x' (не указан) | '' (не знаем)
+const chSexOk = (c, sex = ch.sex) => sex === 'all' || chSex(c.id) === sex;
+const chSexNeed = (c) => { const v = chSexMap[c.id]; return !!c.sp?.length && (!v || (typeof v === 'number' && Date.now() - v > CH_SEX_RETRY)); };
+// имя без порядка слов: у Shikimori «Natsuki Subaru», у AniList «Subaru Natsuki»
+const chNameKey = (s) => String(s || '').toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').split(/[^a-z0-9]+/).filter((w) => w.length > 1).sort().join(' '); // инициалы («L.») не считаем
+async function chAniList(query) {
+  for (let n = 0; n < 4; n++) {
+    const r = await fetch('https://graphql.anilist.co', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ query }) });
+    if (r.status === 429) { await new Promise((ok) => setTimeout(ok, Math.min(60, +r.headers.get('Retry-After') || 20) * 1000)); continue; }
+    return (await r.json().catch(() => ({}))).data || null;
+  }
+  return null;
+}
+async function chSexLoad(chars, onProg) {
+  const need = chars.filter(chSexNeed);
+  if (!need.length) return;
+  // части аниме, где больше всего нужных персонажей; у каждой — первые 100 персонажей AniList (главные и известные).
+  // Кого не нашли — ищем ещё в других его частях (до 3 проходов)
+  const full = new Map(), alt = new Map(), asked = new Set();
+  // «Roswaal L. Mathers» у AniList может быть «Roswaal Mathers»: тогда все слова одного имени есть в другом
+  // одно слово («Garfiel» = «Garfiel Tinsel») — только если такой единственный
+  const subset = (k) => { const ws = k.split(' '); if (ws.length < 2) { const hit = [...full].filter(([fk]) => fk.split(' ').includes(ws[0])); return hit.length === 1 ? hit[0][1] : null; } for (const [fk, g] of full) { const fw = fk.split(' '); if (fw.length >= 2 && (fw.every((w) => ws.includes(w)) || ws.every((w) => fw.includes(w)))) return g; } return null; };
+  const look = (c) => { const k = chNameKey(c.n); return full.get(k) || alt.get(k) || subset(k); };
+  const found = (c) => !!look(c);
+  for (let pass = 0; pass < 3; pass++) {
+    const left = new Set(need.filter((c) => !found(c) && c.sp.some((p) => !asked.has(p))).map((c) => c.id)), parts = [];
+    while (left.size && parts.length < 40) {
+      const cnt = new Map();
+      for (const c of need) if (left.has(c.id)) for (const p of c.sp) if (!asked.has(p) && !parts.includes(p)) cnt.set(p, (cnt.get(p) || 0) + 1);
+      if (!cnt.size) break;
+      const best = [...cnt].sort((x, y) => y[1] - x[1])[0][0];
+      parts.push(best);
+      for (const c of need) if (c.sp.includes(best)) left.delete(c.id);
+    }
+    if (!parts.length) break;
+    parts.forEach((p) => asked.add(p));
+    const q2 = parts.flatMap((p) => [[p, 1], [p, 2]]);
+    for (let i = 0; i < q2.length; i += 6) {
+      onProg?.(asked.size - parts.length + Math.floor(i / 2), asked.size);
+      const q = q2.slice(i, i + 6).map(([p, pg], j) => `a${j}: Media(idMal: ${+p || 0}, type: ANIME) { characters(page: ${pg}, perPage: 50, sort: [ROLE, FAVOURITES_DESC]) { nodes { name { full alternative } gender } } }`).join(" ");
+      let d = null;
+      try { d = await chAniList(`{ ${q} }`); } catch {}
+      for (const m of Object.values(d || {})) for (const n of m?.characters?.nodes || []) {
+        const g = n.gender === "Male" ? "m" : n.gender === "Female" ? "f" : "x";
+        const k = chNameKey(n.name?.full); if (k && !full.has(k)) full.set(k, g);
+        for (const x of n.name?.alternative || []) { const ka = chNameKey(x); if (ka && !alt.has(ka)) alt.set(ka, g); }
+      }
+    }
+  }
+  const now = Date.now();
+  for (const c of need) chSexMap[c.id] = look(c) || now;
+  try { localStorage.setItem(CH_SEX_KEY, JSON.stringify(chSexMap)); } catch {}
+}
+let chSexBusy = false;
+async function chSexEnsure() {
+  if (ch.sex === 'all' || chSexBusy || !ch.byId.size || ![...ch.byId.values()].some(chSexNeed)) return;
+  chSexBusy = true; ch.sexProg = tr('Узнаю пол персонажей…'); chRender();
+  await chSexLoad([...ch.byId.values()], (d, n) => { ch.sexProg = tr('Узнаю пол персонажей… {d} из {n}', { d, n }); chRender(); }).catch(() => {});
+  chSexBusy = false; ch.sexProg = ''; chRender();
+}
 /* ---------- оценки по сезонам (19.11): db.chars[id].s = { id части: оценка }; общая оценка (score) — отдельно ---------- */
 const chSea = (id, pid) => { const v = CHS()[id]?.s?.[pid]; return v == null ? null : v; };
 // подписи сезонов: убираем общее начало названий («Атака титанов: Финал» → «Финал»), голое число → «Сезон 2»
@@ -218,15 +284,16 @@ function chRender() {
   $('#chKinds').innerHTML = `<div class="th-filters">
     ${ch.mode === 'list' ? `<div class="th-seg">${[['all', 'Общая'], ['sea', 'По сезонам']].map(([v, l]) => `<button type="button" class="${ch.lm === v ? 'on' : ''}" data-chlm="${v}">${tr(l)}</button>`).join('')}</div>` : ''}
     <div class="th-seg">${[['all', 'Все'], ['main', 'Главные'], ['sup', 'Второстепенные']].map(([v, l]) => `<button type="button" class="${ch.role === v ? 'on' : ''}" data-chrole="${v}">${tr(l)}</button>`).join('')}</div>
+    <div class="th-seg ch-sexseg">${[['all', 'Все'], ['m', 'Парни'], ['f', 'Девушки']].map(([v, l]) => `<button type="button" class="${ch.sex === v ? 'on' : ''}" data-chsex="${v}">${tr(l)}</button>`).join('')}</div>
     ${ch.mode === 'anime' && !ro ? `<button type="button" class="pill th-af ${ch.af !== 'all' ? 'on' : ''}" data-chafmenu>${tr(af[1])}${icon('chev')}</button>
       <button type="button" class="pill th-unr ${ch.unr ? 'on' : ''}" data-chunr><span class="th-box">${ch.unr ? icon('check') : ''}</span>${tr('Только неоценённые')}</button>
       <button type="button" class="pill th-refresh" data-chrefresh title="${tr('Обновить список')}">${icon('sort')}</button>` : ''}</div>`;
-  const roleOk = (c) => ch.role === 'all' || (ch.role === 'main' ? c.m : !c.m);
+  const roleOk = (c) => (ch.role === 'all' || (ch.role === 'main' ? c.m : !c.m)) && chSexOk(c);
   const q = ch.q.toLowerCase();
   const qOk = (c, a) => !q || `${c.r} ${c.n} ${a ? tn(a) : ''}`.toLowerCase().includes(q);
   const body = $('#chBody');
   const empty = (h, p) => `<div class="empty-state small"><div class="empty-art">${icon('mask')}</div><h2>${h}</h2><p>${p}</p></div>`;
-  const prog = ch.loading ? `<p class="th-prog"><span class="th-spin"></span>${esc(ch.prog)}</p>` : '';
+  const prog = ch.loading || ch.sexProg ? `<p class="th-prog"><span class="th-spin"></span>${esc(ch.loading ? ch.prog : ch.sexProg)}</p>` : '';
   if (ch.mode === 'anime') {
     if (!srcs.length) { body.innerHTML = empty(tr('Сначала оцени аниме'), tr('Здесь появятся персонажи аниме из твоего топа.')); return; }
     const vis = groups.filter((g) => chAfOk(g.s.score)).map((g) => {
@@ -234,7 +301,7 @@ function chRender() {
       const inSea = (c) => !pid || !c.sp || c.sp.includes(pid);
       const roleSea = (c) => !pid || ch.role === 'all' || (ch.role === 'main' ? (c.mp || []).includes(pid) : !(c.mp || []).includes(pid));
       const unr = (c) => !ch.unr || (pid ? chSea(c.id, pid) == null : chScore(rated[c.id]) == null);
-      return { ...g, pid, full: g.items, items: g.items.filter((c) => inSea(c) && (pid ? roleSea(c) : roleOk(c)) && qOk(c, g.s.anime) && unr(c)) };
+      return { ...g, pid, full: g.items, items: g.items.filter((c) => inSea(c) && (pid ? roleSea(c) && chSexOk(c) : roleOk(c)) && qOk(c, g.s.anime) && unr(c)) };
     }).filter((g) => g.items.length || g.pid);
     if (!vis.length) { body.innerHTML = prog || empty(tr('Ничего не подходит'), tr('Попробуй другие фильтры.')); return; }
     const allOpen = vis.every((g) => ch.open.has(g.s.id)) || !!q;
@@ -337,6 +404,8 @@ $('#view-chars').addEventListener('click', (e) => {
   if (m) { ch.mode = m.dataset.chmode; setPref('chMode', ch.mode); chRender(); return; }
   const ro = e.target.closest('[data-chrole]');
   if (ro) { ch.role = ro.dataset.chrole; chRender(); return; }
+  const sx = e.target.closest('[data-chsex]');
+  if (sx) { ch.sex = sx.dataset.chsex; setPref('chSex', ch.sex); chRender(); chSexEnsure(); return; }
   const afm = e.target.closest('[data-chafmenu]');
   if (afm) { openPop(afm, { items: TH_AF.map(([v, , label, hint]) => ({ v, label: tr(label), hint: tr(hint), on: ch.af === v })), note: tr('Смотрит на твою оценку самого аниме'), onPick: (it) => { ch.af = it.v; setPref('chAf', ch.af); chRender(); } }); return; }
   if (e.target.closest('[data-chunr]')) { ch.unr = !ch.unr; chRender(); return; }
@@ -369,5 +438,5 @@ $('#chTools .clear').addEventListener('click', () => { $('#chSearch').value = ''
   const base = afterChange;
   afterChange = function (...a) { const out = base.apply(this, a); if (view === 'chars' && !chDlg.open) chRender(); return out; };
 }
-function chShowView() { chRender(); if (!chRO()) chLoad(); }
+function chShowView() { chRender(); if (!chRO()) chLoad(); chSexEnsure(); }
 if (view === 'chars') chShowView();

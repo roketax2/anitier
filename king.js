@@ -10,11 +10,11 @@ Object.assign(EN, {
   'Царь горы — {t}': 'King of the hill — {t}', 'Самые стойкие': 'Toughest contenders', 'побед — {n}': 'wins — {n}', 'Последний царь: {t}': 'Last king: {t}',
   'Нужно хотя бы 3 участника. Оцени больше аниме, открой их саундтреки или выбери «Популярные».': 'At least 3 contestants are needed. Rate more anime, open their soundtracks or choose “Popular”.',
   'Загружаю саундтреки… {d} из {n}': 'Loading soundtracks… {d} of {n}', 'Стоп': 'Stop', 'Слушать': 'Listen',
-  'Сменить ({n})': 'Swap ({n})', 'Претендент вернётся позже — выбрать всё равно придётся': 'The challenger will come back later — you still have to choose', 'Отложено: {t} — вернётся позже': 'Postponed: {t} — will come back later',
+  'Сменить ({n})': 'Swap ({n})', 'Выбор игроков': 'Players’ choice', 'Чаще всего царём становятся (игр: {n})': 'Most often crowned (games: {n})', 'У всех игроков твой царь был царём {n} раз(а)': 'Across all players your king was crowned {n} time(s)', 'Претендент вернётся позже — выбрать всё равно придётся': 'The challenger will come back later — you still have to choose', 'Отложено: {t} — вернётся позже': 'Postponed: {t} — will come back later',
 });
 ICONS.crown = '<path d="M3 7.5 7.5 12 12 5l4.5 7L21 7.5 19 18H5z"/><path d="M5 21h14"/>';
 
-const kg = { what: ['anime', 'chars', 'op', 'ost'].includes(pref('kgWhat', 'anime')) ? pref('kgWhat', 'anime') : 'anime', n: pref('kgN', '16'), list: [], i: 0, king: null, streak: 0, wins: new Map(), hist: [], on: false, playing: null };
+const kg = { what: ['anime', 'chars', 'op', 'ost'].includes(pref('kgWhat', 'anime')) ? pref('kgWhat', 'anime') : 'anime', n: pref('kgN', '16'), sex: ['m', 'f'].includes(pref('kgSex', 'all')) ? pref('kgSex', 'all') : 'all', list: [], i: 0, king: null, streak: 0, wins: new Map(), hist: [], on: false, playing: null };
 // 22.11: «Сменить» — 2 раза за игру претендента можно отложить: он уходит дальше в очередь и всё равно вернётся
 const KG_SWAPS = 2;
 const KG_N = [['8', '8'], ['16', '16'], ['32', '32'], ['64', '64'], ['all', 'Все']];
@@ -26,6 +26,7 @@ function kgSettingsHTML(seg) {
   return `
       <div class="set-sec"><h3>${tr('Кто бьётся')}</h3>${kseg('what', kg.what, [['anime', 'Аниме'], ['chars', 'Персонажи'], ['op', 'Опенинги'], ['ost', 'Саундтреки']])}</div>
       ${mineOnly ? `<p class="set-note">${tr('Персонажи и саундтреки — из аниме твоего топа.')}</p>` : `<div class="set-sec"><h3>${tr('Аниме')}</h3>${seg('src', gm.src, [['mine', 'Из моего топа'], ['pop', 'Популярные']])}</div>`}
+      ${kg.what === 'chars' ? `<div class="set-sec"><h3>${tr('Пол')}</h3>${kseg('sex', kg.sex, [['all', 'Все'], ['m', 'Парни'], ['f', 'Девушки']])}</div>` : ''}
       <div class="set-sec"><h3>${tr('Участников')}</h3>${kseg('n', kg.n, KG_N)}</div>`;
 }
 
@@ -34,15 +35,15 @@ const kgUniq = (arr) => { const seen = new Set(); return arr.filter((x) => x && 
 async function kgPool() {
   if (kg.what === 'anime') {
     const pool = await gmPool(gm.src);
-    return kgUniq(pool.map((p) => ({ id: 'a' + p.title, img: p.anime.poster || '', title: p.title, sub: p.anime.year ? String(p.anime.year) : '' })));
+    return kgUniq(pool.map((p) => ({ id: 'a' + (p.anime.id || p.id), img: p.anime.poster || '', title: p.title, sub: p.anime.year ? String(p.anime.year) : '' })));
   }
   if (kg.what === 'chars') {
     if (thSources().some((s) => !chFresh(s))) await chLoad();
     // главные + самые обсуждаемые второстепенные (по 12 на аниме) — иначе в «Все» попадут сотни эпизодических
-    return kgUniq(thSources().flatMap((s) => {
-      const L = chCache[s.id]?.list || [];
-      return [...L.filter((c) => c.m), ...L.filter((c) => !c.m).slice(0, 12)].map((c) => ({ id: 'c' + c.id, img: c.big || c.p || '', title: chName(c), sub: tn(s.anime) }));
-    }));
+    // с выбором пола берём по 25 второстепенных — часть отсеется
+    const cands = thSources().flatMap((s) => { const L = chCache[s.id]?.list || []; return [...L.filter((c) => c.m), ...L.filter((c) => !c.m).slice(0, kg.sex === 'all' ? 12 : 25)].map((c) => ({ c, s })); });
+    if (kg.sex !== 'all') await chSexLoad(cands.map((x) => x.c), (d, n) => { const m = $('#gmMsg'); if (m) m.textContent = tr('Узнаю пол персонажей… {d} из {n}', { d, n }); });
+    return kgUniq(cands.filter((x) => chSexOk(x.c, kg.sex)).map(({ c, s }) => ({ id: 'c' + c.id, img: c.big || c.p || '', title: chName(c), sub: tn(s.anime) })));
   }
   if (kg.what === 'op') {
     const list = [...new Map((await gmPool(gm.src)).map((p) => [p.title, p])).values()];
@@ -142,9 +143,32 @@ function kgEnd() {
     <h2>${tr('Царь горы')}</h2>
     <div class="kg-win"><span class="kg-img ${k.sq ? 'sq' : ''}">${k.img ? `<img src="${esc(k.img)}" alt="">` : ''}</span><b>${esc(k.title)}</b>${k.sub ? `<small>${esc(k.sub)}</small>` : ''}<p>${tr('побед подряд — {n}', { n: kg.streak })}</p></div>
     ${top.length ? `<h3>${tr('Самые стойкие')}</h3><div class="kg-top">${top.map(([id, w]) => { const x = byId.get(id); return `<div class="kg-trow"><span class="kg-img ${x.sq ? 'sq' : ''}">${x.img ? `<img loading="lazy" src="${esc(x.img)}" alt="">` : ''}</span><span><b>${esc(x.title)}</b><small>${esc(x.sub || '')}</small></span><em>${tr('побед — {n}', { n: w })}</em></div>`; }).join('')}</div>` : ''}
+    <div class="kg-players" id="kgPlayers"><p class="th-prog"><span class="th-spin"></span>${tr('Выбор игроков')}…</p></div>
     <div class="gm-end-btns"><button type="button" class="btn primary" data-gmgo>${tr('Ещё раз')}</button><button type="button" class="btn" data-gmmenu>${tr('К играм')}</button></div>
   </div>`;
+  kgPlayers(k);
 }
+// 22.11: «Выбор игроков» — после игры отправляем царя и победы участников (без имени игрока) и показываем,
+// кого все игроки чаще всего делают царём в этой же категории
+const kgKind = () => (kg.what === 'chars' && kg.sex !== 'all' ? 'chars-' + kg.sex : kg.what);
+async function kgPlayers(k) {
+  const box = $('#kgPlayers');
+  if (!box) return;
+  const kind = kgKind(), byId = new Map(kg.list.map((x) => [x.id, x]));
+  const pack = (x, n) => ({ id: x.id, t: x.title, img: x.img, sub: x.sub || '', n });
+  if (!window.VIEWING && typeof visitorId !== 'undefined') {
+    try { await api('POST', '/api/king', { vid: visitorId, kind, total: kg.list.length, king: pack(k, kg.wins.get(k.id) || 0), wins: [...kg.wins].filter(([id]) => id !== k.id && byId.has(id)).map(([id, n]) => pack(byId.get(id), n)).slice(0, 64) }); } catch {}
+  }
+  let d = null;
+  try { d = await api('GET', `/api/king/${kind}?id=${encodeURIComponent(k.id)}`); } catch {}
+  if (!box.isConnected) return;
+  if (!d?.top?.length) { box.remove(); return; }
+  const sq = kg.what === 'ost', top5 = d.top.slice(0, 5);
+  box.innerHTML = `<h3>${tr('Выбор игроков')}</h3><p class="set-note">${tr('Чаще всего царём становятся (игр: {n})', { n: d.games })}</p>
+    <div class="kg-top">${top5.map(([id, t, img, sub, kings], i) => `<div class="kg-trow ${id === k.id ? 'me' : ''}"><span class="kg-img ${sq ? 'sq' : ''}">${img ? `<img loading="lazy" src="${esc(img)}" alt="">` : ''}</span><span><b>${i + 1}. ${esc(t)}</b><small>${esc(sub)}</small></span><em class="kg-kings">${icon('crown')}${kings}</em></div>`).join('')}</div>
+    ${top5.some((r) => r[0] === k.id) ? '' : `<p class="set-note">${tr('У всех игроков твой царь был царём {n} раз(а)', { n: d.me?.[0] || 0 })}</p>`}`;
+}
+
 function kgStopAudio() { gmStopAudio(); kg.playing = null; }
 function kgListen(side) {
   const x = side === 'k' ? kg.king : kg.list[kg.i];
