@@ -1700,3 +1700,41 @@ body.viewing .ach { cursor: pointer; }
 .pa-code small { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
 .pa-code .icon-btn { width: 32px; height: 32px; }
 @media (max-width: 440px) { #osSeg .ic { display: none; } #osSeg button { padding: 0 4px; font-size: 13px; } #osSeg button span { overflow: hidden; text-overflow: ellipsis; } }
+
+/* «Царь горы» (21.11) */
+.kg-duel { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+.kg-card { display: grid; gap: 8px; min-width: 0; }
+.kg-pick { display: grid; gap: 6px; padding: 8px 8px 12px; border: 1.5px solid var(--line); border-radius: 18px; background: var(--elev); color: var(--text); font: inherit; text-align: center; cursor: pointer; min-width: 0; transition: border-color .15s, transform .15s; }
+.kg-pick:hover { border-color: var(--accent); transform: translateY(-2px); }
+.kg-card.king .kg-pick { border-color: rgba(255, 196, 0, .55); }
+.kg-pick b { font: 700 15.5px var(--display); line-height: 1.25; overflow-wrap: anywhere; }
+.kg-pick small { font-size: 12.5px; color: var(--muted); line-height: 1.3; overflow-wrap: anywhere; }
+.kg-img { position: relative; display: block; aspect-ratio: 3 / 4; border-radius: 12px; overflow: hidden; background: var(--elev2, rgba(127, 127, 127, .15)); }
+.kg-img.sq { aspect-ratio: 1; }
+.kg-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.kg-crown { position: absolute; top: 6px; left: 6px; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #ffc400; color: #3a2a00; }
+.kg-crown svg { width: 18px; height: 18px; }
+.kg-vs { position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%); z-index: 2; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: linear-gradient(135deg, #ff4d78, #a64dff); color: #fff; font: 800 14px var(--display); box-shadow: 0 4px 14px rgba(0, 0, 0, .35); pointer-events: none; }
+.kg-listen { justify-self: center; }
+.kg-listen.on { border-color: var(--accent); color: var(--accent); }
+.kg-streak { display: inline-flex; align-items: center; gap: 6px; }
+.kg-streak svg { width: 16px; height: 16px; color: #ffc400; }
+.kg-foot { display: flex; justify-content: space-between; }
+.kg-foot .link { display: inline-flex; align-items: center; gap: 6px; }
+.kg-foot .link svg { width: 16px; height: 16px; }
+.kg-end { gap: 10px; }
+.kg-end .kg-crown.big { position: static; width: 54px; height: 54px; }
+.kg-end .kg-crown.big svg { width: 30px; height: 30px; }
+.kg-win { display: grid; gap: 4px; justify-items: center; width: min(220px, 52vw); }
+.kg-win .kg-img { width: 100%; box-shadow: 0 0 0 3px #ffc400; }
+.kg-win b { font: 700 20px var(--display); margin-top: 6px; }
+.kg-win small { color: var(--muted); font-size: 13px; }
+.kg-win p { margin: 4px 0 0; color: var(--text2); }
+.kg-end h3 { margin: 14px 0 0; }
+.kg-top { display: grid; gap: 8px; width: 100%; max-width: 460px; text-align: left; }
+.kg-trow { display: grid; grid-template-columns: 44px 1fr auto; gap: 10px; align-items: center; }
+.kg-trow .kg-img { width: 44px; }
+.kg-trow b { display: block; font-size: 14px; }
+.kg-trow small { display: block; font-size: 12px; color: var(--muted); }
+.kg-trow em { font-style: normal; font-size: 12.5px; color: var(--text2); white-space: nowrap; }
+@media (max-width: 440px) { .kg-duel { gap: 10px; } .kg-pick { padding: 6px 6px 10px; } .kg-pick b { font-size: 14px; } .kg-vs { width: 36px; height: 36px; font-size: 12px; } }

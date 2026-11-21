@@ -88,14 +88,14 @@ const gmBest = (kind) => +pref('gmBest_' + kind, '0') || 0;
 function gmMenu() {
   gmStopAudio(); clearInterval(gm.timer);
   const seg = (name, cur, opts) => `<div class="set-seg gm-seg">${opts.map(([v, l]) => `<button type="button" data-gmset="${name}" data-v="${v}" class="${String(cur) === String(v) ? 'on' : ''}">${tr(l)}</button>`).join('')}</div>`;
-  const card = (kind, ic, title, desc) => `<button type="button" class="gm-card ${gm.kind === kind ? 'on' : ''}" data-gmkind="${kind}"><span class="gm-ic">${icon(ic)}</span><b>${tr(title)}</b><small>${tr(desc)}</small><em>${tr('Лучший счёт: {n}', { n: gmBest(gmBestKey(kind)) })}</em></button>`;
+  const card = (kind, ic, title, desc) => `<button type="button" class="gm-card ${gm.kind === kind ? 'on' : ''}" data-gmkind="${kind}"><span class="gm-ic">${icon(ic)}</span><b>${tr(title)}</b><small>${tr(desc)}</small><em>${kind === 'king' ? kgLastHTML() : tr('Лучший счёт: {n}', { n: gmBest(gmBestKey(kind)) })}</em></button>`;
   gmBox.innerHTML = `<div class="view-head"><div><h1>${tr('Игры')}</h1></div></div>
-    <div class="gm-cards">${card('op', 'music', 'Угадай опенинг', 'Играет кусочек опенинга или эндинга — угадай аниме.')}${card('anime', 'compass', 'Угадай аниме', 'Показывается кадр из серии — угадай аниме.')}</div>
-    <div class="gm-set">
+    <div class="gm-cards">${card('op', 'music', 'Угадай опенинг', 'Играет кусочек опенинга или эндинга — угадай аниме.')}${card('anime', 'compass', 'Угадай аниме', 'Показывается кадр из серии — угадай аниме.')}${card('king', 'crown', 'Царь горы', 'Два варианта — выбираешь лучший. Победитель остаётся, к нему выходит следующий.')}</div>
+    <div class="gm-set">${gm.kind === 'king' ? kgSettingsHTML(seg) : `
       <div class="set-sec"><h3>${tr('Аниме')}</h3>${seg('src', gm.src, [['mine', 'Из моего топа'], ['pop', 'Популярные']])}</div>
       <div class="set-sec"><h3>${tr('Секунд')}</h3>${seg('sec', gm.sec, [[5, '5'], [10, '10'], [15, '15'], [20, '20']])}</div>
       ${gm.kind === 'anime' ? `<div class="set-sec"><h3>${tr('Сложность')}</h3>${seg('diff', gm.diff, [['norm', 'Обычно'], ['hard', 'Сложно']])}</div>` : ''}
-      ${gm.kind !== 'anime' ? `<div class="set-sec"><h3>${tr('Откуда играет')}</h3>${seg('start', gm.start, [['begin', 'С начала'], ['random', 'Случайный момент']])}</div>` : ''}
+      ${gm.kind !== 'anime' ? `<div class="set-sec"><h3>${tr('Откуда играет')}</h3>${seg('start', gm.start, [['begin', 'С начала'], ['random', 'Случайный момент']])}</div>` : ''}`}
       <button type="button" class="btn primary wide gm-go" data-gmgo ${gm.kind ? '' : 'disabled'}>${icon('play')}<span>${tr('Играть')}</span></button>
       <p class="imp-status gm-msg" id="gmMsg"></p>
     </div>`;
@@ -234,7 +234,7 @@ gmBox.addEventListener('click', (e) => {
   if (k) { gm.kind = k.dataset.gmkind; gmMenu(); return; }
   const s = e.target.closest('[data-gmset]');
   if (s) { const n = s.dataset.gmset, v = s.dataset.v; gm[n] = n === 'sec' ? +v : v; setPref('gm' + n[0].toUpperCase() + n.slice(1), v); gmMenu(); return; }
-  if (e.target.closest('[data-gmgo]')) { if ($('.gm-end')) { gm.i = 0; gm.score = 0; gm.right = 0; gmMenu(); gmStart(); } else gmStart(); return; }
+  if (e.target.closest('[data-gmgo]')) { if (gm.kind === 'king') { kgStart(); return; } if ($('.gm-end')) { gm.i = 0; gm.score = 0; gm.right = 0; gmMenu(); gmStart(); } else gmStart(); return; }
   if (e.target.closest('[data-gmmenu]')) { gmMenu(); return; }
   const a = e.target.closest('[data-gmans]');
   if (a) { gmAnswer(+a.dataset.gmans); return; }
@@ -251,10 +251,11 @@ gmBox.addEventListener('click', (e) => {
     if (gm.shots >= r.shots.length) $('#gmMore')?.remove();
   }
 });
-function gmShowView() { if (!gmBox.innerHTML.trim() || !gm.rounds.length || $('.gm-end')) gmMenu(); }
+function gmShowView() { if (!gmBox.innerHTML.trim() || (!gm.rounds.length && !kg.on) || $('.gm-end')) gmMenu(); }
 // ушёл с вкладки — звук стоп
 {
   const base = show;
   show = function (v, ...rest) { if (v !== 'games') { gmStopAudio(); clearInterval(gm.timer); } return base.call(this, v, ...rest); };
 }
-if (view === 'games') gmShowView();
+// «Царь горы» (king.js) подключается после этого файла — первый показ раздела ждёт его
+setTimeout(() => { if (view === 'games') gmShowView(); });
