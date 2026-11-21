@@ -10,10 +10,13 @@ Object.assign(EN, {
   'Царь горы — {t}': 'King of the hill — {t}', 'Самые стойкие': 'Toughest contenders', 'побед — {n}': 'wins — {n}', 'Последний царь: {t}': 'Last king: {t}',
   'Нужно хотя бы 3 участника. Оцени больше аниме, открой их саундтреки или выбери «Популярные».': 'At least 3 contestants are needed. Rate more anime, open their soundtracks or choose “Popular”.',
   'Загружаю саундтреки… {d} из {n}': 'Loading soundtracks… {d} of {n}', 'Стоп': 'Stop', 'Слушать': 'Listen',
+  'Сменить ({n})': 'Swap ({n})', 'Претендент вернётся позже — выбрать всё равно придётся': 'The challenger will come back later — you still have to choose', 'Отложено: {t} — вернётся позже': 'Postponed: {t} — will come back later',
 });
 ICONS.crown = '<path d="M3 7.5 7.5 12 12 5l4.5 7L21 7.5 19 18H5z"/><path d="M5 21h14"/>';
 
 const kg = { what: ['anime', 'chars', 'op', 'ost'].includes(pref('kgWhat', 'anime')) ? pref('kgWhat', 'anime') : 'anime', n: pref('kgN', '16'), list: [], i: 0, king: null, streak: 0, wins: new Map(), hist: [], on: false, playing: null };
+// 22.11: «Сменить» — 2 раза за игру претендента можно отложить: он уходит дальше в очередь и всё равно вернётся
+const KG_SWAPS = 2;
 const KG_N = [['8', '8'], ['16', '16'], ['32', '32'], ['64', '64'], ['all', 'Все']];
 
 function kgLastHTML() { const t = pref('kgLast', ''); return t ? esc(tr('Последний царь: {t}', { t })) : ''; }
@@ -88,7 +91,7 @@ async function kgStart() {
     return;
   }
   gm.rounds = [];
-  Object.assign(kg, { list: shuffle(pool).slice(0, kg.n === 'all' ? 200 : +kg.n), i: 1, streak: 0, wins: new Map(), hist: [], on: true, playing: null });
+  Object.assign(kg, { list: shuffle(pool).slice(0, kg.n === 'all' ? 200 : +kg.n), i: 1, streak: 0, wins: new Map(), hist: [], on: true, playing: null, swaps: KG_SWAPS });
   kg.king = kg.list[0];
   kgRender();
 }
@@ -103,13 +106,25 @@ function kgRender() {
     <div class="gm-top"><span>${tr('Бой {a} из {b}', { a: kg.i, b: n })}</span><b class="kg-streak">${icon('crown')}${tr('побед подряд — {n}', { n: kg.streak })}</b></div>
     <div class="gm-bar"><i style="width:${((kg.i - 1) / n) * 100}%"></i></div>
     <div class="kg-duel">${kgCard(kg.king, 'k')}<span class="kg-vs">VS</span>${kgCard(ch, 'c')}</div>
-    <div class="kg-foot"><button type="button" class="link" data-kgundo ${kg.hist.length ? '' : 'disabled'}>${icon('back')}<span>${tr('Отменить')}</span></button><button type="button" class="link" data-kgquit>${tr('Выйти')}</button></div>
+    <div class="kg-foot"><button type="button" class="link" data-kgundo ${kg.hist.length ? '' : 'disabled'}>${icon('back')}<span>${tr('Отменить')}</span></button><button type="button" class="btn kg-swap" data-kgswap ${kg.swaps > 0 && kg.i < kg.list.length - 1 ? '' : 'disabled'} title="${tr('Претендент вернётся позже — выбрать всё равно придётся')}">${icon('sort')}<span>${tr('Сменить ({n})', { n: kg.swaps })}</span></button><button type="button" class="link" data-kgquit>${tr('Выйти')}</button></div>
   </div>`;
+}
+const kgSnap = () => kg.hist.push({ king: kg.king, streak: kg.streak, i: kg.i, wins: new Map(kg.wins), list: kg.list.slice(), swaps: kg.swaps });
+// отложить претендента: переносим его в случайное место дальше по очереди (не сразу следующим, если есть выбор)
+function kgSwap() {
+  if (!kg.on || kg.swaps <= 0 || kg.i >= kg.list.length - 1) return;
+  kgSnap();
+  const [x] = kg.list.splice(kg.i, 1), from = Math.min(kg.i + 2, kg.list.length);
+  kg.list.splice(from + Math.floor(Math.random() * (kg.list.length - from + 1)), 0, x);
+  kg.swaps--;
+  kgStopAudio();
+  toast(tr('Отложено: {t} — вернётся позже', { t: x.title }));
+  kgRender();
 }
 function kgPick(side) {
   if (!kg.on) return;
   const ch = kg.list[kg.i];
-  kg.hist.push({ king: kg.king, streak: kg.streak, i: kg.i, wins: new Map(kg.wins) });
+  kgSnap();
   const win = side === 'k' ? kg.king : ch;
   kg.wins.set(win.id, (kg.wins.get(win.id) || 0) + 1);
   if (side === 'k') kg.streak++; else { kg.king = ch; kg.streak = 1; }
@@ -151,6 +166,7 @@ gmBox.addEventListener('click', (e) => {
   if (p) { kgPick(p.dataset.kgpick); return; }
   const l = e.target.closest('[data-kgplay]');
   if (l) { kgListen(l.dataset.kgplay); return; }
+  if (e.target.closest('[data-kgswap]')) { kgSwap(); return; }
   if (e.target.closest('[data-kgundo]')) { const h = kg.hist.pop(); if (h) { Object.assign(kg, h); kgStopAudio(); kgRender(); } return; }
   if (e.target.closest('[data-kgquit]')) { kg.on = false; kgStopAudio(); gmMenu(); }
 });

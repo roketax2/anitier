@@ -1721,7 +1721,9 @@ body.viewing .ach { cursor: pointer; }
 .kg-streak svg { width: 16px; height: 16px; color: #ffc400; }
 .kg-foot { display: flex; justify-content: space-between; }
 .kg-foot .link { display: inline-flex; align-items: center; gap: 6px; }
-.kg-foot .link svg { width: 16px; height: 16px; }
+.kg-foot .link svg, .kg-swap svg { width: 16px; height: 16px; }
+.kg-foot { align-items: center; gap: 8px; }
+.kg-swap { padding: 8px 14px; }
 .kg-end { gap: 10px; }
 .kg-end .kg-crown.big { position: static; width: 54px; height: 54px; }
 .kg-end .kg-crown.big svg { width: 30px; height: 30px; }
